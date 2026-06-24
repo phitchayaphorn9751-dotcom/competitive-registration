@@ -2,7 +2,6 @@ import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { getSession, isAdminUser, fetchMyProfile, saveProfile, searchSchools } from "../lib/supabase.js"
 import { useLang } from "../lib/i18n.jsx"
-import { autocomplete, initAddressData } from "@amiearth/thai-address-finder"
 
 const TITLES = ["เด็กชาย", "เด็กหญิง", "นาย", "นางสาว", "นาง"]
 const PARENT_TITLES = ["นาย", "นางสาว", "นาง"]
@@ -60,7 +59,6 @@ export default function ProfilePage() {
   const [activeSection, setActiveSection] = useState(1)
 
   useEffect(() => {
-    initAddressData().catch(() => {})
     getSession().then(async (s) => {
       if (!s) { navigate("/login"); return }
       if (await isAdminUser()) { navigate("/admin/dashboard"); return }
@@ -109,12 +107,8 @@ export default function ProfilePage() {
   function toggleCustomSchool() { setCustomSchool((p) => !p); set("school", ""); setSchoolVerified(false); setShowSchoolDD(false) }
 
   function onSubdistrictInput(val) {
-    setF((prev) => ({ ...prev, subdistrict: val, district: "", province: "", zipcode: "" }))
-    setAddrVerified(false)
-    if (val.trim().length > 1) {
-      try { const r = autocomplete({ query: val }) || []; setAddrOptions(r.slice(0, 10)); setShowAddrDD(true) }
-      catch { setAddrOptions([]) }
-    } else setShowAddrDD(false)
+    // กรอกที่อยู่เอง (ปิด autocomplete ชั่วคราว — กรอกตำบล/อำเภอ/จังหวัด/รหัสไปรษณีย์ด้วยตนเอง)
+    set("subdistrict", val)
   }
   function pickAddress(a) {
     setF((prev) => ({ ...prev, subdistrict: a.subDistrict, district: a.district, province: a.province, zipcode: a.postalCode }))
@@ -351,7 +345,7 @@ export default function ProfilePage() {
                   </ul>
                 )}
                 {f.subdistrict.length > 0 && !addrVerified && !showAddrDD && (
-                  <p className="text-xs text-amber-500 mt-1">⚠️ ไม่พบในระบบ — กรอกอำเภอ/จังหวัด/รหัสไปรษณีย์เองได้เลย</p>
+                  <p className="text-xs text-gray-400 mt-1">กรอกอำเภอ/จังหวัด/รหัสไปรษณีย์ด้านล่างได้เลย</p>
                 )}
               </div>
               <div>
