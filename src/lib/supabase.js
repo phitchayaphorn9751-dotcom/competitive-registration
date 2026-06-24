@@ -1,0 +1,625 @@
+import { createClient } from "@supabase/supabase-js"
+
+const url = import.meta.env.VITE_SUPABASE_URL
+const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+if (!url || !anonKey) {
+  console.error("ยังไม่ได้ตั้งค่า .env — ใส่ VITE_SUPABASE_URL และ VITE_SUPABASE_ANON_KEY")
+}
+
+export const supabase = createClient(url, anonKey)
+
+// ===== ข้อมูลสาธารณะ =====
+
+export async function fetchOpenEvent() {
+  const { data, error } = await supabase
+    .from("events")
+    .select("id, name, year, status")
+    .eq("status", "open")
+    .order("year", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
+
+// schema จริง: courses.type_id -> course_types ; ไม่มี course_type_id
+export async function fetchCourses(eventId) {
+  let q = supabase
+    .from("courses")
+    .select(
+      "id, title, description, content, count_mode, team_size, min_members, max_members, capacity, seats_taken, price, bank_account, image_url, image_urls, level, start_date, end_date, duration, line_qr_url, form_schema, is_open, course_types:type_id(code,label,requires_payment,requires_approval), course_instructors(instructors(full_name)), course_days(day_date,start_at,end_at)"
+    )
+    .order("created_at", { ascending: true })
+  if (eventId) q = q.eq("event_id", eventId)
+  const { data, error } = await q
+  if (error) throw error
+  return data
+}
+
+export async function fetchCourse(courseId) {
+  const { data, error } = await supabase
+    .from("courses")
+    .select(
+      "id, event_id, title, description, count_mode, team_size, min_members, max_members, capacity, seat_mode, require_portfolio, portfolio_label, seats_taken, price, bank_account, bank_name, bank_holder, line_qr_url, image_url, image_urls, form_schema, is_open, course_types:type_id(code,label,requires_payment,requires_approval)"
+    )
+    .eq("id", courseId)
+    .single()
+  if (error) throw error
+  return data
+}
+
+// ===== ลงทะเบียน (ผ่าน RPC) =====
+
+// schema จริง: hold_seat คืน uuid ตรงๆ (ไม่ใช่ table)
+export async function holdSeat(courseId, email, seats) {
+  const { data, error } = await supabase.rpc("hold_seat", {
+    p_course_id: courseId,
+    p_submitter_email: email,
+    p_seats_needed: seats,
+  })
+  if (error) throw error
+  return data // registration uuid
+}
+
+export async function addParticipant(registrationId, p) {
+  const { data, error } = await supabase.rpc("add_participant", {
+    p_registration_id: registrationId,
+    p_full_name: p.full_name,
+    p_school: p.school || null,
+    p_grade_level: p.grade_level || null,
+    p_phone: p.phone || null,
+    p_email: p.email || null,
+    p_extra_info: p.extra_info || {},
+  })
+  if (error) throw error
+  return data
+}
+
+// ครูที่ปรึกษา — ผ่าน RPC add_advisor (security definer)
+export async function addAdvisor(registrationId, advisor) {
+  const { data, error } = await supabase.rpc("add_advisor", {
+    p_registration_id: registrationId,
+    p_full_name: advisor.full_name,
+    p_phone: advisor.phone || null,
+    p_email: advisor.email || null,
+  })
+  if (error) throw error
+  return data
+}
+
+// บันทึกลิงก์ผลงานลงใบสมัคร
+export async function savePortfolioUrl(registrationId, url) {
+  const { error } = await supabase
+    .from("registrations")
+    .update({ portfolio_url: url })
+    .eq("id", registrationId)
+  if (error) throw error
+}
+
+export async function uploadSlip(file, registrationId) {
+  const ext = file.name.split(".").pop()
+  const path = `${registrationId}.${ext}`
+  const { error } = await supabase.storage
+    .from("slips")
+    .upload(path, file, { upsert: true })
+  if (error) throw error
+  const { data } = supabase.storage.from("slips").getPublicUrl(path)
+  return data.publicUrl
+}
+
+// schema จริง: attach_slip(p_registration_id, p_slip_url, p_amount int)
+export async function attachSlip(registrationId, slipUrl, amount) {
+  const { error } = await supabase.rpc("attach_slip", {
+    p_registration_id: registrationId,
+    p_slip_url: slipUrl,
+    p_amount: Math.round(amount), // schema รับ int
+  })
+  if (error) throw error
+}
+
+// ===== แอดมิน — Auth =====
+
+export async function signIn(email, password) {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+  if (error) throw error
+  return data
+}
+
+export async function signUp(email, password) {
+  const { data, error } = await supabase.auth.signUp({ email, password })
+  if (error) throw error
+  return data
+}
+
+export async function signInWithGoogle() {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    // กลับมาที่ /login เพื่อให้ routeAfterAuth แยกทาง admin/user
+    options: { redirectTo: window.location.origin + "/login" },
+  })
+  if (error) throw error
+}
+
+// ส่งอีเมลรีเซ็ตรหัสผ่าน
+export async function resetPassword(email) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + "/login",
+  })
+  if (error) throw error
+}
+
+export async function signOut() {
+  await supabase.auth.signOut()
+}
+
+export async function getSession() {
+  const { data } = await supabase.auth.getSession()
+  return data.session
+}
+
+// schema จริง: is_admin() เช็คจาก admins.id = auth.uid()
+export async function isAdminUser() {
+  const { data, error } = await supabase.rpc("is_admin")
+  if (error) return false
+  return data === true
+}
+
+// ===== Profile ผู้ใช้ =====
+
+export async function isProfileComplete() {
+  const { data, error } = await supabase.rpc("profile_complete")
+  if (error) return false
+  return data === true
+}
+
+export async function fetchMyProfile() {
+  const session = await getSession()
+  if (!session) return null
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", session.user.id)
+    .maybeSingle()
+  if (error) throw error
+  return data
+}
+
+export async function saveProfile(profile) {
+  const { error } = await supabase.rpc("save_profile", { p: profile })
+  if (error) throw error
+}
+
+// รายการสมัครของผู้ใช้ที่ล็อกอิน (ผ่าน RPC ที่กรองด้วย auth.email())
+export async function fetchMyRegistrations() {
+  const { data, error } = await supabase.rpc("my_registrations")
+  if (error) throw error
+  return data || []
+}
+
+// ===== แอดมิน — อ่าน/จัดการการสมัคร =====
+
+// ดึงโปรไฟล์นักเรียนทั้งหมด + email (สำหรับหน้าจัดการนักเรียน)
+export async function fetchAllProfiles() {
+  const { data, error } = await supabase.rpc("admin_list_students")
+  if (error) throw error
+  return data || []
+}
+
+// ดึงรายการสมัครของนักเรียนรายคน (ตามอีเมล) — ใช้ใน modal ประวัติ
+export async function fetchRegistrationsByEmail(email) {
+  const { data, error } = await supabase.rpc("admin_student_registrations", { p_email: email })
+  if (error) throw error
+  return data || []
+}
+
+// schema จริง: เช็คอินอยู่ในตาราง checkins แยก ผูก participant_id
+export async function fetchRegistrations(eventId) {
+  let q = supabase
+    .from("registrations")
+    .select(
+      "id, status, submitter_email, submitter_phone, seats_held, qr_token, waitlist_pos, created_at, course_id, courses!inner(title, event_id), advisors(id,full_name,phone,email), participants(id,full_name,school,qr_token,checkins(id,scanned_at)), payments(id,amount,slip_url,status)"
+    )
+    .order("created_at", { ascending: false })
+  if (eventId) q = q.eq("courses.event_id", eventId)
+  const { data, error } = await q
+  if (error) throw error
+  return data
+}
+
+export async function confirmRegistration(registrationId, adminId) {
+  const { error } = await supabase.rpc("confirm_registration", {
+    p_registration_id: registrationId,
+    p_admin_id: adminId,
+  })
+  if (error) throw error
+}
+
+export async function releaseSeat(registrationId) {
+  const { error } = await supabase.rpc("release_seat", {
+    p_registration_id: registrationId,
+  })
+  if (error) throw error
+}
+
+// ดึงใบสมัครเดียว (รายละเอียดเต็ม สำหรับหน้าตรวจสลิป)
+export async function fetchRegistration(registrationId) {
+  const { data, error } = await supabase
+    .from("registrations")
+    .select(
+      "id, status, submitter_email, submitter_phone, seats_held, qr_token, waitlist_pos, created_at, reject_reason, course_id, courses(title, price, course_types:type_id(label,requires_payment)), advisors(id,full_name,phone,email), participants(id,full_name,school,grade_level,phone,email,qr_token,checkins(id,scanned_at)), payments(id,amount,slip_url,status,created_at)"
+    )
+    .eq("id", registrationId)
+    .single()
+  if (error) throw error
+  return data
+}
+
+// ตีกลับใบสมัคร (สลิปไม่ผ่าน) พร้อมเหตุผล
+export async function rejectRegistration(registrationId, reason) {
+  const { error } = await supabase.rpc("reject_registration", {
+    p_registration_id: registrationId,
+    p_reason: reason,
+  })
+  if (error) throw error
+}
+
+// ===== แอดมิน — จัดการ events / courses (ใช้ซ้ำหลายปี) =====
+
+export async function fetchAllEvents() {
+  const { data, error } = await supabase
+    .from("events")
+    .select("id, name, year, status, created_at")
+    .order("year", { ascending: false })
+  if (error) throw error
+  return data
+}
+
+export async function saveEvent(ev) {
+  if (ev.id) {
+    const { error } = await supabase.from("events")
+      .update({ name: ev.name, year: ev.year, status: ev.status })
+      .eq("id", ev.id)
+    if (error) throw error
+  } else {
+    const { error } = await supabase.from("events")
+      .insert({ name: ev.name, year: ev.year, status: ev.status || "draft" })
+    if (error) throw error
+  }
+}
+
+// ตั้งงานนี้เป็น "เปิดรับสมัคร" — ปิด open ของงานอื่นก่อน (เปิดได้ทีละงาน)
+export async function setEventOpen(eventId) {
+  // ปิดงานที่เปิดอยู่ทั้งหมดก่อน
+  const { error: e1 } = await supabase.from("events")
+    .update({ status: "closed" }).eq("status", "open").neq("id", eventId)
+  if (e1) throw e1
+  // เปิดงานที่เลือก
+  const { error: e2 } = await supabase.from("events")
+    .update({ status: "open" }).eq("id", eventId)
+  if (e2) throw e2
+}
+
+// เปลี่ยนสถานะงาน (draft/open/closed) — ถ้าตั้ง open ใช้ setEventOpen เพื่อกันซ้อน
+export async function setEventStatus(eventId, status) {
+  if (status === "open") return setEventOpen(eventId)
+  const { error } = await supabase.from("events").update({ status }).eq("id", eventId)
+  if (error) throw error
+}
+
+// ลบงาน (ลบได้เฉพาะงานที่ไม่มีคอร์ส — กันลบประวัติ)
+export async function deleteEvent(eventId) {
+  const { count, error: ce } = await supabase
+    .from("courses").select("id", { count: "exact", head: true }).eq("event_id", eventId)
+  if (ce) throw ce
+  if (count > 0) throw new Error("EVENT_HAS_COURSES")
+  const { error } = await supabase.from("events").delete().eq("id", eventId)
+  if (error) throw error
+}
+
+export async function fetchCourseTypes(eventId) {
+  let q = supabase
+    .from("course_types")
+    .select("id, code, label, requires_payment, requires_approval, event_id")
+    .order("label")
+  const { data, error } = await q
+  if (error) throw error
+  // คืนเฉพาะของงานนี้ + ค่ากลาง (event_id เป็น null = ใช้ได้ทุกงาน)
+  if (eventId) return (data || []).filter((t) => !t.event_id || t.event_id === eventId)
+  return data
+}
+
+// เพิ่ม/แก้ประเภทวิชา (หมวดหมู่) — ผูกกับงาน
+export async function saveCourseType(ct, eventId) {
+  const payload = {
+    code: ct.code, label: ct.label,
+    requires_payment: !!ct.requires_payment,
+    requires_approval: !!ct.requires_approval,
+  }
+  if (ct.id) {
+    const { error } = await supabase.from("course_types").update(payload).eq("id", ct.id)
+    if (error) throw error
+  } else {
+    // ประเภทใหม่ผูกกับงานที่เลือก
+    const { error } = await supabase.from("course_types").insert({ ...payload, event_id: eventId || null })
+    if (error) throw error
+  }
+}
+
+// ลบประเภทวิชา — ลบไม่ได้ถ้ามีคอร์สใช้อยู่
+export async function deleteCourseType(id) {
+  const { count, error: ce } = await supabase
+    .from("courses").select("id", { count: "exact", head: true }).eq("type_id", id)
+  if (ce) throw ce
+  if (count > 0) throw new Error("TYPE_IN_USE")
+  const { error } = await supabase.from("course_types").delete().eq("id", id)
+  if (error) throw error
+}
+
+// schema จริง: courses ใช้ type_id, count_mode in ('person','team')
+export async function fetchCoursesAdmin(eventId) {
+  let q = supabase
+    .from("courses")
+    .select("id, event_id, type_id, title, description, content, count_mode, team_size, min_members, max_members, capacity, seat_mode, require_portfolio, portfolio_label, seats_taken, price, bank_account, bank_name, bank_holder, image_url, image_urls, line_qr_url, base_id, level, start_date, end_date, duration, form_schema, is_open, course_types:type_id(label), course_instructors(instructors(full_name)), course_days(day_date)")
+    .order("created_at", { ascending: true })
+  if (eventId) q = q.eq("event_id", eventId)
+  const { data, error } = await q
+  if (error) throw error
+  return data
+}
+
+// อัปโหลดรูป/ไฟล์ของวิชาขึ้น Storage (bucket: course-assets) → คืน public URL
+export async function uploadCourseAsset(file, folder = "images") {
+  const ext = file.name.split(".").pop()
+  const path = `${folder}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`
+  const { error } = await supabase.storage.from("course-assets").upload(path, file, { upsert: false })
+  if (error) throw error
+  const { data } = supabase.storage.from("course-assets").getPublicUrl(path)
+  return data.publicUrl
+}
+
+// คัดลอกคอร์ส (เลือกหลายคอร์ส) ไปยังงานปลายทาง — ไม่ก็อป seats_taken/ผู้สมัคร
+export async function duplicateCourses(courseIds, toEventId) {
+  if (!courseIds?.length || !toEventId) return []
+  // ดึงคอร์สต้นฉบับ
+  const { data: sources, error: e1 } = await supabase
+    .from("courses")
+    .select("type_id, title, description, content, count_mode, team_size, min_members, max_members, capacity, seat_mode, require_portfolio, portfolio_label, price, bank_account, bank_name, bank_holder, image_url, image_urls, line_qr_url, base_id, level, start_date, end_date, duration, form_schema")
+    .in("id", courseIds)
+  if (e1) throw e1
+  // เตรียม payload งานใหม่ (seats_taken=0, is_open=false ให้แอดมินเปิดเอง)
+  const rows = (sources || []).map((s) => ({ ...s, event_id: toEventId, seats_taken: 0, is_open: false }))
+  const { data, error } = await supabase.from("courses").insert(rows).select("id")
+  if (error) throw error
+  return data || []
+}
+
+export async function saveCourse(c) {
+  const payload = {
+    event_id: c.event_id,
+    type_id: c.type_id,
+    title: c.title,
+    description: c.description || null,
+    content: c.content || null,
+    count_mode: c.count_mode,        // 'person' | 'team'
+    team_size: c.count_mode === "team" ? Number(c.team_size) || 2 : 1,
+    min_members: Number(c.min_members) || 1,
+    max_members: Number(c.max_members) || (c.count_mode === "team" ? Number(c.team_size) || 2 : 1),
+    capacity: Number(c.capacity) || 0,
+    seat_mode: c.seat_mode || "limited",
+    require_portfolio: !!c.require_portfolio,
+    portfolio_label: c.portfolio_label || null,
+    price: Math.round(Number(c.price) || 0),
+    bank_account: c.bank_account || null,
+    bank_name: c.bank_name || null,
+    bank_holder: c.bank_holder || null,
+    image_url: c.image_url || (c.image_urls?.[0] || null),
+    image_urls: c.image_urls || [],
+    line_qr_url: c.line_qr_url || null,
+    base_id: c.base_id ? Number(c.base_id) : null,
+    level: c.level || null,
+    start_date: c.start_date || null,
+    end_date: c.end_date || null,
+    duration: c.duration || null,
+    form_schema: c.form_schema || [],
+    is_open: c.is_open,
+  }
+  let courseId = c.id
+  if (c.id) {
+    const { error } = await supabase.from("courses").update(payload).eq("id", c.id)
+    if (error) throw error
+  } else {
+    const { data, error } = await supabase.from("courses").insert(payload).select("id").single()
+    if (error) throw error
+    courseId = data.id
+  }
+  // บันทึกผู้สอน (ถ้าส่งมา)
+  if (c.instructor_names !== undefined) {
+    await setCourseInstructors(courseId, c.instructor_names || [])
+  }
+  return courseId
+}
+
+export async function deleteCourse(courseId) {
+  const { error } = await supabase.from("courses").delete().eq("id", courseId)
+  if (error) throw error
+}
+
+// ===== เช็คอิน =====
+
+export async function checkInByToken(token) {
+  const { data, error } = await supabase.rpc("check_in_by_token", {
+    p_token: token,
+  })
+  if (error) throw error
+  return data
+}
+
+// เช็คอินรายวัน (แยกตามวิชา + วัน) — คืน { ok, duplicate?, reason?, name?, school?, course_title?, time? }
+export async function checkInDaily(token, courseId, dateKey, method = "qr") {
+  const { data, error } = await supabase.rpc("check_in_daily", {
+    p_token: token, p_course_id: courseId, p_date: dateKey, p_method: method,
+  })
+  if (error) throw error
+  return data
+}
+
+// ดึงรายชื่อนักเรียนยืนยันแล้ว + สถานะเช็คชื่อวันนั้น (โหมดรายวัน)
+export async function attendanceRoster(courseId, dateKey) {
+  const { data, error } = await supabase.rpc("attendance_roster", { p_course_id: courseId, p_date: dateKey })
+  if (error) throw error
+  return data || []
+}
+// เช็คชื่อด้วยมือ
+export async function attendanceMark(participantId, courseId, dateKey) {
+  const { data, error } = await supabase.rpc("attendance_mark", { p_participant_id: participantId, p_course_id: courseId, p_date: dateKey })
+  if (error) throw error
+  return data
+}
+// ติ๊กออก
+export async function attendanceUnmark(participantId, courseId, dateKey) {
+  const { data, error } = await supabase.rpc("attendance_unmark", { p_participant_id: participantId, p_course_id: courseId, p_date: dateKey })
+  if (error) throw error
+  return data
+}
+// อัปเดตผลประเมิน/หมายเหตุ
+export async function attendanceUpdate(participantId, courseId, dateKey, evaluation, note) {
+  const { data, error } = await supabase.rpc("attendance_update", { p_participant_id: participantId, p_course_id: courseId, p_date: dateKey, p_evaluation: evaluation, p_note: note })
+  if (error) throw error
+  return data
+}
+// สรุปทั้งคอร์ส (โหมดสรุปยอดรวม)
+export async function attendanceSummary(courseId) {
+  const { data, error } = await supabase.rpc("attendance_summary", { p_course_id: courseId })
+  if (error) throw error
+  return data || []
+}
+
+// ดึงรายการเช็คอินของวิชา+วัน (log + นับจำนวน)
+export async function attendanceDaily(courseId, dateKey) {
+  const { data, error } = await supabase.rpc("attendance_daily", {
+    p_course_id: courseId, p_date: dateKey,
+  })
+  if (error) throw error
+  return data || []
+}
+
+// ===== Dashboard / สรุป =====
+
+export async function fetchDashboardStats(eventId) {
+  const { data, error } = await supabase.rpc("dashboard_stats", { p_event_id: eventId })
+  if (error) throw error
+  return data
+}
+
+export async function fetchAttendanceByCourse(eventId) {
+  const { data, error } = await supabase.rpc("attendance_by_course", { p_event_id: eventId })
+  if (error) throw error
+  return data || []
+}
+
+// ===== จัดการคอร์ส inline =====
+
+export async function toggleCourseOpen(courseId, isOpen) {
+  const { error } = await supabase.rpc("toggle_course_open", {
+    p_course_id: courseId, p_is_open: isOpen,
+  })
+  if (error) throw error
+}
+
+export async function updateCapacity(courseId, capacity) {
+  const { error } = await supabase.rpc("update_capacity", {
+    p_course_id: courseId, p_capacity: Math.round(capacity),
+  })
+  if (error) throw error
+}
+
+export async function emergencyCloseAll(eventId) {
+  const { data, error } = await supabase.rpc("emergency_close_all", { p_event_id: eventId })
+  if (error) throw error
+  return data // จำนวนคอร์สที่ถูกปิด
+}
+
+// ผู้สอนประจำคอร์ส (รับ array ของชื่อ)
+export async function setCourseInstructors(courseId, names) {
+  const { error } = await supabase.rpc("set_course_instructors", {
+    p_course_id: courseId, p_names: names,
+  })
+  if (error) throw error
+}
+
+// รายชื่อผู้สมัครในคอร์ส (สำหรับดู + export CSV)
+export async function fetchCourseParticipants(courseId) {
+  const { data, error } = await supabase
+    .from("registrations")
+    .select("id, status, submitter_email, created_at, advisors(full_name,phone), participants(id,full_name,school,grade_level,phone,checkins(id))")
+    .eq("course_id", courseId)
+    .order("created_at", { ascending: true })
+  if (error) throw error
+  return data || []
+}
+
+// ===== จัดการผู้ใช้งาน (แอดมิน) =====
+
+export async function isSuperAdmin() {
+  const { data, error } = await supabase.rpc("is_super_admin")
+  if (error) return false
+  return data === true
+}
+
+export async function listAdmins() {
+  const { data, error } = await supabase.rpc("list_admins")
+  if (error) throw error
+  return data || []
+}
+
+export async function addAdmin(email, role) {
+  const { data, error } = await supabase.rpc("add_admin", {
+    p_email: email, p_role: role || "staff",
+  })
+  if (error) throw error
+  return data
+}
+
+export async function removeAdmin(adminId) {
+  const { error } = await supabase.rpc("remove_admin", { p_admin_id: adminId })
+  if (error) throw error
+}
+
+// ===== ตั้งค่าเว็บ (ข้อมูลติดต่อ) =====
+
+export async function fetchSettings() {
+  const { data, error } = await supabase.from("site_settings").select("key, value")
+  if (error) throw error
+  // แปลงเป็น object { key: value }
+  const obj = {}
+  ;(data || []).forEach((r) => { obj[r.key] = r.value })
+  return obj
+}
+
+export async function updateSettings(settings) {
+  const { error } = await supabase.rpc("update_settings", { p_settings: settings })
+  if (error) throw error
+}
+
+// ตั้งค่าแยกตามงาน (site_title, home_notice)
+export async function fetchEventSettings(eventId) {
+  if (!eventId) return {}
+  try {
+    const { data, error } = await supabase.rpc("get_event_settings", { p_event_id: eventId })
+    if (error) return {}   // ถ้า RPC ยังไม่ได้รัน SQL (404) → คืนค่าว่าง ไม่พังทั้งหน้า
+    return data || {}
+  } catch (_) { return {} }
+}
+export async function updateEventSettings(eventId, settings) {
+  const { error } = await supabase.rpc("update_event_settings", { p_event_id: eventId, p_settings: settings })
+  if (error) throw error
+}
+
+// ค้นหาโรงเรียนสำหรับ autocomplete (คืนสูงสุด 10)
+export async function searchSchools(query) {
+  if (!query || query.trim().length < 1) return []
+  const { data, error } = await supabase.rpc("search_schools", { p_query: query.trim() })
+  if (error) throw error
+  return (data || []).map((r) => r.name)
+}
