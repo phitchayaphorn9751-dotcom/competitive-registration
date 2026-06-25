@@ -112,26 +112,43 @@ export default function AdminVerifySlip() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* LEFT: Slip (เสียเงิน) หรือ ผลงาน (ฟรี+แนบผลงาน) */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="bg-gray-50 border-b border-gray-100 px-4 py-3">
-            <span className="text-sm font-bold text-gray-600">{isPaid ? "🧾 สลิปการชำระเงิน" : "📎 ผลงานที่แนบ"}</span>
-          </div>
-          <div className="p-4">
-            {isPaid ? (
-              payment?.slip_url ? (
+        {/* LEFT: ตรวจสลิป + ผลงาน (แสดงทั้งคู่ พร้อมกำกับว่าคอร์สต้องการอะไร) */}
+        <div className="space-y-5">
+          {/* สลิปการชำระเงิน */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="bg-gray-50 border-b border-gray-100 px-4 py-3">
+              <span className="text-sm font-bold text-gray-600">🧾 สลิปการชำระเงิน</span>
+            </div>
+            <div className="p-4">
+              {!isPaid ? (
+                <div className="h-32 rounded-xl bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-300 gap-1.5">
+                  <span className="text-3xl">🆓</span>
+                  <span className="text-sm font-bold">คอร์สนี้ไม่ต้องชำระเงิน</span>
+                </div>
+              ) : payment?.slip_url ? (
                 <a href={payment.slip_url} target="_blank" rel="noreferrer" className="block group">
-                  <img src={payment.slip_url} alt="slip" className="w-full object-contain max-h-[480px] rounded-xl border border-gray-100 bg-gray-50 group-hover:opacity-90 transition" />
+                  <img src={payment.slip_url} alt="slip" className="w-full object-contain max-h-[420px] rounded-xl border border-gray-100 bg-gray-50 group-hover:opacity-90 transition" />
                   <p className="text-center text-xs text-[#F15A24] mt-2 font-bold">🔍 คลิกเพื่อเปิดเต็มจอ · ยอด ฿{payment.amount?.toLocaleString()}</p>
                 </a>
               ) : (
-                <div className="h-48 rounded-xl bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-300 gap-2">
-                  <span className="text-4xl">🧾</span><span className="text-sm">ยังไม่มีรูปสลิป</span>
+                <div className="h-32 rounded-xl bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-300 gap-1.5">
+                  <span className="text-3xl">🧾</span><span className="text-sm">ผู้สมัครยังไม่แนบสลิป</span>
                 </div>
-              )
-            ) : (
-              // คอร์สฟรี
-              data.portfolio_url ? (
+              )}
+            </div>
+          </div>
+          {/* ลิงก์ผลงาน */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="bg-gray-50 border-b border-gray-100 px-4 py-3">
+              <span className="text-sm font-bold text-gray-600">📎 ผลงานที่แนบ</span>
+            </div>
+            <div className="p-4">
+              {!data.courses?.require_portfolio ? (
+                <div className="h-32 rounded-xl bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-300 gap-1.5">
+                  <span className="text-3xl">📭</span>
+                  <span className="text-sm font-bold">คอร์สนี้ไม่ต้องแนบผลงาน</span>
+                </div>
+              ) : data.portfolio_url ? (
                 <div className="space-y-3">
                   <div className="bg-orange-50 border border-orange-100 rounded-xl p-4">
                     <p className="text-xs font-bold text-gray-500 mb-1.5">{data.courses?.portfolio_label || "ลิงก์ผลงานที่แนบมา"}</p>
@@ -146,12 +163,12 @@ export default function AdminVerifySlip() {
                   </a>
                 </div>
               ) : (
-                <div className="h-48 rounded-xl bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-300 gap-2">
-                  <span className="text-4xl">📎</span>
-                  <span className="text-sm">{data.courses?.require_portfolio ? "ผู้สมัครยังไม่แนบผลงาน" : "คอร์สนี้ไม่ต้องแนบผลงาน"}</span>
+                <div className="h-32 rounded-xl bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-300 gap-1.5">
+                  <span className="text-3xl">📎</span>
+                  <span className="text-sm">ผู้สมัครยังไม่แนบผลงาน</span>
                 </div>
-              )
-            )}
+              )}
+            </div>
           </div>
         </div>
 

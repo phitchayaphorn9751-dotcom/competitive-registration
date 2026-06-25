@@ -211,38 +211,80 @@ export default function MyRegistrationPage() {
 function RegDetailModal({ reg, t, navigate, onClose }) {
   const d = displayStatus(reg)
   const cfg = STATUS_CFG[d] || STATUS_CFG.held
+  const isPaid = (reg.price || 0) > 0
+  const isConfirmed = d === "confirmed"
+  const code = reg.participant_code || ""
+  const shortCode = reg.short_code || (reg.my_qr_token || reg.qr_token || "").slice(0, 8).toUpperCase()
+  // บาร์โค้ดสั้น — ใช้ short_code (8 ตัว) สแกนง่าย
+  const barcodeUrl = shortCode ? `https://barcodeapi.org/api/128/${encodeURIComponent(shortCode)}` : null
   function fmtDate(s) { if (!s) return "-"; const dt = new Date(s); return dt.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) }
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden max-h-[90dvh] flex flex-col">
-        <div className={`${cfg.bg} px-6 py-5 border-b ${cfg.border}`}>
+        <div className={`${cfg.bg} px-6 py-5 border-b ${cfg.border} shrink-0`}>
           <p className="text-xs text-gray-400 mb-1">รายละเอียดการสมัคร</p>
           <h3 className="font-extrabold text-lg text-gray-800 leading-snug">{reg.course_title}</h3>
           <span className={`inline-flex items-center gap-1.5 mt-2 text-xs font-bold px-3 py-1.5 rounded-full border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
             {cfg.icon} {t(cfg.key)}
+            {d === "waitlist" && reg.waitlist_pos ? ` — คิวที่ ${reg.waitlist_pos}` : ""}
           </span>
         </div>
-        <div className="p-6 space-y-3 overflow-y-auto text-sm">
+        <div className="p-6 space-y-1 overflow-y-auto text-sm">
+          {/* บาร์โค้ด + เลขประจำตัว (เฉพาะยืนยันแล้ว) */}
+          {isConfirmed && (code || barcodeUrl) && (
+            <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 mb-3 flex flex-col items-center">
+              {code && (
+                <div className="w-full bg-[#F15A24] text-white rounded-xl px-4 py-2.5 mb-3 text-center">
+                  <p className="text-[10px] text-orange-100">เลขประจำตัวผู้สมัคร</p>
+                  <p className="font-mono text-2xl font-extrabold tracking-wider">{code}</p>
+                </div>
+              )}
+              {barcodeUrl && <img src={barcodeUrl} alt="barcode" className="h-16 w-auto max-w-full object-contain" />}
+              {shortCode && <p className="font-mono text-xs text-gray-400 mt-1 tracking-widest">{shortCode}</p>}
+              <p className="text-[10px] text-gray-400 mt-1">แสดงบาร์โค้ดหรือแจ้งเลขประจำตัวเพื่อเช็คอิน</p>
+            </div>
+          )}
+
           <Row label="รหัสใบสมัคร" value={reg.id.slice(0, 8)} mono />
-          {reg.participant_code && <Row label="เลขประจำตัว" value={reg.participant_code} mono />}
-          <Row label="วันที่สมัคร" value={fmtDate(reg.created_at)} />
+          {reg.course_type && <Row label="ประเภท" value={reg.course_type} />}
+          <Row label="รูปแบบการสมัคร" value={reg.count_mode === "team" ? "👥 ทีม" : reg.count_mode === "pair" ? "👯 คู่" : "👤 เดี่ยว"} />
+          <Row label="ค่าลงทะเบียน" value={isPaid ? `${Number(reg.price).toLocaleString()} บาท` : "ไม่มีค่าใช้จ่าย"} />
           {reg.theme_name && <Row label="ชื่อทีม/ธีม" value={reg.theme_name} />}
-          {(reg.price || 0) > 0 && <Row label="ค่าลงทะเบียน" value={`${Number(reg.price).toLocaleString()} บาท`} />}
-          {(reg.price || 0) === 0 && <Row label="ค่าลงทะเบียน" value="ไม่มีค่าใช้จ่าย" />}
-          {d === "waitlist" && reg.waitlist_pos && <Row label="คิวสำรอง" value={`ลำดับที่ ${reg.waitlist_pos}`} />}
+          <Row label="วันที่สมัคร" value={fmtDate(reg.created_at)} />
+
+          {/* ครูที่ปรึกษา */}
+          {reg.advisor_name && (
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 my-2">
+              <p className="text-xs font-bold text-blue-500 mb-1">👨‍🏫 ครูที่ปรึกษา</p>
+              <p className="text-sm text-gray-700 font-bold">{reg.advisor_name}</p>
+              {reg.advisor_phone && <p className="text-xs text-gray-500">📞 {reg.advisor_phone}</p>}
+              {reg.advisor_email && <p className="text-xs text-gray-500">✉️ {reg.advisor_email}</p>}
+            </div>
+          )}
+
+          {/* ลิงก์ผลงาน */}
+          {reg.require_portfolio && (
+            <div className="bg-orange-50 border border-orange-100 rounded-xl p-3 my-2">
+              <p className="text-xs font-bold text-[#F15A24] mb-1">📎 {reg.portfolio_label || "ผลงานที่แนบ"}</p>
+              {reg.portfolio_url ? (
+                <a href={reg.portfolio_url} target="_blank" rel="noreferrer" className="text-sm text-[#F15A24] font-bold break-all hover:underline">{reg.portfolio_url}</a>
+              ) : <p className="text-xs text-gray-400">ยังไม่ได้แนบผลงาน</p>}
+            </div>
+          )}
+
           {d === "rejected" && reg.reject_reason && (
-            <div className="bg-red-50 border border-red-100 rounded-xl p-3">
+            <div className="bg-red-50 border border-red-100 rounded-xl p-3 my-2">
               <p className="text-xs font-bold text-red-500 mb-1">เหตุผลที่ไม่ผ่าน</p>
               <p className="text-sm text-red-700">{reg.reject_reason}</p>
             </div>
           )}
         </div>
-        <div className="p-4 border-t border-gray-100 flex gap-2">
+        <div className="p-4 border-t border-gray-100 flex gap-2 shrink-0">
           {d === "pending_payment" && (
             <button onClick={() => navigate(`/pay/${reg.id}`)} className="flex-1 bg-[#ec9213] text-white py-3 rounded-xl font-bold text-sm hover:bg-[#d6810b] transition">ชำระเงิน</button>
           )}
-          {d === "rejected" && (reg.price || 0) > 0 && (
+          {d === "rejected" && isPaid && (
             <button onClick={() => navigate(`/pay/${reg.id}`)} className="flex-1 bg-[#F15A24] text-white py-3 rounded-xl font-bold text-sm hover:bg-orange-600 transition">ส่งสลิปใหม่</button>
           )}
           <button onClick={onClose} className="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-bold text-sm hover:bg-gray-200 transition">ปิด</button>
@@ -265,8 +307,8 @@ function CheckinModal({ reg, t, onClose }) {
   const code = reg.participant_code || ""
 
   useEffect(() => {
-    const token = reg.my_qr_token || reg.qr_token || ""
-    // ข้อ 8: ใช้บาร์โค้ด Code128 (image API ไม่ต้องลง library)
+    const token = reg.short_code || (reg.my_qr_token || reg.qr_token || "").slice(0, 8).toUpperCase()
+    // บาร์โค้ดสั้น Code128 (8 ตัว สแกนง่าย)
     setQrUrl(`https://barcodeapi.org/api/128/${encodeURIComponent(token)}`)
   }, [reg])
 
