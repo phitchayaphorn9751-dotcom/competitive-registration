@@ -13,12 +13,11 @@ const inputCls = "w-full px-3 py-2.5 border border-gray-200 rounded-xl outline-n
 const labelCls = "text-xs font-bold text-gray-500 block mb-1.5"
 
 export default function AdminSettings() {
-  const { confirm } = useDialog()
+  const { confirm, toast } = useDialog()
   const { event } = useOutletContext()
   const eventsRef = useRef(null)
   const usersRef = useRef(null)
   const [form, setForm] = useState(null)
-  const [msg, setMsg] = useState(null)
   const [saving, setSaving] = useState(false)
   const [types, setTypes] = useState([])
   const [typeModal, setTypeModal] = useState(null)
@@ -35,42 +34,43 @@ export default function AdminSettings() {
       setForm({
         line_id: s.line_id || "", phone: s.phone || "",
         site_title: es.site_title || "",
+        hero_subtitle: es.hero_subtitle || "",
         home_notice: es.home_notice || "",
       })
       setTypes(await fetchCourseTypes(event?.id) || [])
-    } catch (e) { setMsg("โหลดไม่สำเร็จ: " + e.message) }
+    } catch (e) { toast("โหลดไม่สำเร็จ: " + e.message, "error") }
   }
   async function loadEventPart() {
     try {
       const es = await fetchEventSettings(event.id)
-      setForm((f) => ({ ...(f || { line_id: "", phone: "" }), site_title: es.site_title || "", home_notice: es.home_notice || "" }))
+      setForm((f) => ({ ...(f || { line_id: "", phone: "" }), site_title: es.site_title || "", hero_subtitle: es.hero_subtitle || "", home_notice: es.home_notice || "" }))
       setTypes(await fetchCourseTypes(event.id) || [])
-    } catch (e) { setMsg("โหลดไม่สำเร็จ: " + e.message) }
+    } catch (e) { toast("โหลดไม่สำเร็จ: " + e.message, "error") }
   }
 
   async function save() {
-    setSaving(true); setMsg(null)
+    setSaving(true)
     try {
       // ค่ากลาง: Line/เบอร์
       await updateSettings({ line_id: form.line_id, phone: form.phone })
       // ค่าตามงาน: ชื่อเว็บ/ข้อความแจ้งเตือน
-      if (event?.id) await updateEventSettings(event.id, { site_title: form.site_title, home_notice: form.home_notice })
-      setMsg("✅ บันทึกเรียบร้อย — ข้อมูลจะแสดงบนหน้าเว็บทันที")
+      if (event?.id) await updateEventSettings(event.id, { site_title: form.site_title, hero_subtitle: form.hero_subtitle, home_notice: form.home_notice })
+      toast("✅ บันทึกข้อมูลสำเร็จ", "success")
     }
-    catch (e) { setMsg("บันทึกไม่สำเร็จ: " + e.message) } finally { setSaving(false) }
+    catch (e) { toast("บันทึกไม่สำเร็จ: " + e.message, "error") } finally { setSaving(false) }
   }
 
   async function saveType(ct) {
-    if (!ct.label?.trim()) return setMsg("กรอกชื่อประเภทก่อน")
-    if (!ct.code?.trim()) return setMsg("กรอกรหัส (code) ก่อน")
-    try { await saveCourseType(ct, event?.id); setMsg("✅ บันทึกประเภทวิชาแล้ว"); setTypeModal(null); setTypes(await fetchCourseTypes(event?.id)) }
-    catch (e) { setMsg("บันทึกไม่สำเร็จ: " + e.message) }
+    if (!ct.label?.trim()) return toast("กรอกชื่อประเภทก่อน", "error")
+    if (!ct.code?.trim()) return toast("กรอกรหัส (code) ก่อน", "error")
+    try { await saveCourseType(ct, event?.id); toast("✅ บันทึกประเภทวิชาแล้ว", "success"); setTypeModal(null); setTypes(await fetchCourseTypes(event?.id)) }
+    catch (e) { toast("บันทึกไม่สำเร็จ: " + e.message, "error") }
   }
   async function removeType(ct) {
     const ok = await confirm({ title: "ลบประเภทวิชา?", message: `ลบประเภท "${ct.label}"\n(ลบได้เฉพาะที่ยังไม่มีวิชาใช้อยู่)`, confirmText: "ลบ", tone: "danger" })
     if (!ok) return
-    try { await deleteCourseType(ct.id); setMsg("ลบประเภทแล้ว"); setTypes(await fetchCourseTypes(event?.id)) }
-    catch (e) { setMsg(e.message === "TYPE_IN_USE" ? "❌ ลบไม่ได้ — มีวิชาใช้ประเภทนี้อยู่" : "ลบไม่สำเร็จ: " + e.message) }
+    try { await deleteCourseType(ct.id); toast("ลบประเภทแล้ว", "success"); setTypes(await fetchCourseTypes(event?.id)) }
+    catch (e) { toast(e.message === "TYPE_IN_USE" ? "❌ ลบไม่ได้ — มีวิชาใช้ประเภทนี้อยู่" : "ลบไม่สำเร็จ: " + e.message, "error") }
   }
 
   if (!form) return <div className="py-16 text-center text-gray-400">กำลังโหลด…</div>
@@ -83,7 +83,6 @@ export default function AdminSettings() {
         <p className="text-sm text-gray-400 pl-3 mt-0.5">ข้อมูลติดต่อ ข้อความหน้าแรก และประเภทวิชา</p>
       </div>
 
-      {msg && <div className="mb-4 bg-orange-50 border border-orange-200 text-orange-700 rounded-xl px-4 py-2.5 text-sm flex justify-between items-center"><span>{msg}</span><button onClick={() => setMsg(null)} className="text-orange-400">✕</button></div>}
 
       {/* ── Section: จัดการงานรายปี ── */}
       <SectionCard icon="📅" title="จัดการงานรายปี" subtitle="สร้าง/แก้ไขงานแต่ละปี เปิด-ปิดรับสมัคร"
@@ -111,6 +110,7 @@ export default function AdminSettings() {
       <SectionCard icon="📢" title="ข้อมูลหน้าเว็บ (เฉพาะงานนี้)"
         subtitle={event ? `🗓️ ${event.name} ${event.year} — ชื่อเว็บ + ข้อความ แยกของแต่ละงาน` : "เลือกงานก่อน"}>
         <Field label="ชื่อเว็บ (แสดงบนโลโก้)" value={form.site_title} onChange={(v) => set("site_title", v)} placeholder="CAMT SUMMER COURSE" />
+        <Field label="ข้อความใต้ชื่อ (Hero — แสดงใต้ชื่องานหน้าแรก)" value={form.hero_subtitle} onChange={(v) => set("hero_subtitle", v)} placeholder="เปิดโลกเทคโนโลยี สร้างสรรค์นวัตกรรมสู่อนาคต" />
         <div>
           <label className={labelCls}>ข้อความแจ้งเตือนหน้าแรก (แบนเนอร์ส้ม)</label>
           <textarea className={`${inputCls} resize-none leading-relaxed`} rows="4" value={form.home_notice}

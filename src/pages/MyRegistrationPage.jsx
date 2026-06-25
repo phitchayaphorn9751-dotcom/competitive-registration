@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { getSession, isAdminUser, signOut, fetchMyRegistrations } from "../lib/supabase.js"
+import { getSession, isAdminUser, fetchMyRegistrations } from "../lib/supabase.js"
 import { useLang, LangToggle } from "../lib/i18n.jsx"
 
 // map สถานะ → สี/ไอคอน (อิงสถานะจริงในระบบเรา: held, confirmed, waitlist, cancelled + payment_status)
@@ -53,7 +53,6 @@ export default function MyRegistrationPage() {
     })
   }, [navigate])
 
-  async function handleLogout() { await signOut(); navigate("/login") }
 
   const counts = regs.reduce((acc, r) => { const d = displayStatus(r); acc[d] = (acc[d] || 0) + 1; return acc }, {})
   const activeCount = regs.filter((r) => ["confirmed", "pending_payment", "pending_review", "held", "waitlist"].includes(displayStatus(r))).length
@@ -99,7 +98,6 @@ export default function MyRegistrationPage() {
             <div className="flex items-center gap-3">
               <LangToggle />
               <button onClick={() => navigate("/")} className="text-sm text-[#F15A24] font-bold hover:underline">{t("myreg.addMore")}</button>
-              <button onClick={handleLogout} className="text-sm text-gray-400 hover:text-gray-600">{t("common.logout")}</button>
             </div>
           </div>
 

@@ -12,6 +12,7 @@ export default function HomePage() {
   const [error, setError] = useState(null)
   const [notice, setNotice] = useState("")
   const [siteTitle, setSiteTitle] = useState("")
+  const [heroSub, setHeroSub] = useState("")
 
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState("All")
@@ -30,6 +31,7 @@ export default function HomePage() {
           const es = await fetchEventSettings(ev.id)
           setNotice(es.home_notice || "")
           setSiteTitle(es.site_title || "")
+          setHeroSub(es.hero_subtitle || "")
         }
       } catch (e) {
         setError(e.message || "โหลดข้อมูลไม่สำเร็จ")
@@ -99,7 +101,7 @@ export default function HomePage() {
               {event?.year && <span className="ml-2">{event.year}</span>}
             </h1>
             <p className="text-orange-100 text-base sm:text-lg max-w-xl mx-auto">
-              {t("home.heroSub")}
+              {heroSub || t("home.heroSub")}
             </p>
           </div>
 
