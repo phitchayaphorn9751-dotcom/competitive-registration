@@ -33,7 +33,11 @@ export default function AdminVerifySlip() {
   useEffect(() => { load() }, [registrationId])
   async function load() {
     setLoading(true)
-    try { setData(await fetchRegistration(registrationId)) }
+    try {
+      const d = await fetchRegistration(registrationId)
+      console.log("🔍 ข้อมูลใบสมัคร:", { status: d.status, portfolio_url: d.portfolio_url, courses: d.courses, payments: d.payments })
+      setData(d)
+    }
     catch (e) { setErr(e.message) }
     finally { setLoading(false) }
   }
