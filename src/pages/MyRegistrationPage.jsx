@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { getSession, isAdminUser, fetchMyRegistrations, fetchCourse } from "../lib/supabase.js"
+import { getSession, isAdminUser, fetchMyRegistrations, fetchCourse, fetchRegistrationMembers } from "../lib/supabase.js"
 import { useLang } from "../lib/i18n.jsx"
 
 // map สถานะ → สี/ไอคอน (อิงสถานะจริงในระบบเรา: held, confirmed, waitlist, cancelled + payment_status)
@@ -184,7 +184,7 @@ export default function MyRegistrationPage() {
                             ส่งสลิปใหม่
                           </button>
                         )}
-                        {d === "confirmed" && (reg.my_qr_token || reg.qr_token) && (
+                        {d === "confirmed" && (reg.participant_code || reg.my_qr_token || reg.qr_token) && (
                           <button onClick={() => setBarcodeReg(reg)}
                             className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-sm transition">
                             {t("myreg.showBarcode")}
@@ -215,11 +215,14 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
   const code = reg.participant_code || ""
   const barcodeUrl = code ? `https://barcodeapi.org/api/128/${encodeURIComponent(code)}` : null
   const [course, setCourse] = useState(null)
+  const [members, setMembers] = useState([])
   const [imgIdx, setImgIdx] = useState(0)
+  const [showBarcode, setShowBarcode] = useState(false)
 
   useEffect(() => {
     fetchCourse(reg.course_id).then(setCourse).catch(() => {})
-  }, [reg.course_id])
+    fetchRegistrationMembers(reg.id).then(setMembers).catch(() => {})
+  }, [reg.course_id, reg.id])
 
   function fmtDate(s) { if (!s) return "-"; const dt = new Date(s); return dt.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) }
   function fmtThaiDate(s) { if (!s) return "-"; try { return new Date(s).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" }) } catch { return s } }
@@ -296,8 +299,30 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
             )}
 
             <Row label="รูปแบบการสมัคร" value={reg.count_mode === "team" ? "👥 ทีม" : reg.count_mode === "pair" ? "👯 คู่" : "👤 เดี่ยว"} />
-            {reg.theme_name && <Row label="ชื่อทีม/ธีม" value={reg.theme_name} />}
             <Row label="วันที่สมัคร" value={fmtDate(reg.created_at)} />
+
+            {/* ชื่อทีม/ธีม + สมาชิก */}
+            {(reg.theme_name || members.length > 1) && (
+              <div className="bg-purple-50 border border-purple-100 rounded-xl p-3 my-2">
+                {reg.theme_name && (
+                  <p className="text-sm mb-2"><span className="text-xs font-bold text-purple-500">🎯 ชื่อทีม/ธีม:</span> <span className="font-bold text-gray-700">{reg.theme_name}</span></p>
+                )}
+                {members.length > 1 && (
+                  <div>
+                    <p className="text-xs font-bold text-purple-500 mb-1.5">👥 สมาชิกในทีม ({members.length} คน)</p>
+                    <div className="space-y-1">
+                      {members.map((m, i) => (
+                        <div key={m.id} className="flex items-center gap-2 text-sm">
+                          <span className="w-5 h-5 rounded-full bg-purple-200 text-purple-700 text-[10px] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+                          <span className="font-medium text-gray-700">{m.full_name}</span>
+                          {m.participant_code && <span className="font-mono text-[10px] text-[#F15A24] bg-white border border-orange-200 px-1.5 py-0.5 rounded">{m.participant_code}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* ครูที่ปรึกษา */}
             {reg.advisor_name && (
@@ -344,9 +369,13 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
           {d === "rejected" && isPaid && (
             <button onClick={() => navigate(`/pay/${reg.id}`)} className="flex-1 bg-[#F15A24] text-white py-3 rounded-xl font-bold text-sm hover:bg-orange-600 transition">ส่งสลิปใหม่</button>
           )}
+          {isConfirmed && code && (
+            <button onClick={() => setShowBarcode(true)} className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold text-sm hover:bg-blue-700 transition">🪪 ดูบาร์โค้ด</button>
+          )}
           <button onClick={onClose} className="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-bold text-sm hover:bg-gray-200 transition">ปิด</button>
         </div>
       </div>
+      {showBarcode && <CheckinModal reg={reg} t={t} onClose={() => setShowBarcode(false)} />}
     </div>
   )
 }

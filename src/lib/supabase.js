@@ -41,12 +41,23 @@ export async function fetchCourse(courseId) {
   const { data, error } = await supabase
     .from("courses")
     .select(
-      "id, event_id, title, description, count_mode, team_size, min_members, max_members, capacity, seat_mode, require_portfolio, portfolio_label, seats_taken, price, bank_account, bank_name, bank_holder, line_qr_url, image_url, image_urls, form_schema, is_open, course_types:type_id(code,label,requires_payment,requires_approval)"
+      "id, event_id, title, description, content, count_mode, team_size, min_members, max_members, capacity, seat_mode, require_portfolio, portfolio_label, seats_taken, price, bank_account, bank_name, bank_holder, line_qr_url, image_url, image_urls, level, start_date, end_date, duration, form_schema, is_open, course_types:type_id(code,label,requires_payment,requires_approval)"
     )
     .eq("id", courseId)
     .single()
   if (error) throw error
   return data
+}
+
+// ดึงรายชื่อสมาชิกในทีมของใบสมัคร (สำหรับ popup รายการสมัครของฉัน)
+export async function fetchRegistrationMembers(regId) {
+  const { data, error } = await supabase
+    .from("participants")
+    .select("id, full_name, school, grade_level, participant_code")
+    .eq("registration_id", regId)
+    .order("id")
+  if (error) return []
+  return data || []
 }
 
 // ===== ลงทะเบียน (ผ่าน RPC) =====
