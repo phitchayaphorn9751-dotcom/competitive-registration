@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate, useOutletContext } from "react-router-dom"
-import { fetchRegistration, confirmRegistration, releaseSeat, rejectRegistration, fetchCoursesAdmin, adminChangeCourse, adminUpdatePaymentAmount, deleteRegistration } from "../../lib/supabase.js"
+import { fetchRegistration, confirmRegistration, releaseSeat, rejectRegistration, fetchCoursesAdmin, adminChangeCourse, adminUpdatePaymentAmount, deleteRegistration, saveRegistrationTheme } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
 
 const STATUS = {
@@ -33,7 +33,11 @@ export default function AdminVerifySlip() {
   useEffect(() => { load() }, [registrationId])
   async function load() {
     setLoading(true)
-    try { setData(await fetchRegistration(registrationId)) }
+    try {
+      const d = await fetchRegistration(registrationId)
+      console.log("🎯 theme_name:", d.theme_name, "| count_mode:", d.count_mode, "| status:", d.status)
+      setData(d)
+    }
     catch (e) { setErr(e.message) }
     finally { setLoading(false) }
   }
@@ -193,6 +197,7 @@ export default function AdminVerifySlip() {
                 ["วิชาที่สมัคร", data.courses?.title, true],
                 ["อีเมลผู้สมัคร", data.submitter_email, false],
                 ["ยอดที่ต้องชำระ", isPaid ? `${(data.courses?.price || 0).toLocaleString()} บาท` : "ไม่มีค่าใช้จ่าย", false],
+                ...(data.theme_name ? [["ชื่อทีม/ธีม", data.theme_name, true]] : []),
               ].map(([label, value, hl]) => (
                 <div key={label} className="flex justify-between items-center py-2.5 border-b border-gray-50 last:border-0 gap-3">
                   <span className="text-xs font-bold text-gray-500 shrink-0">{label}:</span>
@@ -211,6 +216,12 @@ export default function AdminVerifySlip() {
               )}
             </div>
             <div className="p-4 space-y-2">
+              {data.theme_name && (
+                <div className="bg-purple-50 rounded-lg px-3 py-2 border border-purple-100">
+                  <span className="text-xs text-purple-600 font-bold">🎯 ชื่อทีม/ธีม: </span>
+                  <span className="text-sm text-gray-700 font-bold">{data.theme_name}</span>
+                </div>
+              )}
               {participants.map((p) => (
                 <div key={p.id} className="bg-gray-50 rounded-lg px-3 py-2">
                   <div className="flex justify-between items-center">
@@ -312,6 +323,7 @@ function EditRegistrationModal({ data, eventId, isPaid, onClose, onSaved, toast 
   const [courses, setCourses] = useState([])
   const [courseId, setCourseId] = useState(data.course_id)
   const [amount, setAmount] = useState((data.payments?.[0]?.amount ?? data.courses?.price ?? 0))
+  const [themeName, setThemeName] = useState(data.theme_name || "")
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
@@ -324,6 +336,9 @@ function EditRegistrationModal({ data, eventId, isPaid, onClose, onSaved, toast 
       if (courseId !== data.course_id) await adminChangeCourse(data.id, courseId)
       if (isPaid && Number(amount) !== Number(data.payments?.[0]?.amount ?? data.courses?.price ?? 0)) {
         await adminUpdatePaymentAmount(data.id, Number(amount))
+      }
+      if (themeName.trim() !== (data.theme_name || "")) {
+        await saveRegistrationTheme(data.id, themeName.trim())
       }
       toast("บันทึกการแก้ไขแล้ว", "success")
       onSaved()
@@ -354,6 +369,11 @@ function EditRegistrationModal({ data, eventId, isPaid, onClose, onSaved, toast 
               <p className="text-[11px] text-gray-400 mt-1">ถ้าผู้สมัครแนบสลิปราคาเดิมไว้แล้ว ระบบคงสลิปไว้ — เปลี่ยนคอร์สราคาเท่ากันได้ หรือกดตีกลับเพื่อขอสลิปเพิ่ม</p>
             </div>
           )}
+          <div>
+            <label className="text-xs font-bold text-gray-500 block mb-1.5">ชื่อทีม / ธีมผลงาน</label>
+            <input value={themeName} onChange={(e) => setThemeName(e.target.value)} placeholder="เช่น Team Rocket / ชื่อผลงาน"
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#F15A24]" />
+          </div>
         </div>
         <div className="px-5 sm:px-6 pb-5 sm:pb-6 grid grid-cols-2 gap-3">
           <button onClick={onClose} className="py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition text-sm">ยกเลิก</button>
