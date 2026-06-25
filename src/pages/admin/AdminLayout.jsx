@@ -125,7 +125,9 @@ export default function AdminLayout() {
         </header>
 
         <main className="flex-1 p-4 sm:p-6 w-full">
-          <Outlet context={{ session, event, events, setEvent, isSuper, reloadEvents }} />
+          <div className="max-w-6xl mx-auto w-full">
+            <Outlet context={{ session, event, events, setEvent, isSuper, reloadEvents }} />
+          </div>
         </main>
       </div>
     </div>

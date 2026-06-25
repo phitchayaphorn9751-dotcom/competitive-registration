@@ -88,9 +88,9 @@ export default function AdminVerifySlip() {
   const participants = data.participants || []
   const advisors = data.advisors || []
   const isPaid = (data.courses?.price || 0) > 0
-  const canApprove = ["slip_uploaded", "submitted", "approved", "held"].includes(data.status)
-  // เสียเงิน: ตีกลับสลิป / ฟรี+แนบผลงาน: ไม่อนุมัติผลงาน
-  const canReject = ["slip_uploaded", "submitted"].includes(data.status)
+  const canApprove = ["slip_uploaded", "submitted", "approved", "held", "pending_payment"].includes(data.status)
+  // เสียเงิน: ตีกลับขอสลิปใหม่ (ได้แม้อนุมัติแล้ว) / ฟรี: ไม่อนุมัติผลงาน
+  const canReject = ["slip_uploaded", "submitted", "approved", "confirmed", "pending_payment"].includes(data.status)
   const canRelease = ["confirmed", "approved", "pending_payment", "slip_uploaded", "held"].includes(data.status)
   const checkedIn = participants.filter((p) => (p.checkins?.length || 0) > 0).length
 
@@ -161,7 +161,7 @@ export default function AdminVerifySlip() {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="bg-gradient-to-r from-[#fff5f0] to-[#fff9f6] border-b border-orange-100 px-4 py-3 flex justify-between items-center">
               <span className="text-sm font-bold text-[#F15A24]">👤 ข้อมูลผู้สมัคร</span>
-              {["pending_payment","slip_uploaded","submitted","held"].includes(data.status) && (
+              {!["cancelled"].includes(data.status) && (
                 <button onClick={() => setEditOpen(true)} className="text-xs font-bold text-gray-500 hover:text-[#F15A24] border border-gray-200 rounded-lg px-2.5 py-1 transition">✏️ แก้ไข</button>
               )}
             </div>
@@ -305,7 +305,7 @@ function EditRegistrationModal({ data, eventId, isPaid, onClose, onSaved, toast 
       toast("บันทึกการแก้ไขแล้ว", "success")
       onSaved()
     } catch (e) {
-      const msg = e.message?.includes("ALREADY_FINALIZED") ? "แก้ไม่ได้ — อนุมัติไปแล้ว" : "บันทึกไม่สำเร็จ: " + e.message
+      const msg = e.message?.includes("ALREADY_FINALIZED") ? "แก้ไม่ได้ — รายการถูกยกเลิกแล้ว" : "บันทึกไม่สำเร็จ: " + e.message
       toast(msg, "error"); setBusy(false)
     }
   }
@@ -328,7 +328,7 @@ function EditRegistrationModal({ data, eventId, isPaid, onClose, onSaved, toast 
               <label className="text-xs font-bold text-gray-500 block mb-1.5">จำนวนเงินที่ต้องชำระ (บาท)</label>
               <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)}
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#F15A24]" />
-              <p className="text-[11px] text-gray-400 mt-1">แก้ได้เฉพาะก่อนอนุมัติ</p>
+              <p className="text-[11px] text-gray-400 mt-1">ถ้าผู้สมัครแนบสลิปราคาเดิมไว้แล้ว ระบบคงสลิปไว้ — เปลี่ยนคอร์สราคาเท่ากันได้ หรือกดตีกลับเพื่อขอสลิปเพิ่ม</p>
             </div>
           )}
         </div>
