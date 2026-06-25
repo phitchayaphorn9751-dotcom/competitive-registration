@@ -218,6 +218,7 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
   const [members, setMembers] = useState([])
   const [imgIdx, setImgIdx] = useState(0)
   const [showBarcode, setShowBarcode] = useState(false)
+  const [barcodeMember, setBarcodeMember] = useState(null)
 
   useEffect(() => {
     fetchCourse(reg.course_id).then(setCourse).catch(() => {})
@@ -247,33 +248,56 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
 
         {/* 2 ฝั่ง */}
         <div className="overflow-y-auto flex-1 flex flex-col md:flex-row">
-          {/* ───── ซ้าย: ข้อมูลวิชา ───── */}
+          {/* ───── ซ้าย: ข้อมูลวิชา (ดีไซน์เหมือนหน้า Home) ───── */}
           <div className="md:w-1/2 md:border-r border-gray-100 bg-[#fffbf8] p-5 space-y-4">
-            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">📚 ข้อมูลวิชา</p>
             {/* รูป carousel */}
             {images.length > 0 && (
-              <div className="relative h-40 rounded-2xl overflow-hidden bg-gray-200">
+              <div className="relative h-48 rounded-2xl overflow-hidden bg-gray-200">
                 <img src={images[imgIdx]} className="w-full h-full object-cover" alt={reg.course_title} />
                 {images.length > 1 && (
                   <>
-                    <button onClick={() => setImgIdx((imgIdx - 1 + images.length) % images.length)} className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/40 text-white flex items-center justify-center">‹</button>
-                    <button onClick={() => setImgIdx((imgIdx + 1) % images.length)} className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/40 text-white flex items-center justify-center">›</button>
+                    <button onClick={() => setImgIdx((imgIdx - 1 + images.length) % images.length)} className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60">‹</button>
+                    <button onClick={() => setImgIdx((imgIdx + 1) % images.length)} className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60">›</button>
+                    <div className="absolute bottom-2 inset-x-0 flex justify-center gap-1.5">
+                      {images.map((_, i) => <button key={i} onClick={() => setImgIdx(i)} className={`h-1.5 rounded-full transition-all ${i === imgIdx ? "w-4 bg-white" : "w-1.5 bg-white/50"}`} />)}
+                    </div>
                   </>
                 )}
               </div>
             )}
-            {/* การ์ดวันที่ */}
+            {/* 3 การ์ดข้อมูล */}
             <div className="grid grid-cols-3 gap-2">
               {[["📅", "วันเริ่ม", fmtThaiDate(course?.start_date)], ["🏁", "วันสิ้นสุด", fmtThaiDate(course?.end_date)], ["⏱️", "ระยะเวลา", course?.duration || "-"]].map(([ic, lb, vl], i) => (
-                <div key={i} className="bg-white rounded-xl border border-gray-100 p-2.5 text-center">
-                  <div className="text-lg">{ic}</div>
-                  <p className="text-[9px] text-gray-400 mt-0.5">{lb}</p>
-                  <p className="text-[11px] font-bold text-gray-700 leading-tight">{vl}</p>
+                <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 text-center">
+                  <div className="text-2xl mb-1">{ic}</div>
+                  <div className="text-[10px] text-gray-400">{lb}</div>
+                  <div className="text-xs font-bold text-gray-800 mt-0.5 leading-tight">{vl}</div>
                 </div>
               ))}
             </div>
-            {course?.level && <Row label="ระดับ" value={course.level} />}
-            <Row label="ค่าลงทะเบียน" value={isPaid ? `${Number(reg.price).toLocaleString()} บาท` : "ไม่มีค่าใช้จ่าย"} />
+            {course?.level && (
+              <div className="flex justify-center">
+                <span className="text-xs font-bold bg-orange-100 text-[#F15A24] px-3 py-1 rounded-full">📊 {course.level}</span>
+              </div>
+            )}
+            {/* คำอธิบาย */}
+            {course?.description && (
+              <div className="bg-white p-4 rounded-2xl border border-orange-100 shadow-sm">
+                <h4 className="font-bold text-[#F15A24] text-sm mb-2 flex items-center gap-2">📝 คำอธิบายรายวิชา</h4>
+                <p className="text-gray-700 text-sm leading-7 whitespace-pre-line">{course.description}</p>
+              </div>
+            )}
+            {/* ค่าเรียนเด่น */}
+            <div className="flex flex-col items-center py-4 border-t border-dashed border-orange-200">
+              {isPaid ? (
+                <>
+                  <p className="text-gray-400 text-xs mb-1">ค่าลงทะเบียน</p>
+                  <p className="text-3xl font-extrabold text-green-600">{Number(reg.price).toLocaleString()} บาท</p>
+                </>
+              ) : (
+                <p className="text-xl font-extrabold text-green-600">✨ ไม่มีค่าลงทะเบียน</p>
+              )}
+            </div>
           </div>
 
           {/* ───── ขวา: ข้อมูลที่กรอกตอนสมัคร ───── */}
@@ -294,26 +318,36 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
             <Row label="รูปแบบการสมัคร" value={reg.count_mode === "team" ? "👥 ทีม" : reg.count_mode === "pair" ? "👯 คู่" : "👤 เดี่ยว"} />
             <Row label="วันที่สมัคร" value={fmtDate(reg.created_at)} />
 
-            {/* ชื่อทีม/ธีม + สมาชิก */}
+            {/* ชื่อทีม/ธีม + สมาชิก (แต่ละคนมีบาร์โค้ดของตัวเอง) */}
             {(reg.theme_name || members.length > 1) && (
               <div className="bg-purple-50 border border-purple-100 rounded-xl p-3 my-2">
                 {reg.theme_name && (
-                  <p className="text-sm mb-2"><span className="text-xs font-bold text-purple-500">🎯 ชื่อทีม/ธีม:</span> <span className="font-bold text-gray-700">{reg.theme_name}</span></p>
+                  <p className="text-sm mb-2.5"><span className="text-xs font-bold text-purple-500">🎯 ชื่อทีม/ธีม:</span> <span className="font-bold text-gray-700">{reg.theme_name}</span></p>
                 )}
-                {members.length > 1 && (
-                  <div>
-                    <p className="text-xs font-bold text-purple-500 mb-1.5">👥 สมาชิกในทีม ({members.length} คน)</p>
-                    <div className="space-y-1">
-                      {members.map((m, i) => (
-                        <div key={m.id} className="flex items-center gap-2 text-sm">
-                          <span className="w-5 h-5 rounded-full bg-purple-200 text-purple-700 text-[10px] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
-                          <span className="font-medium text-gray-700">{m.full_name}</span>
-                          {m.participant_code && <span className="font-mono text-[10px] text-[#F15A24] bg-white border border-orange-200 px-1.5 py-0.5 rounded">{m.participant_code}</span>}
+                <p className="text-xs font-bold text-purple-500 mb-2">👥 สมาชิกในทีม ({members.length} คน)</p>
+                <div className="space-y-2">
+                  {members.map((m, i) => (
+                    <div key={m.id} className="bg-white rounded-xl border border-purple-100 p-2.5">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="w-5 h-5 rounded-full bg-purple-200 text-purple-700 text-[10px] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+                        <span className="font-bold text-gray-700 text-sm flex-1 min-w-0 truncate">{m.full_name}</span>
+                        {m.participant_code && <span className="font-mono text-[10px] text-[#F15A24] bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded shrink-0">{m.participant_code}</span>}
+                      </div>
+                      <div className="ml-7 space-y-0.5 mb-1.5">
+                        {m.email && <p className="text-[11px] text-gray-500 truncate">✉️ {m.email}</p>}
+                        {m.phone && <p className="text-[11px] text-gray-500">📞 {m.phone}</p>}
+                      </div>
+                      {isConfirmed && m.participant_code && (
+                        <div className="ml-7">
+                          <button onClick={() => setBarcodeMember(m)}
+                            className="text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition">
+                            🪪 ดูบาร์โค้ดของ {m.full_name?.split(" ")[0] || "สมาชิก"}
+                          </button>
                         </div>
-                      ))}
+                      )}
                     </div>
-                  </div>
-                )}
+                  ))}
+                </div>
               </div>
             )}
 
@@ -369,6 +403,7 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
         </div>
       </div>
       {showBarcode && <CheckinModal reg={reg} t={t} onClose={() => setShowBarcode(false)} />}
+      {barcodeMember && <MemberBarcodeModal member={barcodeMember} courseTitle={reg.course_title} onClose={() => setBarcodeMember(null)} />}
     </div>
   )
 }
@@ -381,6 +416,56 @@ function Row({ label, value, mono }) {
   )
 }
 
+function MemberBarcodeModal({ member, courseTitle, onClose }) {
+  const code = member.participant_code || ""
+  const barcodeUrl = code ? `https://barcodeapi.org/api/128/${encodeURIComponent(code)}` : null
+
+  async function saveImage() {
+    try {
+      // โหลดบาร์โค้ดเป็น blob แล้วบันทึก
+      const res = await fetch(barcodeUrl)
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `barcode_${code}.png`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      // fallback: เปิดในแท็บใหม่ให้กดบันทึกเอง
+      window.open(barcodeUrl, "_blank")
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-[60] p-0 sm:p-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="bg-white w-full sm:rounded-2xl shadow-2xl sm:max-w-sm overflow-hidden rounded-t-2xl">
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-5 text-white text-center">
+          <h3 className="font-extrabold text-lg">{member.full_name}</h3>
+          <p className="text-blue-200 text-xs mt-0.5 truncate">📚 {courseTitle}</p>
+        </div>
+        <div className="p-6 bg-gray-50 flex flex-col items-center">
+          <div className="w-full bg-[#F15A24] text-white rounded-xl px-4 py-3 mb-4 text-center shadow-sm">
+            <p className="text-[11px] text-orange-100 mb-0.5">รหัสนักเรียน (เช็คอิน)</p>
+            <p className="font-mono text-3xl font-extrabold tracking-wider">{code}</p>
+          </div>
+          {barcodeUrl && (
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-3 w-full flex justify-center">
+              <img src={barcodeUrl} alt="barcode" className="h-24 w-auto max-w-full object-contain" />
+            </div>
+          )}
+          <p className="text-[11px] text-gray-400 text-center">สแกนบาร์โค้ด หรือแจ้งรหัสนักเรียนเพื่อเช็คอิน</p>
+        </div>
+        <div className="p-4 bg-white flex gap-2">
+          <button onClick={saveImage} className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold text-sm hover:bg-blue-700 transition">💾 บันทึกภาพ</button>
+          <button onClick={onClose} className="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-bold text-sm hover:bg-gray-200 transition">ปิด</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function CheckinModal({ reg, t, onClose }) {
   const [qrUrl, setQrUrl] = useState(null)
   const code = reg.participant_code || ""
@@ -389,6 +474,18 @@ function CheckinModal({ reg, t, onClose }) {
     // บาร์โค้ด encode รหัสนักเรียน (participant_code) — สแกนแล้วเช็คอินได้เลย
     if (code) setQrUrl(`https://barcodeapi.org/api/128/${encodeURIComponent(code)}`)
   }, [code])
+
+  async function saveImage() {
+    if (!qrUrl) return
+    try {
+      const res = await fetch(qrUrl)
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url; a.download = `barcode_${code}.png`; a.click()
+      URL.revokeObjectURL(url)
+    } catch { window.open(qrUrl, "_blank") }
+  }
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
@@ -414,8 +511,9 @@ function CheckinModal({ reg, t, onClose }) {
           <p className="text-[11px] text-gray-400 text-center mb-2">สแกนบาร์โค้ด หรือแจ้งรหัสนักเรียนให้เจ้าหน้าที่</p>
           <p className="text-sm font-bold text-[#F15A24] text-center pt-3 border-t border-gray-200 w-full">📚 {reg.course_title}</p>
         </div>
-        <div className="p-4 bg-white">
-          <button onClick={onClose} className="w-full bg-gray-100 text-gray-600 py-3 rounded-xl font-bold hover:bg-gray-200 transition text-sm">
+        <div className="p-4 bg-white flex gap-2">
+          {code && <button onClick={saveImage} className="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition text-sm">💾 บันทึกภาพ</button>}
+          <button onClick={onClose} className="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-bold hover:bg-gray-200 transition text-sm">
             {t("myreg.closeWindow")}
           </button>
         </div>

@@ -53,7 +53,7 @@ export async function fetchCourse(courseId) {
 export async function fetchRegistrationMembers(regId) {
   const { data, error } = await supabase
     .from("participants")
-    .select("id, full_name, school, grade_level, participant_code")
+    .select("id, full_name, school, grade_level, phone, email, participant_code, qr_token")
     .eq("registration_id", regId)
     .order("id")
   if (error) return []
