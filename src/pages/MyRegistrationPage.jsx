@@ -18,17 +18,18 @@ const STATUS_CFG = {
 function displayStatus(r) {
   if (r.status === "waitlist") return "waitlist"
   if (r.status === "cancelled") return "cancelled"
-  if (r.status === "confirmed") return "confirmed"
-  // ต้องจ่ายเงิน = วิชามีราคา (price > 0) — ตรงกับที่แอดมินตั้งต่อวิชา
+  if (r.status === "confirmed" || r.status === "approved") return "confirmed"
+  if (r.status === "submitted") return "pending_review"  // ฟรี+แนบผลงาน รออนุมัติ
+  if (r.status === "rejected" || r.status === "slip_rejected") return "rejected"
+  // ต้องจ่ายเงิน = วิชามีราคา (price > 0)
   const needPay = (r.price || 0) > 0
-  // held = กันที่นั่งอยู่
-  if (r.status === "held") {
+  if (r.status === "held" || r.status === "pending_payment" || r.status === "slip_uploaded") {
     if (needPay) {
-      if (r.payment_status === "submitted" || r.payment_status === "pending") return "pending_review"
+      if (r.payment_status === "submitted" || r.payment_status === "pending" || r.status === "slip_uploaded") return "pending_review"
       if (r.payment_status === "rejected") return "rejected"
       return "pending_payment"
     }
-    return "held" // ฟรี/competition รออนุมัติ
+    return "confirmed"  // ฟรี ไม่แนบผลงาน = กันที่นั่งเลย
   }
   return r.status
 }

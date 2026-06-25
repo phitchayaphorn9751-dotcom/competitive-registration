@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
 import {
   fetchCourse, fetchMyProfile, getSession,
-  holdSeat, addParticipant, addAdvisor, uploadSlip, attachSlip, savePortfolioUrl,
+  holdSeat, finalizeRegistration, addParticipant, addAdvisor, uploadSlip, attachSlip, savePortfolioUrl,
 } from "../lib/supabase.js"
 import { useLang } from "../lib/i18n.jsx"
 
@@ -116,12 +116,20 @@ export default function RegisterPage() {
         await addAdvisor(regId, { full_name: advisor.full_name.trim(), phone: advisor.phone, email: "" })
       }
       // ลิงก์ผลงาน (ถ้าวิชากำหนด)
-      if (course.require_portfolio && portfolioUrl.trim()) {
+      const hasPortfolio = course.require_portfolio && portfolioUrl.trim()
+      if (hasPortfolio) {
         await savePortfolioUrl(regId, portfolioUrl.trim())
       }
 
+      // ปรับสถานะให้ถูกตามเงื่อนไข (เว้นกรณี waitlist):
+      // เสียเงิน→รอชำระ, ฟรี+แนบผลงาน→รออนุมัติ, ฟรี+ไม่แนบ→ยืนยันเลย
+      let finalStatus = null
+      if (!willWaitlist) {
+        finalStatus = await finalizeRegistration(regId, !!hasPortfolio)
+      }
+
       const requiresPayment = (course.price || 0) > 0
-      setResult({ regId, requiresPayment, isWaitlist: willWaitlist })
+      setResult({ regId, requiresPayment, isWaitlist: willWaitlist, status: finalStatus, hasPortfolio: !!hasPortfolio })
     } catch (e) {
       setError(translateError(e.message))
     } finally {
@@ -149,7 +157,10 @@ export default function RegisterPage() {
   if (result) {
     if (result.isWaitlist) return <ResultScreen icon="📋" color="gray" title={t("reg.waitlistTitle")} msg={t("reg.waitlistMsg")} t={t} navigate={navigate} />
     if (result.requiresPayment) return <PaymentScreen course={course} regId={result.regId} t={t} navigate={navigate} />
-    // competition ฟรี
+    // ฟรี + แนบผลงาน → รอแอดมินอนุมัติ
+    if (result.hasPortfolio || result.status === "submitted")
+      return <ResultScreen icon="⏳" color="orange" title="ส่งใบสมัครแล้ว รอการอนุมัติ" msg="ใบสมัครของคุณถูกส่งให้แอดมินพิจารณาผลงานแล้ว เมื่อได้รับอนุมัติจะกันที่นั่งให้ — ติดตามสถานะได้ที่ 'ใบสมัครของฉัน'" t={t} navigate={navigate} />
+    // ฟรี + ไม่แนบผลงาน → ยืนยัน/กันที่นั่งเลย
     return <ResultScreen icon="✅" color="green" title={t("reg.successFreeTitle")} msg={t("reg.successFreeMsg")} t={t} navigate={navigate} />
   }
 
@@ -453,7 +464,7 @@ export function PaymentScreen({ course, regId, t, navigate }) {
 }
 
 function ResultScreen({ icon, color, title, msg, t, navigate }) {
-  const bg = color === "green" ? "bg-green-100" : "bg-gray-100"
+  const bg = color === "green" ? "bg-green-100" : color === "orange" ? "bg-orange-100" : "bg-gray-100"
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center px-4">
       <div className="bg-white rounded-3xl shadow-xl max-w-md w-full p-8 text-center">

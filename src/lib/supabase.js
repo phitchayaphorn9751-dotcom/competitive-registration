@@ -62,6 +62,16 @@ export async function holdSeat(courseId, email, seats) {
   return data // registration uuid
 }
 
+// ปรับสถานะให้ถูกตามเงื่อนไข (ฟรี+ไม่แนบผลงาน=confirmed, ฟรี+แนบ=submitted, เสียเงิน=pending_payment)
+export async function finalizeRegistration(regId, hasPortfolio) {
+  const { data, error } = await supabase.rpc("finalize_registration", {
+    p_reg_id: regId,
+    p_has_portfolio: !!hasPortfolio,
+  })
+  if (error) throw error
+  return data // status ใหม่
+}
+
 export async function addParticipant(registrationId, p) {
   const { data, error } = await supabase.rpc("add_participant", {
     p_registration_id: registrationId,
@@ -510,6 +520,14 @@ export async function fetchDashboardStats(eventId) {
   const { data, error } = await supabase.rpc("dashboard_stats", { p_event_id: eventId })
   if (error) throw error
   return data
+}
+
+// ข้อมูล flat สำหรับ Dashboard analytics (1 แถวต่อ participant)
+export async function fetchDashboardRegistrations(eventId) {
+  if (!eventId) return []
+  const { data, error } = await supabase.rpc("dashboard_registrations", { p_event_id: eventId })
+  if (error) throw error
+  return data || []
 }
 
 export async function fetchAttendanceByCourse(eventId) {
