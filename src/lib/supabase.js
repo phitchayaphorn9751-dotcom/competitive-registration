@@ -49,13 +49,9 @@ export async function fetchCourse(courseId) {
   return data
 }
 
-// ดึงรายชื่อสมาชิกในทีมของใบสมัคร (สำหรับ popup รายการสมัครของฉัน)
+// ดึงรายชื่อสมาชิกในทีมของใบสมัคร (RPC security definer เลี่ยง RLS)
 export async function fetchRegistrationMembers(regId) {
-  const { data, error } = await supabase
-    .from("participants")
-    .select("id, full_name, school, grade_level, phone, email, participant_code, qr_token")
-    .eq("registration_id", regId)
-    .order("id")
+  const { data, error } = await supabase.rpc("my_registration_members", { p_reg_id: regId })
   if (error) return []
   return data || []
 }

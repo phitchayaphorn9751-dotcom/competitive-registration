@@ -319,12 +319,14 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
             <Row label="วันที่สมัคร" value={fmtDate(reg.created_at)} />
 
             {/* ชื่อทีม/ธีม + สมาชิก (แต่ละคนมีบาร์โค้ดของตัวเอง) */}
-            {(reg.theme_name || members.length > 1) && (
+            {(reg.theme_name || members.length > 0) && (
               <div className="bg-purple-50 border border-purple-100 rounded-xl p-3 my-2">
                 {reg.theme_name && (
                   <p className="text-sm mb-2.5"><span className="text-xs font-bold text-purple-500">🎯 ชื่อทีม/ธีม:</span> <span className="font-bold text-gray-700">{reg.theme_name}</span></p>
                 )}
-                <p className="text-xs font-bold text-purple-500 mb-2">👥 สมาชิกในทีม ({members.length} คน)</p>
+                {members.length > 0 && (
+                  <p className="text-xs font-bold text-purple-500 mb-2">👥 {reg.count_mode === "team" ? "สมาชิกในทีม" : "ผู้สมัคร"} ({members.length} คน)</p>
+                )}
                 <div className="space-y-2">
                   {members.map((m, i) => (
                     <div key={m.id} className="bg-white rounded-xl border border-purple-100 p-2.5">
