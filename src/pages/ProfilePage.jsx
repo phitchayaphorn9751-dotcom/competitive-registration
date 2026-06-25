@@ -101,13 +101,17 @@ export default function ProfilePage() {
   }
   function onGradeDetail(val) { setGradeDetail(val); applyGrade(gradeGroup, val) }
 
-  function onSchoolInput(val) {
+  async function onSchoolInput(val) {
     set("school", val); setSchoolVerified(false)
-    if (val.trim().length > 0) {
-      const norm = normalizeSchool(val)
-      const list = allSchools.filter((s) => normalizeSchool(s).includes(norm)).slice(0, 10)
-      setSchoolOptions(list); setShowSchoolDD(true)
-    } else setShowSchoolDD(false)
+    if (val.trim().length === 0) { setShowSchoolDD(false); return }
+    const norm = normalizeSchool(val)
+    // ค้นจากรายชื่อที่โหลดไว้ (เร็ว)
+    let list = allSchools.filter((s) => normalizeSchool(s).includes(norm)).slice(0, 10)
+    // ถ้ายังไม่มีข้อมูลในเครื่อง (allSchools ว่าง) → ค้นจาก DB โดยตรง
+    if (list.length === 0 && allSchools.length === 0) {
+      try { list = await searchSchools(val) } catch { list = [] }
+    }
+    setSchoolOptions(list); setShowSchoolDD(true)
   }
   function pickSchool(name) { set("school", name); setSchoolVerified(true); setCustomSchool(false); setShowSchoolDD(false) }
   function toggleCustomSchool() { setCustomSchool((p) => !p); set("school", ""); setSchoolVerified(false); setShowSchoolDD(false) }
