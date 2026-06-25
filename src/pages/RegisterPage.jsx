@@ -93,20 +93,23 @@ export default function RegisterPage() {
 
     setSubmitting(true)
     try {
-      // ── ข้อ 5: เช็คสมัครซ้ำ (อีเมล หรือ เลขบัตรของสมาชิกซ้ำในคอร์สนี้) ──
+      // ── ข้อ 5: เช็คสมัครซ้ำ (ถ้า RPC ยังไม่มี ข้ามไป ไม่บล็อกการสมัคร) ──
       const allNationalIds = [ownerNationalId, ...extraMembers.map((m) => m.national_id)].map((x) => (x || "").trim()).filter(Boolean)
-      const dup = await checkDuplicateRegistration(courseId, email.trim(), allNationalIds)
-      if (dup?.duplicate) {
-        setSubmitting(false)
-        if (dup.reason === "EMAIL_ALREADY_REGISTERED") return setError("คุณสมัครคอร์สนี้ไปแล้ว (สมัครซ้ำไม่ได้)")
-        if (dup.reason === "MEMBER_ALREADY_REGISTERED") return setError("มีสมาชิกในทีมที่เลขบัตรเคยสมัครคอร์สนี้แล้ว (สมัครซ้ำไม่ได้)")
-        return setError("ไม่สามารถสมัครซ้ำได้")
-      }
+      try {
+        const dup = await checkDuplicateRegistration(courseId, email.trim(), allNationalIds)
+        if (dup?.duplicate) {
+          setSubmitting(false)
+          if (dup.reason === "EMAIL_ALREADY_REGISTERED") return setError("คุณสมัครคอร์สนี้ไปแล้ว (สมัครซ้ำไม่ได้)")
+          if (dup.reason === "MEMBER_ALREADY_REGISTERED") return setError("มีสมาชิกในทีมที่เลขบัตรเคยสมัครคอร์สนี้แล้ว (สมัครซ้ำไม่ได้)")
+          return setError("ไม่สามารถสมัครซ้ำได้")
+        }
+      } catch (_) { /* RPC ยังไม่มี — ข้ามการเช็คซ้ำ */ }
 
       const fresh = await fetchCourse(courseId)
       const unlimited = fresh.seat_mode === "unlimited" || (fresh.capacity || 0) === 0
       const willWaitlist = !unlimited && (fresh.seats_taken || 0) + 1 > (fresh.capacity || 0)
 
+      // ── ขั้นตอนหลัก (ต้องสำเร็จ) ──
       const regId = await holdSeat(courseId, email.trim(), 1)
 
       // ผู้สมัครคนแรก = เจ้าของ profile
@@ -119,45 +122,41 @@ export default function RegisterPage() {
         national_id: ownerNationalId.trim(),
         extra_info: {},
       })
-      if (ownerPid) await assignParticipantCode(ownerPid)  // ข้อ 4: ออกเลขประจำตัว
-
       // สมาชิกเพิ่มเติม
       for (const m of extraMembers) {
-        const pid = await addParticipant(regId, {
+        if (!m.full_name.trim()) continue
+        await addParticipant(regId, {
           full_name: m.full_name.trim(), school: m.school, grade_level: "",
           phone: m.phone, email: (m.email || "").trim().toLowerCase(),
           national_id: (m.national_id || "").trim(), extra_info: {},
         })
-        if (pid) await assignParticipantCode(pid)
       }
-      // ครูที่ปรึกษา (ถ้ามี) — รวมอีเมล
+      // ครูที่ปรึกษา (ถ้ามี)
       if (advisor.full_name.trim()) {
-        await addAdvisor(regId, { full_name: advisor.full_name.trim(), phone: advisor.phone, email: (advisor.email || "").trim() })
+        try { await addAdvisor(regId, { full_name: advisor.full_name.trim(), phone: advisor.phone, email: (advisor.email || "").trim() }) } catch (_) {}
       }
-      // ชื่อธีม (ถ้ากรอก)
-      if (themeName.trim()) {
-        await saveRegistrationTheme(regId, themeName.trim())
-      }
-      // สำรอง: ออกเลขประจำตัวให้ครบทุกคน (กันกรณีบางคนยังไม่ได้เลข)
-      await assignCodesForRegistration(regId)
       // ลิงก์ผลงาน (ถ้าวิชากำหนด)
       const hasPortfolio = course.require_portfolio && portfolioUrl.trim()
       if (hasPortfolio) {
         await savePortfolioUrl(regId, portfolioUrl.trim())
       }
 
-      // ปรับสถานะให้ถูกตามเงื่อนไข (เว้นกรณี waitlist):
-      // เสียเงิน→รอชำระ, ฟรี+แนบผลงาน→รออนุมัติ, ฟรี+ไม่แนบ→ยืนยันเลย
+      // ── ปรับสถานะ (สำคัญ — ต้องสำเร็จเพื่อให้ใบขึ้นรายการ) ──
       let finalStatus = null
       if (!willWaitlist) {
-        finalStatus = await finalizeRegistration(regId, !!hasPortfolio)
+        try {
+          finalStatus = await finalizeRegistration(regId, !!hasPortfolio)
+        } catch (_) { /* ถ้า RPC ยังไม่มี ใบจะค้างที่ held แต่ยังขึ้นรายการ */ }
       }
 
       const requiresPayment = (course.price || 0) > 0
-      // ตั้งเวลาหมดอายุชำระเงินในฐานข้อมูล (รีเฟรชไม่รีเซ็ต)
-      if (requiresPayment && !willWaitlist) {
-        await setPaymentDeadline(regId)
-      }
+
+      // ── RPC เสริม (fail ได้ ไม่กระทบการสมัคร) ──
+      try { if (ownerPid) await assignParticipantCode(ownerPid) } catch (_) {}
+      try { await assignCodesForRegistration(regId) } catch (_) {}
+      try { if (themeName.trim()) await saveRegistrationTheme(regId, themeName.trim()) } catch (_) {}
+      try { if (requiresPayment && !willWaitlist) await setPaymentDeadline(regId) } catch (_) {}
+
       setResult({ regId, requiresPayment, isWaitlist: willWaitlist, status: finalStatus, hasPortfolio: !!hasPortfolio })
     } catch (e) {
       setError(translateError(e.message))
