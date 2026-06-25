@@ -16,7 +16,7 @@ const T = {
   "common.loading": { th: "กำลังโหลด…", en: "Loading…" },
   "common.search": { th: "ค้นหา", en: "Search" },
   "common.all": { th: "ทั้งหมด", en: "All" },
-  "common.free": { th: "ฟรี", en: "Free" },
+  "common.free": { th: "ไม่มีค่าลงทะเบียน", en: "No fee" },
   "common.admin": { th: "แอดมิน", en: "Admin" },
   "common.contactLine": { th: "ติดต่อ Line", en: "Contact Line" },
   "common.phone": { th: "โทรศัพท์", en: "Phone" },

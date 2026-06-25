@@ -320,13 +320,12 @@ function DetailModal({ course, t, onClose, onRegister }) {
     { icon: "📅", label: "วันเริ่ม", value: fmtThaiDate(course.start_date) },
     { icon: "🏁", label: "วันสิ้นสุด", value: fmtThaiDate(course.end_date) },
     { icon: "⏱️", label: "ระยะเวลา", value: course.duration || "-" },
-    { icon: "💰", label: "ค่าเรียน", value: isPaid ? `฿${Number(course.price || 0).toLocaleString()}` : "ฟรี" },
   ]
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="bg-white w-full sm:rounded-3xl shadow-2xl sm:max-w-2xl overflow-hidden flex flex-col max-h-[95dvh] sm:max-h-[92vh] rounded-t-3xl">
+      <div className="bg-white w-full rounded-3xl shadow-2xl sm:max-w-2xl overflow-hidden flex flex-col max-h-[90dvh] sm:max-h-[92vh]">
         {/* Hero ส้ม */}
         <div className="bg-gradient-to-br from-[#F15A24] to-[#d04810] p-6 text-white flex justify-between items-start shrink-0">
           <div className="pr-4">
@@ -364,7 +363,7 @@ function DetailModal({ course, t, onClose, onRegister }) {
 
           <div className="p-5 space-y-4">
             {/* 4 การ์ดข้อมูล */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               {infoCards.map((c, i) => (
                 <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 text-center">
                   <div className="text-2xl mb-1">{c.icon}</div>

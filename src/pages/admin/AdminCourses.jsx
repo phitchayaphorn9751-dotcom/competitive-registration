@@ -66,7 +66,15 @@ export default function AdminCourses() {
     } catch (e) { toast("บันทึกไม่สำเร็จ: " + e.message, "error") }
   }
   async function doDelete(c) {
-    const ok = await confirm({ title: "ลบคอร์สนี้?", message: `ลบคอร์ส "${c.title}"\n(ลบไม่ได้ถ้ามีผู้สมัครแล้ว)`, confirmText: "ลบ", tone: "danger" })
+    const taken = c.seats_taken || 0
+    const hasApplicants = taken > 0
+    const ok = await confirm({
+      title: hasApplicants ? "⚠️ คอร์สนี้มีผู้สมัครแล้ว" : "ลบคอร์สนี้?",
+      message: hasApplicants
+        ? `คอร์ส "${c.title}" มีผู้สมัครแล้ว ${taken} รายการ\nหากลบ ข้อมูลผู้สมัครของคอร์สนี้จะหายไปด้วย\n\nยืนยันลบคอร์สหรือไม่?`
+        : `ลบคอร์ส "${c.title}"`,
+      confirmText: hasApplicants ? "ยืนยันลบ" : "ลบ", tone: "danger",
+    })
     if (!ok) return
     try { await deleteCourse(c.id); toast("ลบคอร์สแล้ว", "success"); loadCourses(selEvent) }
     catch { toast("ลบไม่สำเร็จ (อาจมีผู้สมัครอยู่)", "error") }
@@ -255,7 +263,7 @@ function DuplicateModal({ events, currentEventId, onClose, onDone }) {
                       <input type="checkbox" checked={!!picked[c.id]} onChange={() => toggle(c.id)} className="w-4 h-4 accent-blue-600" />
                       <div className="min-w-0 flex-1">
                         <div className="font-bold text-gray-800 text-sm truncate">{c.title}</div>
-                        <div className="text-xs text-gray-400">{c.course_types?.label || "—"} · {c.price > 0 ? `฿${c.price}` : "ฟรี"} · รับ {c.capacity}</div>
+                        <div className="text-xs text-gray-400">{c.course_types?.label || "—"} · {c.price > 0 ? `฿${c.price}` : "ไม่มีค่าลงทะเบียน"} · รับ {c.capacity}</div>
                       </div>
                     </label>
                   ))}
@@ -300,7 +308,7 @@ function CourseRow({ course, onEdit, onDelete, onToggle, onCapacity, onView }) {
               {instructors.length > 0 && <span className="text-[10px] bg-gray-50 text-gray-500 border border-gray-100 px-1.5 py-0.5 rounded-md">👨‍🏫 {instructors.join(", ")}</span>}
               <span className="text-[10px] bg-purple-50 text-purple-600 border border-purple-100 px-1.5 py-0.5 rounded-md">{modeLabel(course)}</span>
             </div>
-            <div className="text-xs text-gray-400 mt-1 font-bold">{course.price > 0 ? `฿${Number(course.price).toLocaleString()}` : "ฟรี"}</div>
+            <div className="text-xs text-gray-400 mt-1 font-bold">{course.price > 0 ? `฿${Number(course.price).toLocaleString()}` : "ไม่มีค่าลงทะเบียน"}</div>
           </div>
         </div>
       </td>
@@ -364,7 +372,7 @@ function CourseCardMobile({ course, onEdit, onDelete, onToggle, onView }) {
           </div>
           {instructors.length > 0 && <div className="text-xs text-gray-500 mt-1.5 truncate">👨‍🏫 {instructors.join(", ")}</div>}
           <div className="flex items-baseline gap-2 mt-1.5">
-            <span className="text-lg font-extrabold text-[#F15A24]">{course.price > 0 ? `฿${Number(course.price).toLocaleString()}` : "ฟรี"}</span>
+            <span className="text-lg font-extrabold text-[#F15A24]">{course.price > 0 ? `฿${Number(course.price).toLocaleString()}` : "ไม่มีค่าลงทะเบียน"}</span>
             <span className="text-[11px] text-gray-400">รับ {unlimited ? "ไม่จำกัด" : `${cap} ${course.count_mode === "team" ? "ทีม" : "คน"}`}</span>
           </div>
         </div>
@@ -429,6 +437,19 @@ function CourseModal({ course, types, onSave, onClose }) {
 
   const [uploading, setUploading] = useState(false)
   const set = (k, v) => setF((prev) => ({ ...prev, [k]: v }))
+  // กรอกวันเริ่ม/สิ้นสุด → คำนวณจำนวนวันให้อัตโนมัติ
+  function onDateChange(key, val) {
+    setF((prev) => {
+      const next = { ...prev, [key]: val }
+      const s = next.start_date, e = next.end_date
+      if (s && e) {
+        const d1 = new Date(s), d2 = new Date(e)
+        const diff = Math.round((d2 - d1) / 86400000) + 1  // รวมวันแรก
+        if (diff > 0) next.duration = `${diff} วัน`
+      }
+      return next
+    })
+  }
   const isEdit = !!course.id
   const selectedType = types.find((t) => t.id === f.type_id)
 
@@ -501,9 +522,9 @@ function CourseModal({ course, types, onSave, onClose }) {
 
             {/* 2. วันเริ่ม + วันสิ้นสุด + ระยะเวลา */}
             <div className="grid grid-cols-3 gap-3">
-              <div><label className={labelCls}>วันเริ่มเรียน</label><input type="date" className={inputCls} value={f.start_date || ""} onChange={(e) => set("start_date", e.target.value)} /></div>
-              <div><label className={labelCls}>วันสิ้นสุด</label><input type="date" className={inputCls} value={f.end_date || ""} onChange={(e) => set("end_date", e.target.value)} /></div>
-              <div><label className={labelCls}>ระยะเวลา</label><input className={inputCls} placeholder="5 วัน" value={f.duration || ""} onChange={(e) => set("duration", e.target.value)} /></div>
+              <div><label className={labelCls}>วันเริ่มเรียน</label><input type="date" className={inputCls} value={f.start_date || ""} onChange={(e) => onDateChange("start_date", e.target.value)} /></div>
+              <div><label className={labelCls}>วันสิ้นสุด</label><input type="date" className={inputCls} value={f.end_date || ""} onChange={(e) => onDateChange("end_date", e.target.value)} /></div>
+              <div><label className={labelCls}>ระยะเวลา <span className="text-[10px] text-gray-400 font-normal">(คำนวณอัตโนมัติ)</span></label><input className={inputCls} placeholder="เช่น 5 วัน" value={f.duration || ""} onChange={(e) => set("duration", e.target.value)} /></div>
             </div>
 
             {/* 3. หมวดหมู่ + ผู้สอน */}
