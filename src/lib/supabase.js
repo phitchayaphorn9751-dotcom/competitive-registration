@@ -752,27 +752,45 @@ export async function fetchAllSchools() {
 // โหลดข้อมูลจาก CDN ครั้งเดียว เก็บใน memory (ไม่ใช้ package ที่พึ่ง Node)
 let _thaiAddrCache = null
 let _thaiAddrLoading = null
+
+// แหล่งข้อมูลที่อยู่ไทย (ลองตามลำดับ ถ้าตัวแรกล้มไปตัวถัดไป)
+const THAI_ADDR_SOURCES = [
+  "https://raw.githubusercontent.com/kongvut/thai-province-data/master/api/v1/province_with_amphure_tambon.json",
+  "https://cdn.jsdelivr.net/gh/kongvut/thai-province-data@master/api/v1/province_with_amphure_tambon.json",
+  "https://cdn.jsdelivr.net/gh/kongvut/thai-province-data/api/v1/province_with_amphure_tambon.json",
+]
+
+function flattenThaiAddr(provinces) {
+  const flat = []
+  for (const p of (provinces || [])) {
+    for (const a of (p.amphure || [])) {
+      for (const t of (a.tambon || [])) {
+        flat.push({
+          subDistrict: t.name_th, district: a.name_th, province: p.name_th,
+          postalCode: String(t.zip_code || t.zipcode || ""),
+        })
+      }
+    }
+  }
+  return flat
+}
+
 async function loadThaiAddrData() {
   if (_thaiAddrCache) return _thaiAddrCache
   if (_thaiAddrLoading) return _thaiAddrLoading
-  _thaiAddrLoading = fetch("https://raw.githubusercontent.com/kongvut/thai-province-data/master/api_province_with_amphure_tambon.json")
-    .then((r) => r.json())
-    .then((provinces) => {
-      const flat = []
-      for (const p of provinces) {
-        for (const a of (p.amphure || [])) {
-          for (const t of (a.tambon || [])) {
-            flat.push({
-              subDistrict: t.name_th, district: a.name_th, province: p.name_th,
-              postalCode: String(t.zip_code || ""),
-            })
-          }
-        }
-      }
-      _thaiAddrCache = flat
-      return flat
-    })
-    .catch(() => { _thaiAddrCache = []; return [] })
+  _thaiAddrLoading = (async () => {
+    for (const url of THAI_ADDR_SOURCES) {
+      try {
+        const r = await fetch(url)
+        if (!r.ok) continue
+        const json = await r.json()
+        const flat = flattenThaiAddr(json)
+        if (flat.length > 0) { _thaiAddrCache = flat; return flat }
+      } catch (_) { /* ลอง URL ถัดไป */ }
+    }
+    _thaiAddrCache = []
+    return []
+  })()
   return _thaiAddrLoading
 }
 
