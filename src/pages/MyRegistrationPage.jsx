@@ -274,13 +274,6 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
             </div>
             {course?.level && <Row label="ระดับ" value={course.level} />}
             <Row label="ค่าลงทะเบียน" value={isPaid ? `${Number(reg.price).toLocaleString()} บาท` : "ไม่มีค่าใช้จ่าย"} />
-            {/* รายละเอียด */}
-            {course?.content && (
-              <div>
-                <p className="text-xs font-bold text-gray-500 mb-1">รายละเอียด</p>
-                <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed">{course.content}</p>
-              </div>
-            )}
           </div>
 
           {/* ───── ขวา: ข้อมูลที่กรอกตอนสมัคร ───── */}

@@ -83,6 +83,9 @@ export default function RegisterPage() {
     if (course.count_mode === "team" && (teamCount < minTeam || teamCount > maxTeam)) {
       return setError(`ทีมต้องมี ${minTeam}-${maxTeam} คน (ตอนนี้ ${teamCount} คน)`)
     }
+    if (course.count_mode === "team" && !themeName.trim()) {
+      return setError("กรุณากรอกชื่อทีม / ชื่อธีมผลงาน")
+    }
     const isCompetition = course.course_types?.requires_approval
     if (isCompetition && !advisor.full_name.trim()) {
       return setError(t("reg.needAdvisor"))
@@ -307,15 +310,15 @@ export default function RegisterPage() {
           </div>
         )}
 
-        {/* ชื่อทีม/ธีม (เฉพาะทีม >1 คน) — section แยกต่อจากครูที่ปรึกษา */}
-        {course.count_mode === "team" && teamCount > 1 && (
+        {/* ชื่อทีม/ธีม (คอร์สแบบทีม — บังคับกรอกแม้สมัครคนเดียว) */}
+        {course.count_mode === "team" && (
           <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-100">
             <h3 className="text-base font-bold text-gray-800 pb-3 border-b border-gray-100 mb-4 flex items-center gap-2">
               <span className="w-7 h-7 bg-[#F15A24] text-white rounded-xl flex items-center justify-center text-xs">🏷️</span>
-              ชื่อทีม / ชื่อธีมผลงาน
+              ชื่อทีม / ชื่อธีมผลงาน <span className="text-red-500">*</span>
             </h3>
-            <input className={inputCls} placeholder="เช่น Team Rocket / ชื่อผลงาน" value={themeName} onChange={(e) => setThemeName(e.target.value)} />
-            <p className="text-[11px] text-gray-400 mt-1.5">💡 ไม่บังคับ — ใส่ชื่อทีมหรือชื่อธีมผลงานของคุณ</p>
+            <input className={inputCls} placeholder="เช่น Team Rocket / ชื่อผลงาน *" value={themeName} onChange={(e) => setThemeName(e.target.value)} />
+            <p className="text-[11px] text-gray-400 mt-1.5">⚠️ จำเป็นต้องกรอก — ใส่ชื่อทีมหรือชื่อธีมผลงานของคุณ</p>
           </div>
         )}
 

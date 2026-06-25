@@ -541,7 +541,7 @@ function CourseModal({ course, types, onSave, onClose }) {
 
             {/* Base ID + ระดับชั้น */}
             <div className="grid grid-cols-2 gap-3">
-              <div><label className={labelCls}>Base ID (รหัสนำหน้าเลขประจำตัว)</label><input type="text" className={inputCls} placeholder="เช่น GAME, MUSIC, CODE" value={f.base_id || ""} onChange={(e) => set("base_id", e.target.value.toUpperCase())} /></div>
+              <div><label className={labelCls}>Base ID (รหัสนำหน้าเลขประจำตัว)</label><input type="text" className={inputCls} placeholder="เช่น GAME, MUSIC, CODE" value={f.base_id || ""} onChange={(e) => set("base_id", e.target.value.toUpperCase())} /><p className="text-[11px] text-gray-400 mt-1">💡 ควรตั้งให้<b>ต่างกันทุกคอร์ส</b> เพื่อแยกรหัสนักเรียน เช่น GAME-001, MUSIC-001</p></div>
               <div>
                 <label className={labelCls}>ระดับชั้น</label>
                 <select className={inputCls} value={f.level || ""} onChange={(e) => set("level", e.target.value)}>
