@@ -21,14 +21,19 @@ function StatusBadge({ status }) {
 }
 
 // pills: key + label + สี
-const QUICK_FILTERS = [
+const FILTERS_PAID = [
   { key: "all", label: "ทั้งหมด", color: "gray" },
+  { key: "pending_payment", label: "รอชำระเงิน", color: "yellow" },
   { key: "slip_uploaded", label: "รอตรวจสลิป", color: "blue" },
-  { key: "submitted", label: "รอพิจารณา", color: "blue" },
-  { key: "pending_payment", label: "รอชำระ", color: "yellow" },
   { key: "confirmed", label: "ยืนยันแล้ว", color: "green" },
   { key: "waitlist", label: "คิวสำรอง", color: "purple" },
-  { key: "expired", label: "หมดเวลา", color: "rose" },
+  { key: "rejected", label: "ไม่ผ่าน", color: "red" },
+]
+const FILTERS_FREE = [
+  { key: "all", label: "ทั้งหมด", color: "gray" },
+  { key: "submitted", label: "รอพิจารณา", color: "blue" },
+  { key: "confirmed", label: "ยืนยันแล้ว", color: "green" },
+  { key: "waitlist", label: "คิวสำรอง", color: "purple" },
   { key: "rejected", label: "ไม่ผ่าน", color: "red" },
 ]
 const PILL = {
@@ -61,6 +66,7 @@ export default function AdminApplicants() {
   const [search, setSearch] = useState("")
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(20)
+  const [paySection, setPaySection] = useState("paid") // paid | free
 
   useEffect(() => { load() }, [event?.id])
   async function load() {
@@ -70,20 +76,27 @@ export default function AdminApplicants() {
     finally { setLoading(false) }
   }
 
-  // นับสถานะ
+  const isPaidReg = (r) => (r.courses?.price || 0) > 0
+
+  // แยกตามมี/ไม่มีค่าใช้จ่าย
+  const sectionRegs = useMemo(() =>
+    regs.filter((r) => paySection === "paid" ? isPaidReg(r) : !isPaidReg(r)),
+    [regs, paySection])
+
+  // นับสถานะ (เฉพาะ section ปัจจุบัน)
   const counts = useMemo(() => {
-    const c = {}; regs.forEach((r) => { c[r.status] = (c[r.status] || 0) + 1 }); return c
-  }, [regs])
+    const c = {}; sectionRegs.forEach((r) => { c[r.status] = (c[r.status] || 0) + 1 }); return c
+  }, [sectionRegs])
 
   // รายการวิชา (สำหรับ filter)
   const courseOptions = useMemo(() => {
     const m = {}
-    regs.forEach((r) => { if (r.course_id) m[r.course_id] = r.courses?.title || "ไม่ทราบวิชา" })
+    sectionRegs.forEach((r) => { if (r.course_id) m[r.course_id] = r.courses?.title || "ไม่ทราบวิชา" })
     return Object.entries(m).sort((a, b) => a[1].localeCompare(b[1]))
-  }, [regs])
+  }, [sectionRegs])
 
   const filtered = useMemo(() => {
-    return regs.filter((r) => {
+    return sectionRegs.filter((r) => {
       if (filter !== "all" && r.status !== filter) return false
       if (courseFilter !== "all" && r.course_id !== courseFilter) return false
       if (search) {
@@ -98,7 +111,7 @@ export default function AdminApplicants() {
       }
       return true
     })
-  }, [regs, filter, courseFilter, search])
+  }, [sectionRegs, filter, courseFilter, search])
 
   const totalPages = Math.ceil(filtered.length / perPage)
   const firstIdx = (page - 1) * perPage
@@ -152,10 +165,22 @@ export default function AdminApplicants() {
         </button>
       </div>
 
+      {/* แท็บแยกมีค่าใช้จ่าย / ไม่มีค่าใช้จ่าย */}
+      <div className="flex gap-2 mb-4 bg-gray-100 p-1 rounded-xl w-fit">
+        <button onClick={() => { setPaySection("paid"); setFilter("all"); setPage(1) }}
+          className={`px-4 py-2 rounded-lg text-sm font-bold transition ${paySection === "paid" ? "bg-white text-[#F15A24] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+          💰 มีค่าใช้จ่าย
+        </button>
+        <button onClick={() => { setPaySection("free"); setFilter("all"); setPage(1) }}
+          className={`px-4 py-2 rounded-lg text-sm font-bold transition ${paySection === "free" ? "bg-white text-[#F15A24] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+          🆓 ไม่มีค่าใช้จ่าย
+        </button>
+      </div>
+
       {/* Quick filter pills */}
       <div className="flex flex-wrap gap-2 mb-4">
-        {QUICK_FILTERS.map(({ key, label, color }) => {
-          const count = key === "all" ? regs.length : counts[key] || 0
+        {(paySection === "paid" ? FILTERS_PAID : FILTERS_FREE).map(({ key, label, color }) => {
+          const count = key === "all" ? sectionRegs.length : counts[key] || 0
           const active = filter === key
           return (
             <button key={key} onClick={() => { setFilter(key); setPage(1) }}

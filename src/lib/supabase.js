@@ -228,7 +228,7 @@ export async function fetchRegistrations(eventId) {
   let q = supabase
     .from("registrations")
     .select(
-      "id, status, submitter_email, submitter_phone, seats_held, qr_token, waitlist_pos, created_at, course_id, courses!inner(title, event_id), advisors(id,full_name,phone,email), participants(id,full_name,school,qr_token,checkins(id,scanned_at)), payments(id,amount,slip_url,status)"
+      "id, status, submitter_email, submitter_phone, seats_held, qr_token, waitlist_pos, created_at, course_id, courses!inner(title, event_id, price, require_portfolio), advisors(id,full_name,phone,email), participants(id,full_name,school,qr_token,checkins(id,scanned_at)), payments(id,amount,slip_url,status)"
     )
     .order("created_at", { ascending: false })
   if (eventId) q = q.eq("courses.event_id", eventId)
