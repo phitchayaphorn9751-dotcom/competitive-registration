@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { getSession, isAdminUser, fetchMyRegistrations } from "../lib/supabase.js"
-import { useLang, LangToggle } from "../lib/i18n.jsx"
+import { useLang } from "../lib/i18n.jsx"
 
 // map สถานะ → สี/ไอคอน (อิงสถานะจริงในระบบเรา: held, confirmed, waitlist, cancelled + payment_status)
 const STATUS_CFG = {
@@ -104,9 +104,6 @@ export default function MyRegistrationPage() {
               <h1 className="text-xl sm:text-2xl font-extrabold text-gray-800">{t("myreg.title")}</h1>
               <p className="text-gray-400 text-xs mt-0.5">My Registration</p>
             </div>
-            <div className="flex items-center gap-3">
-              <LangToggle />
-            </div>
           </div>
 
           {/* Filter tabs */}
@@ -160,7 +157,9 @@ export default function MyRegistrationPage() {
                         </h3>
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-400 mb-3">
                           <span>{t("myreg.regId")}: <span className="font-mono font-bold text-gray-600">{reg.id.slice(0, 8)}</span></span>
+                          {reg.participant_code && <span className="font-mono font-bold text-[#F15A24] bg-orange-50 border border-orange-200 px-2 py-0.5 rounded">🪪 {reg.participant_code}</span>}
                           <span>{t("myreg.registeredOn")} {fmtDate(reg.created_at)}</span>
+                          {reg.theme_name && <span>· ทีม: <span className="font-bold text-gray-600">{reg.theme_name}</span></span>}
                         </div>
                         <div className="flex flex-col gap-1">
                           <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border w-fit ${cfg.bg} ${cfg.text} ${cfg.border}`}>
@@ -263,6 +262,7 @@ function Row({ label, value, mono }) {
 
 function CheckinModal({ reg, t, onClose }) {
   const [qrUrl, setQrUrl] = useState(null)
+  const code = reg.participant_code || ""
 
   useEffect(() => {
     const token = reg.my_qr_token || reg.qr_token || ""
@@ -279,20 +279,17 @@ function CheckinModal({ reg, t, onClose }) {
           <p className="text-blue-200 text-xs mt-1">{t("myreg.checkinSub")}</p>
         </div>
         <div className="p-6 bg-gray-50 flex flex-col items-center">
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4 w-full flex justify-center">
-            {qrUrl ? <img src={qrUrl} alt="barcode check-in" className="h-28 w-auto max-w-full object-contain" /> : <div className="h-28 flex items-center justify-center text-gray-300">…</div>}
+          {/* เลขประจำตัว — เด่นสุด ใช้แทนบาร์โค้ดได้ */}
+          {code && (
+            <div className="w-full bg-[#F15A24] text-white rounded-xl px-4 py-3 mb-4 text-center shadow-sm">
+              <p className="text-[11px] text-orange-100 mb-0.5">เลขประจำตัวผู้สมัคร</p>
+              <p className="font-mono text-3xl font-extrabold tracking-wider">{code}</p>
+            </div>
+          )}
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-3 w-full flex justify-center">
+            {qrUrl ? <img src={qrUrl} alt="barcode check-in" className="h-24 w-auto max-w-full object-contain" /> : <div className="h-24 flex items-center justify-center text-gray-300">…</div>}
           </div>
-          {/* รหัสสั้นสำหรับกรอกมือ (กรณีสแกนไม่ได้) */}
-          {(() => {
-            const token = reg.my_qr_token || reg.qr_token || ""
-            const shortCode = token.slice(0, 6).toUpperCase()
-            return shortCode ? (
-              <div className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 mb-2 text-center">
-                <p className="text-[11px] text-gray-400 mb-0.5">รหัสเช็คอิน (กรณีสแกนบาร์โค้ดไม่ได้)</p>
-                <p className="font-mono text-2xl font-extrabold text-gray-800 tracking-[0.3em]">{shortCode}</p>
-              </div>
-            ) : null
-          })()}
+          <p className="text-[11px] text-gray-400 text-center mb-2">แสดงบาร์โค้ดหรือแจ้งเลขประจำตัวให้เจ้าหน้าที่เพื่อเช็คอิน</p>
           <p className="text-sm font-bold text-[#F15A24] text-center pt-3 border-t border-gray-200 w-full">📚 {reg.course_title}</p>
         </div>
         <div className="p-4 bg-white">
