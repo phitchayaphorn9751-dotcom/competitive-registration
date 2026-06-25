@@ -8,6 +8,13 @@ import {
 
 const PIE_COLORS = ["#f15a24", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6"]
 const BAR_COLORS = ["#f15a24", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899"]
+// สีกำกับหมวด
+const CAT_COLORS = {
+  "Competition": "bg-rose-50 text-rose-700 border-rose-200",
+  "การแข่งขัน": "bg-rose-50 text-rose-700 border-rose-200",
+  "Workshop": "bg-blue-50 text-blue-700 border-blue-200",
+  "เวิร์กชอป": "bg-blue-50 text-blue-700 border-blue-200",
+}
 
 // สถานะระบบเรา
 const STATUS_CFG = {
@@ -47,6 +54,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [timeFilter, setTimeFilter] = useState("ALL")
   const [customDate, setCustomDate] = useState("")
+  const [catFilter, setCatFilter] = useState("ALL")  // กรองหมวด: ALL/Competition/Workshop
   const [drill, setDrill] = useState(null)      // {title, list}
   const [drillSearch, setDrillSearch] = useState("")
   const [drillStatus, setDrillStatus] = useState("All")
@@ -71,6 +79,7 @@ export default function AdminDashboard() {
     const sMo = new Date(now.getFullYear(), now.getMonth(), 1)
     return rows.filter((r) => {
       if (["expired"].includes(r.status)) return false
+      if (catFilter !== "ALL" && (r.course_category || "อื่นๆ") !== catFilter) return false
       const t = r.created
       if (timeFilter === "TODAY") return t >= sDay
       if (timeFilter === "WEEK") return t >= sWk
@@ -81,7 +90,14 @@ export default function AdminDashboard() {
       }
       return true
     })
-  }, [rows, timeFilter, customDate])
+  }, [rows, timeFilter, customDate, catFilter])
+
+  // รายชื่อหมวดทั้งหมด (สำหรับตัวกรอง)
+  const allCategories = useMemo(() => {
+    const s = new Set()
+    rows.forEach((r) => s.add(r.course_category || "อื่นๆ"))
+    return Array.from(s).sort()
+  }, [rows])
 
   const isPaid = (r) => PAID_STATUSES.includes(r.status)
 
@@ -113,7 +129,7 @@ export default function AdminDashboard() {
   const courseChartData = useMemo(() => {
     const m = {}
     filtered.filter(isPaid).forEach((r) => {
-      if (!m[r.course_id]) m[r.course_id] = { fullName: r.course_name, courseId: r.course_id, Applicants: 0, TotalRevenue: 0 }
+      if (!m[r.course_id]) m[r.course_id] = { fullName: r.course_name, category: r.course_category || "อื่นๆ", courseId: r.course_id, Applicants: 0, TotalRevenue: 0 }
       m[r.course_id].Applicants++; m[r.course_id].TotalRevenue += Number(r.price || 0)
     })
     return Object.values(m).sort((a, b) => b.Applicants - a.Applicants)
@@ -267,6 +283,23 @@ export default function AdminDashboard() {
           <input type="date" value={customDate} onChange={(e) => { setCustomDate(e.target.value); setTimeFilter("CUSTOM") }}
             className={`flex-1 min-w-0 sm:flex-none px-3 py-1.5 rounded-xl text-xs border outline-none focus:ring-2 focus:ring-[#f15a24] transition ${timeFilter === "CUSTOM" ? "border-[#f15a24] bg-orange-50 text-[#f15a24] font-bold" : "border-gray-200 text-gray-600"}`} />
         </div>
+
+        {/* ตัวกรองหมวด — กรองทั้ง Dashboard */}
+        {allCategories.length > 1 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-bold text-gray-400">หมวด:</span>
+            <button onClick={() => setCatFilter("ALL")}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${catFilter === "ALL" ? "bg-gray-700 text-white border-gray-700" : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"}`}>
+              ทั้งหมด
+            </button>
+            {allCategories.map((cat) => (
+              <button key={cat} onClick={() => setCatFilter(cat)}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${catFilter === cat ? "bg-[#f15a24] text-white border-[#f15a24]" : (CAT_COLORS[cat] || "bg-white text-gray-500 border-gray-200") + " hover:opacity-80"}`}>
+                {cat}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* KPI */}
@@ -396,6 +429,7 @@ export default function AdminDashboard() {
             <thead className="sticky top-0 bg-white border-b border-gray-50">
               <tr className="text-[10px] text-gray-400 uppercase">
                 <th className="py-2 text-center w-7">#</th><th className="py-2 text-left">วิชา</th>
+                <th className="py-2 text-left">หมวด</th>
                 <th className="py-2 text-right pr-2">สมัคร</th><th className="py-2 text-right">รายได้</th>
               </tr>
             </thead>
@@ -405,11 +439,12 @@ export default function AdminDashboard() {
                   className="border-b last:border-0 hover:bg-orange-50/50 cursor-pointer transition">
                   <td className="py-3 text-center font-bold text-gray-300">{i + 1}</td>
                   <td className="py-3 font-medium text-gray-700 max-w-[140px]"><span className="line-clamp-2 leading-snug">{c.fullName}</span></td>
+                  <td className="py-3"><span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold border ${CAT_COLORS[c.category] || "bg-gray-50 text-gray-600 border-gray-200"}`}>{c.category}</span></td>
                   <td className="py-3 text-right font-bold text-gray-600 pr-2 whitespace-nowrap">{c.Applicants} คน</td>
                   <td className="py-3 text-right font-bold text-[#f15a24] whitespace-nowrap">฿{c.TotalRevenue.toLocaleString()}</td>
                 </tr>
               ))}
-              {courseChartData.length === 0 && <tr><td colSpan="4" className="py-8 text-center text-gray-300">ยังไม่มีข้อมูล</td></tr>}
+              {courseChartData.length === 0 && <tr><td colSpan="5" className="py-8 text-center text-gray-300">ยังไม่มีข้อมูล</td></tr>}
             </tbody>
           </table>
         </div>
