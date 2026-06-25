@@ -201,10 +201,8 @@ export async function addAdvisor(registrationId, advisor) {
 
 // บันทึกลิงก์ผลงานลงใบสมัคร
 export async function savePortfolioUrl(registrationId, url) {
-  const { error } = await supabase
-    .from("registrations")
-    .update({ portfolio_url: url })
-    .eq("id", registrationId)
+  // ใช้ RPC (security definer) เลี่ยง RLS — update ตรง ๆ จะถูกบล็อก
+  const { error } = await supabase.rpc("save_portfolio_url", { p_reg_id: registrationId, p_url: url })
   if (error) throw error
 }
 
