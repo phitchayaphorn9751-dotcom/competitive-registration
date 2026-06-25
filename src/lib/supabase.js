@@ -190,7 +190,8 @@ export async function assignCodesForRegistration(regId) {
 
 // ข้อ 2.4: บันทึกชื่อธีมในใบสมัคร
 export async function saveRegistrationTheme(regId, theme) {
-  const { error } = await supabase.from("registrations").update({ theme_name: theme }).eq("id", regId)
+  // ใช้ RPC (security definer) เลี่ยง RLS — update ตรง ๆ ถูกบล็อก
+  const { error } = await supabase.rpc("save_registration_theme", { p_reg_id: regId, p_theme: theme })
   if (error) throw error
 }
 
