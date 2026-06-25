@@ -4,6 +4,7 @@ import {
   fetchCourse, fetchMyProfile, getSession,
   holdSeat, finalizeRegistration, setPaymentDeadline, fetchRegistrationDeadline, addParticipant, addAdvisor, uploadSlip, attachSlip, savePortfolioUrl,
   checkDuplicateRegistration, assignParticipantCode, assignCodesForRegistration, saveRegistrationTheme,
+  fetchAllSchools, searchSchools,
 } from "../lib/supabase.js"
 import { useLang } from "../lib/i18n.jsx"
 
@@ -25,6 +26,23 @@ export default function RegisterPage() {
   const [portfolioUrl, setPortfolioUrl] = useState("")
   const [themeName, setThemeName] = useState("")        // ชื่อธีม (ข้อ 2.4)
   const [ownerNationalId, setOwnerNationalId] = useState("")  // เลขบัตรเจ้าของ (ถ้า profile ไม่มี)
+
+  // โรงเรียน autocomplete สำหรับสมาชิก
+  const [allSchools, setAllSchools] = useState([])
+  const [schoolDD, setSchoolDD] = useState({ idx: -1, options: [] })  // idx = สมาชิกที่เปิด dropdown
+  useEffect(() => { fetchAllSchools().then(setAllSchools).catch(() => {}) }, [])
+  const normalizeSchool = (s) => (s || "").toLowerCase().replace(/โรงเรียน|ร\.ร\.|รร\./g, "").trim()
+  async function onMemberSchoolInput(i, val) {
+    updateMember(i, "school", val)
+    if (val.trim().length === 0) { setSchoolDD({ idx: -1, options: [] }); return }
+    const norm = normalizeSchool(val)
+    let list = allSchools.filter((s) => normalizeSchool(s).includes(norm)).slice(0, 8)
+    if (list.length === 0 && allSchools.length === 0) {
+      try { list = await searchSchools(val) } catch { list = [] }
+    }
+    setSchoolDD({ idx: i, options: list })
+  }
+  function pickMemberSchool(i, name) { updateMember(i, "school", name); setSchoolDD({ idx: -1, options: [] }) }
 
   // ผลลัพธ์หลังกันที่นั่ง
   const [result, setResult] = useState(null) // { regId, requiresPayment, isWaitlist }
@@ -144,6 +162,11 @@ export default function RegisterPage() {
         try { await savePortfolioUrl(regId, portfolioUrl.trim()) }
         catch (e) { console.error("savePortfolioUrl failed:", e.message) }
       }
+      // ชื่อธีม (บันทึกก่อน finalize) — fail ไม่ล้มการสมัคร
+      if (themeName.trim()) {
+        try { await saveRegistrationTheme(regId, themeName.trim()) }
+        catch (e) { console.error("saveRegistrationTheme failed:", e.message) }
+      }
 
       // ── ปรับสถานะ (สำคัญ — ต้องสำเร็จเพื่อให้ใบขึ้นรายการ) ──
       let finalStatus = null
@@ -158,7 +181,6 @@ export default function RegisterPage() {
       // ── RPC เสริม (fail ได้ ไม่กระทบการสมัคร) ──
       try { if (ownerPid) await assignParticipantCode(ownerPid) } catch (_) {}
       try { await assignCodesForRegistration(regId) } catch (_) {}
-      try { if (themeName.trim()) await saveRegistrationTheme(regId, themeName.trim()) } catch (_) {}
       try { if (requiresPayment && !willWaitlist) await setPaymentDeadline(regId) } catch (_) {}
 
       setResult({ regId, requiresPayment, isWaitlist: willWaitlist, status: finalStatus, hasPortfolio: !!hasPortfolio })
@@ -277,7 +299,18 @@ export default function RegisterPage() {
                     <input className={inputCls} placeholder="ชื่อ-สกุล *" value={m.full_name} onChange={(e) => updateMember(i, "full_name", e.target.value)} />
                     <input className={inputCls} placeholder="เลขบัตรประชาชน 13 หลัก" value={m.national_id || ""} onChange={(e) => updateMember(i, "national_id", e.target.value.replace(/[^0-9]/g, "").slice(0, 13))} />
                     <input className={inputCls} type="email" placeholder="Gmail ของน้องคนนี้" value={m.email || ""} onChange={(e) => updateMember(i, "email", e.target.value)} />
-                    <input className={inputCls} placeholder="โรงเรียน" value={m.school} onChange={(e) => updateMember(i, "school", e.target.value)} />
+                    <div className="relative">
+                      <input className={inputCls} placeholder="โรงเรียน (พิมพ์เพื่อค้นหา)" value={m.school}
+                        onChange={(e) => onMemberSchoolInput(i, e.target.value)}
+                        onBlur={() => setTimeout(() => setSchoolDD((p) => p.idx === i ? { idx: -1, options: [] } : p), 200)} />
+                      {schoolDD.idx === i && schoolDD.options.length > 0 && (
+                        <ul className="absolute z-30 w-full bg-white border border-gray-200 rounded-xl shadow-xl max-h-44 overflow-y-auto mt-1">
+                          {schoolDD.options.map((s, si) => (
+                            <li key={si} onClick={() => pickMemberSchool(i, s)} className="px-4 py-2.5 hover:bg-orange-50 cursor-pointer text-sm border-b last:border-b-0 text-gray-700">{s}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
                     <input className={inputCls} placeholder="เบอร์โทร" value={m.phone} onChange={(e) => updateMember(i, "phone", e.target.value.replace(/[^0-9]/g, "").slice(0, 10))} />
                   </div>
                   <p className="text-[11px] text-gray-400 mt-1.5">💡 ใส่ Gmail ของน้องเพื่อให้น้อง login เข้ามาดูงานนี้และ QR เช็คอินของตัวเองได้</p>
