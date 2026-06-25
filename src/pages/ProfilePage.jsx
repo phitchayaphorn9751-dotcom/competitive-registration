@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { getSession, isAdminUser, fetchMyProfile, saveProfile, searchSchools, searchThaiAddress } from "../lib/supabase.js"
+import { getSession, isAdminUser, fetchMyProfile, saveProfile, searchSchools, fetchAllSchools, searchThaiAddress } from "../lib/supabase.js"
 import { useLang } from "../lib/i18n.jsx"
 
 const TITLES = ["เด็กชาย", "เด็กหญิง", "นาย", "นางสาว", "นาง"]
@@ -50,6 +50,7 @@ export default function ProfilePage() {
   const [gradeDetail, setGradeDetail] = useState("")
   const [customGrade, setCustomGrade] = useState(false)
   const [schoolOptions, setSchoolOptions] = useState([])
+  const [allSchools, setAllSchools] = useState([])
   const [showSchoolDD, setShowSchoolDD] = useState(false)
   const [schoolVerified, setSchoolVerified] = useState(false)
   const [customSchool, setCustomSchool] = useState(false)
@@ -57,6 +58,10 @@ export default function ProfilePage() {
   const [showAddrDD, setShowAddrDD] = useState(false)
   const [addrVerified, setAddrVerified] = useState(false)
   const [activeSection, setActiveSection] = useState(1)
+
+  useEffect(() => {
+    fetchAllSchools().then(setAllSchools).catch(() => {})
+  }, [])
 
   useEffect(() => {
     getSession().then(async (s) => {
@@ -96,11 +101,12 @@ export default function ProfilePage() {
   }
   function onGradeDetail(val) { setGradeDetail(val); applyGrade(gradeGroup, val) }
 
-  async function onSchoolInput(val) {
+  function onSchoolInput(val) {
     set("school", val); setSchoolVerified(false)
     if (val.trim().length > 0) {
-      try { const list = await searchSchools(normalizeSchool(val) || val); setSchoolOptions(list); setShowSchoolDD(true) }
-      catch { setSchoolOptions([]) }
+      const norm = normalizeSchool(val)
+      const list = allSchools.filter((s) => normalizeSchool(s).includes(norm)).slice(0, 10)
+      setSchoolOptions(list); setShowSchoolDD(true)
     } else setShowSchoolDD(false)
   }
   function pickSchool(name) { set("school", name); setSchoolVerified(true); setCustomSchool(false); setShowSchoolDD(false) }

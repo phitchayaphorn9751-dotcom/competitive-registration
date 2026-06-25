@@ -741,6 +741,13 @@ export async function searchSchools(query) {
   return (data || []).map((r) => r.name)
 }
 
+// โหลดรายชื่อโรงเรียนทั้งหมดครั้งเดียว (filter ฝั่ง client — เร็วกว่ายิง DB ทุกตัวอักษร)
+export async function fetchAllSchools() {
+  const { data, error } = await supabase.from("schools").select("name").order("name")
+  if (error) return []
+  return (data || []).map((r) => r.name)
+}
+
 // ข้อ 12: ค้นหาที่อยู่ไทย (ตำบล→อำเภอ/จังหวัด/รหัสไปรษณีย์) แบบ browser-safe
 // โหลดข้อมูลจาก CDN ครั้งเดียว เก็บใน memory (ไม่ใช้ package ที่พึ่ง Node)
 let _thaiAddrCache = null
