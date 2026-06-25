@@ -135,10 +135,11 @@ export default function RegisterPage() {
       if (advisor.full_name.trim()) {
         try { await addAdvisor(regId, { full_name: advisor.full_name.trim(), phone: advisor.phone, email: (advisor.email || "").trim() }) } catch (_) {}
       }
-      // ลิงก์ผลงาน (ถ้าวิชากำหนด)
+      // ลิงก์ผลงาน (ถ้าวิชากำหนด) — fail ไม่ล้มการสมัคร
       const hasPortfolio = course.require_portfolio && portfolioUrl.trim()
       if (hasPortfolio) {
-        await savePortfolioUrl(regId, portfolioUrl.trim())
+        try { await savePortfolioUrl(regId, portfolioUrl.trim()) }
+        catch (e) { console.error("savePortfolioUrl failed:", e.message) }
       }
 
       // ── ปรับสถานะ (สำคัญ — ต้องสำเร็จเพื่อให้ใบขึ้นรายการ) ──
