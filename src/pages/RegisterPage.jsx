@@ -326,9 +326,10 @@ export default function RegisterPage() {
               <span className="w-7 h-7 bg-[#F15A24] text-white rounded-xl flex items-center justify-center text-xs">📎</span>
               {course.portfolio_label || "แนบลิงก์ผลงาน"}
             </h3>
-            <input className={inputCls} placeholder="วางลิงก์ที่นี่ (Google Drive / YouTube / Behance …) *"
+            <textarea rows="3" className={inputCls + " resize-none"}
+              placeholder="วางลิงก์ผลงานที่นี่ * (ใส่ได้หลายลิงก์ — บรรทัดละ 1 ลิงก์)&#10;เช่น&#10;https://drive.google.com/...&#10;https://youtube.com/..."
               value={portfolioUrl} onChange={(e) => setPortfolioUrl(e.target.value)} />
-            <p className="text-xs text-gray-400 mt-2">⚠️ ตรวจสอบให้แน่ใจว่าเปิดสิทธิ์ให้เข้าดูได้</p>
+            <p className="text-xs text-gray-400 mt-2">⚠️ ใส่ได้หลายลิงก์ (ขึ้นบรรทัดใหม่) · ตรวจสอบให้แน่ใจว่าเปิดสิทธิ์ให้เข้าดูได้</p>
           </div>
         )}
 

@@ -149,18 +149,24 @@ export default function AdminVerifySlip() {
                   <span className="text-sm font-bold">คอร์สนี้ไม่ต้องแนบผลงาน</span>
                 </div>
               ) : data.portfolio_url ? (
-                <div className="space-y-3">
-                  <div className="bg-orange-50 border border-orange-100 rounded-xl p-4">
-                    <p className="text-xs font-bold text-gray-500 mb-1.5">{data.courses?.portfolio_label || "ลิงก์ผลงานที่แนบมา"}</p>
-                    <a href={data.portfolio_url} target="_blank" rel="noreferrer"
-                      className="text-[#F15A24] font-bold text-sm break-all hover:underline flex items-start gap-1.5">
-                      <span className="shrink-0">🔗</span><span>{data.portfolio_url}</span>
-                    </a>
-                  </div>
-                  <a href={data.portfolio_url} target="_blank" rel="noreferrer"
-                    className="block text-center bg-[#F15A24] text-white py-2.5 rounded-xl font-bold text-sm hover:bg-orange-600 transition">
-                    เปิดดูผลงาน →
-                  </a>
+                <div className="space-y-2">
+                  <p className="text-xs font-bold text-gray-500 mb-1">{data.courses?.portfolio_label || "ลิงก์ผลงานที่แนบมา"}</p>
+                  {data.portfolio_url.split(/[\n,]+/).map((link, i) => {
+                    const url = link.trim()
+                    if (!url) return null
+                    const isLink = /^https?:\/\//i.test(url)
+                    return (
+                      <div key={i} className="bg-orange-50 border border-orange-100 rounded-xl p-3 flex items-center gap-2">
+                        <span className="shrink-0 text-gray-400 text-xs font-bold">{i + 1}.</span>
+                        {isLink ? (
+                          <a href={url} target="_blank" rel="noreferrer" className="text-[#F15A24] font-bold text-sm break-all hover:underline flex-1">{url}</a>
+                        ) : (
+                          <span className="text-gray-700 text-sm break-all flex-1">{url}</span>
+                        )}
+                        {isLink && <a href={url} target="_blank" rel="noreferrer" className="shrink-0 bg-[#F15A24] text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-orange-600 transition">เปิด →</a>}
+                      </div>
+                    )
+                  })}
                 </div>
               ) : (
                 <div className="h-32 rounded-xl bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-300 gap-1.5">

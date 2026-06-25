@@ -262,9 +262,20 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
           {/* ลิงก์ผลงาน */}
           {reg.require_portfolio && (
             <div className="bg-orange-50 border border-orange-100 rounded-xl p-3 my-2">
-              <p className="text-xs font-bold text-[#F15A24] mb-1">📎 {reg.portfolio_label || "ผลงานที่แนบ"}</p>
+              <p className="text-xs font-bold text-[#F15A24] mb-1.5">📎 {reg.portfolio_label || "ผลงานที่แนบ"}</p>
               {reg.portfolio_url ? (
-                <a href={reg.portfolio_url} target="_blank" rel="noreferrer" className="text-sm text-[#F15A24] font-bold break-all hover:underline">{reg.portfolio_url}</a>
+                <div className="space-y-1.5">
+                  {reg.portfolio_url.split(/[\n,]+/).map((link, i) => {
+                    const url = link.trim()
+                    if (!url) return null
+                    const isLink = /^https?:\/\//i.test(url)
+                    return isLink ? (
+                      <a key={i} href={url} target="_blank" rel="noreferrer" className="block text-sm text-[#F15A24] font-bold break-all hover:underline">{i + 1}. {url}</a>
+                    ) : (
+                      <p key={i} className="text-sm text-gray-700 break-all">{i + 1}. {url}</p>
+                    )
+                  })}
+                </div>
               ) : <p className="text-xs text-gray-400">ยังไม่ได้แนบผลงาน</p>}
             </div>
           )}
