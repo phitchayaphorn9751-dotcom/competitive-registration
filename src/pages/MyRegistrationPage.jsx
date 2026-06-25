@@ -214,9 +214,8 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
   const isPaid = (reg.price || 0) > 0
   const isConfirmed = d === "confirmed"
   const code = reg.participant_code || ""
-  const shortCode = reg.short_code || (reg.my_qr_token || reg.qr_token || "").slice(0, 8).toUpperCase()
-  // บาร์โค้ดสั้น — ใช้ short_code (8 ตัว) สแกนง่าย
-  const barcodeUrl = shortCode ? `https://barcodeapi.org/api/128/${encodeURIComponent(shortCode)}` : null
+  // บาร์โค้ด encode รหัสนักเรียน — สแกนแล้วเช็คอินได้เลย
+  const barcodeUrl = code ? `https://barcodeapi.org/api/128/${encodeURIComponent(code)}` : null
   function fmtDate(s) { if (!s) return "-"; const dt = new Date(s); return dt.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) }
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
@@ -231,18 +230,15 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
           </span>
         </div>
         <div className="p-6 space-y-1 overflow-y-auto text-sm">
-          {/* บาร์โค้ด + เลขประจำตัว (เฉพาะยืนยันแล้ว) */}
-          {isConfirmed && (code || barcodeUrl) && (
+          {/* บาร์โค้ด + รหัสนักเรียน (เฉพาะยืนยันแล้ว) */}
+          {isConfirmed && code && (
             <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 mb-3 flex flex-col items-center">
-              {code && (
-                <div className="w-full bg-[#F15A24] text-white rounded-xl px-4 py-2.5 mb-3 text-center">
-                  <p className="text-[10px] text-orange-100">เลขประจำตัวผู้สมัคร</p>
-                  <p className="font-mono text-2xl font-extrabold tracking-wider">{code}</p>
-                </div>
-              )}
+              <div className="w-full bg-[#F15A24] text-white rounded-xl px-4 py-2.5 mb-3 text-center">
+                <p className="text-[10px] text-orange-100">รหัสนักเรียน (ใช้เช็คอิน)</p>
+                <p className="font-mono text-2xl font-extrabold tracking-wider">{code}</p>
+              </div>
               {barcodeUrl && <img src={barcodeUrl} alt="barcode" className="h-16 w-auto max-w-full object-contain" />}
-              {shortCode && <p className="font-mono text-xs text-gray-400 mt-1 tracking-widest">{shortCode}</p>}
-              <p className="text-[10px] text-gray-400 mt-1">แสดงบาร์โค้ดหรือแจ้งเลขประจำตัวเพื่อเช็คอิน</p>
+              <p className="text-[10px] text-gray-400 mt-1">สแกนบาร์โค้ด หรือแจ้งรหัสนักเรียนเพื่อเช็คอิน</p>
             </div>
           )}
 
@@ -307,10 +303,9 @@ function CheckinModal({ reg, t, onClose }) {
   const code = reg.participant_code || ""
 
   useEffect(() => {
-    const token = reg.short_code || (reg.my_qr_token || reg.qr_token || "").slice(0, 8).toUpperCase()
-    // บาร์โค้ดสั้น Code128 (8 ตัว สแกนง่าย)
-    setQrUrl(`https://barcodeapi.org/api/128/${encodeURIComponent(token)}`)
-  }, [reg])
+    // บาร์โค้ด encode รหัสนักเรียน (participant_code) — สแกนแล้วเช็คอินได้เลย
+    if (code) setQrUrl(`https://barcodeapi.org/api/128/${encodeURIComponent(code)}`)
+  }, [code])
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
@@ -321,17 +316,19 @@ function CheckinModal({ reg, t, onClose }) {
           <p className="text-blue-200 text-xs mt-1">{t("myreg.checkinSub")}</p>
         </div>
         <div className="p-6 bg-gray-50 flex flex-col items-center">
-          {/* เลขประจำตัว — เด่นสุด ใช้แทนบาร์โค้ดได้ */}
+          {/* รหัสนักเรียน — เด่นสุด ใช้เช็คอินได้เลย */}
           {code && (
             <div className="w-full bg-[#F15A24] text-white rounded-xl px-4 py-3 mb-4 text-center shadow-sm">
-              <p className="text-[11px] text-orange-100 mb-0.5">เลขประจำตัวผู้สมัคร</p>
+              <p className="text-[11px] text-orange-100 mb-0.5">รหัสนักเรียน (แจ้งเจ้าหน้าที่เพื่อเช็คอิน)</p>
               <p className="font-mono text-3xl font-extrabold tracking-wider">{code}</p>
             </div>
           )}
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-3 w-full flex justify-center">
-            {qrUrl ? <img src={qrUrl} alt="barcode check-in" className="h-24 w-auto max-w-full object-contain" /> : <div className="h-24 flex items-center justify-center text-gray-300">…</div>}
-          </div>
-          <p className="text-[11px] text-gray-400 text-center mb-2">แสดงบาร์โค้ดหรือแจ้งเลขประจำตัวให้เจ้าหน้าที่เพื่อเช็คอิน</p>
+          {qrUrl && (
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-3 w-full flex justify-center">
+              <img src={qrUrl} alt="barcode" className="h-24 w-auto max-w-full object-contain" />
+            </div>
+          )}
+          <p className="text-[11px] text-gray-400 text-center mb-2">สแกนบาร์โค้ด หรือแจ้งรหัสนักเรียนให้เจ้าหน้าที่</p>
           <p className="text-sm font-bold text-[#F15A24] text-center pt-3 border-t border-gray-200 w-full">📚 {reg.course_title}</p>
         </div>
         <div className="p-4 bg-white">
