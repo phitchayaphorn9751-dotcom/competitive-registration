@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react"
 import { useNavigate, useOutletContext } from "react-router-dom"
-import { fetchRegistrations } from "../../lib/supabase.js"
+import { fetchRegistrations, subscribeRegistrations } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
 
 // สถานะ (ตรงกับระบบเรา)
@@ -69,11 +69,21 @@ export default function AdminApplicants() {
   const [paySection, setPaySection] = useState("paid") // paid | free
 
   useEffect(() => { load() }, [event?.id])
+  // ข้อ 3: เรียลไทม์ — มีผู้สมัครใหม่/อัปเดต ข้อมูลขึ้นทันทีไม่ต้องรีเฟรช
+  useEffect(() => {
+    if (!event?.id) return
+    const ch = subscribeRegistrations(() => loadSilent())
+    return () => { ch.unsubscribe() }
+  }, [event?.id])
+
   async function load() {
     setLoading(true)
     try { setRegs(await fetchRegistrations(event?.id) || []) }
     catch (e) { toast("โหลดข้อมูลไม่สำเร็จ: " + e.message, "error") }
     finally { setLoading(false) }
+  }
+  async function loadSilent() {
+    try { setRegs(await fetchRegistrations(event?.id) || []) } catch (_) {}
   }
 
   const isPaidReg = (r) => (r.courses?.price || 0) > 0

@@ -73,7 +73,7 @@ export default function AdminLayout() {
       {sidebarOpen && <div className="fixed inset-0 bg-black/40 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
       {/* Sidebar */}
-      <aside className={`fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 flex flex-col transition-transform ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}>
+      <aside className={`fixed lg:sticky lg:top-0 inset-y-0 left-0 z-40 w-64 h-screen bg-white border-r border-gray-200 flex flex-col transition-transform ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}>
         <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-100">
           <div className="w-10 h-10 rounded-xl bg-[#F15A24] flex items-center justify-center text-white text-xl shrink-0">🎓</div>
           <div className="min-w-0">
@@ -91,7 +91,7 @@ export default function AdminLayout() {
             </NavLink>
           ))}
         </nav>
-        <button onClick={handleLogout} className="m-3 flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold text-red-500 hover:bg-red-50 transition">
+        <button onClick={handleLogout} className="m-3 shrink-0 flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold text-red-500 hover:bg-red-50 transition border-t border-gray-100 pt-3">
           ⎋ ออกจากระบบ
         </button>
       </aside>

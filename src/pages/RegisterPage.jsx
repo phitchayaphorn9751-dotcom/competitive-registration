@@ -299,8 +299,19 @@ export default function RegisterPage() {
               <input className={inputCls} placeholder={t("reg.advisorName") + " *"} value={advisor.full_name} onChange={(e) => setAdvisor({ ...advisor, full_name: e.target.value })} />
               <input className={inputCls} placeholder={t("reg.advisorPhone")} value={advisor.phone} onChange={(e) => setAdvisor({ ...advisor, phone: e.target.value.replace(/[^0-9]/g, "").slice(0, 10) })} />
               <input className={inputCls} type="email" placeholder="อีเมลที่ปรึกษา" value={advisor.email} onChange={(e) => setAdvisor({ ...advisor, email: e.target.value })} />
-              <input className={inputCls} placeholder="ชื่อทีม / ชื่อธีมผลงาน" value={themeName} onChange={(e) => setThemeName(e.target.value)} />
             </div>
+          </div>
+        )}
+
+        {/* ชื่อทีม/ธีม (เฉพาะทีม >1 คน) — section แยกต่อจากครูที่ปรึกษา */}
+        {course.count_mode === "team" && teamCount > 1 && (
+          <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-100">
+            <h3 className="text-base font-bold text-gray-800 pb-3 border-b border-gray-100 mb-4 flex items-center gap-2">
+              <span className="w-7 h-7 bg-[#F15A24] text-white rounded-xl flex items-center justify-center text-xs">🏷️</span>
+              ชื่อทีม / ชื่อธีมผลงาน
+            </h3>
+            <input className={inputCls} placeholder="เช่น Team Rocket / ชื่อผลงาน" value={themeName} onChange={(e) => setThemeName(e.target.value)} />
+            <p className="text-[11px] text-gray-400 mt-1.5">💡 ไม่บังคับ — ใส่ชื่อทีมหรือชื่อธีมผลงานของคุณ</p>
           </div>
         )}
 

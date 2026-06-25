@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { useNavigate, Link } from "react-router-dom"
 import {
   signIn, signUp, signInWithGoogle, getSession,
-  isAdminUser, fetchSettings, resetPassword,
+  isAdminUser, fetchSettings, resetPassword, fetchMyProfile,
 } from "../lib/supabase.js"
 import { useLang, LangToggle } from "../lib/i18n.jsx"
 import { useDialog } from "../lib/dialog.jsx"
@@ -250,6 +250,11 @@ function Spinner() {
 // หลัง login: admin → panel, อีเมลอื่น → หน้าลงทะเบียน
 export async function routeAfterAuth(navigate) {
   if (await isAdminUser()) { navigate("/admin/dashboard"); return }
+  // ข้อ 2: ถ้ามีข้อมูลโปรไฟล์ครบแล้ว → เข้าหน้า home เลย / ยังไม่ครบ → ไปกรอกโปรไฟล์
+  try {
+    const p = await fetchMyProfile()
+    if (p && p.is_complete) { navigate("/"); return }
+  } catch (_) {}
   navigate("/profile")
 }
 

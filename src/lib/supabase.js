@@ -90,6 +90,17 @@ export async function addParticipant(registrationId, p) {
   return data // participant id
 }
 
+// ข้อ 3: ติดตามการเปลี่ยนแปลง registrations แบบเรียลไทม์
+export function subscribeRegistrations(onChange) {
+  const channel = supabase
+    .channel("registrations-realtime")
+    .on("postgres_changes", { event: "*", schema: "public", table: "registrations" }, () => onChange())
+    .on("postgres_changes", { event: "*", schema: "public", table: "participants" }, () => onChange())
+    .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, () => onChange())
+    .subscribe()
+  return channel
+}
+
 // ข้อ 5: เช็คสมัครซ้ำ (อีเมล/เลขบัตร ในคอร์สเดียวกัน)
 export async function checkDuplicateRegistration(courseId, email, nationalIds) {
   const { data, error } = await supabase.rpc("check_duplicate_registration", {
