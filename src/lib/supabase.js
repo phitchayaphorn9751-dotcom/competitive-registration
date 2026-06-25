@@ -83,7 +83,41 @@ export async function addParticipant(registrationId, p) {
     p_extra_info: p.extra_info || {},
   })
   if (error) throw error
-  return data
+  // บันทึกเลขบัตร (ถ้ามี) — แยกจาก RPC เดิม
+  if (data && p.national_id) {
+    await supabase.from("participants").update({ national_id: p.national_id }).eq("id", data)
+  }
+  return data // participant id
+}
+
+// ข้อ 5: เช็คสมัครซ้ำ (อีเมล/เลขบัตร ในคอร์สเดียวกัน)
+export async function checkDuplicateRegistration(courseId, email, nationalIds) {
+  const { data, error } = await supabase.rpc("check_duplicate_registration", {
+    p_course_id: courseId, p_email: email, p_national_ids: nationalIds || [],
+  })
+  if (error) throw error
+  return data // { duplicate, reason? }
+}
+
+// ข้อ 4: ออกเลขประจำตัวให้ participant (GAME-001)
+export async function assignParticipantCode(participantId) {
+  if (!participantId) return null
+  const { data, error } = await supabase.rpc("assign_participant_code", { p_participant_id: participantId })
+  if (error) return null
+  return data // code
+}
+
+// สำรอง: ออกเลขให้ทุกคนในใบสมัคร (กันกรณี add_participant ไม่คืน id)
+export async function assignCodesForRegistration(regId) {
+  const { error } = await supabase.rpc("assign_codes_for_registration", { p_reg_id: regId })
+  if (error) return false
+  return true
+}
+
+// ข้อ 2.4: บันทึกชื่อธีมในใบสมัคร
+export async function saveRegistrationTheme(regId, theme) {
+  const { error } = await supabase.from("registrations").update({ theme_name: theme }).eq("id", regId)
+  if (error) throw error
 }
 
 // ครูที่ปรึกษา — ผ่าน RPC add_advisor (security definer)

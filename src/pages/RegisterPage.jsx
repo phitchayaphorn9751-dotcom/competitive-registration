@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom"
 import {
   fetchCourse, fetchMyProfile, getSession,
   holdSeat, finalizeRegistration, addParticipant, addAdvisor, uploadSlip, attachSlip, savePortfolioUrl,
+  checkDuplicateRegistration, assignParticipantCode, assignCodesForRegistration, saveRegistrationTheme,
 } from "../lib/supabase.js"
 import { useLang } from "../lib/i18n.jsx"
 
@@ -20,8 +21,10 @@ export default function RegisterPage() {
 
   // สมาชิกเพิ่มเติม (กรณี team) — คนแรกคือเจ้าของ profile
   const [extraMembers, setExtraMembers] = useState([])
-  const [advisor, setAdvisor] = useState({ full_name: "", phone: "" })
+  const [advisor, setAdvisor] = useState({ full_name: "", phone: "", email: "" })
   const [portfolioUrl, setPortfolioUrl] = useState("")
+  const [themeName, setThemeName] = useState("")        // ชื่อธีม (ข้อ 2.4)
+  const [ownerNationalId, setOwnerNationalId] = useState("")  // เลขบัตรเจ้าของ (ถ้า profile ไม่มี)
 
   // ผลลัพธ์หลังกันที่นั่ง
   const [result, setResult] = useState(null) // { regId, requiresPayment, isWaitlist }
@@ -35,11 +38,12 @@ export default function RegisterPage() {
         const [c, p] = await Promise.all([fetchCourse(courseId), fetchMyProfile()])
         setCourse(c)
         setProfile(p)
+        setOwnerNationalId(p?.national_id || "")
         // team: เตรียมช่องสมาชิกเพิ่มตามจำนวนขั้นต่ำ (คนแรกคือเจ้าของ profile)
         if (c.count_mode === "team") {
           const minM = c.min_members || c.team_size || 1
           const startExtra = Math.max(0, minM - 1)
-          setExtraMembers(Array.from({ length: startExtra }, () => ({ full_name: "", school: "", phone: "", email: "" })))
+          setExtraMembers(Array.from({ length: startExtra }, () => ({ full_name: "", school: "", phone: "", email: "", national_id: "" })))
         }
       } catch (e) {
         setError(e.message || "โหลดข้อมูลไม่สำเร็จ")
@@ -61,7 +65,7 @@ export default function RegisterPage() {
   const teamCount = extraMembers.length + 1 // +1 = เจ้าของ profile
   function addMember() {
     if (teamCount >= maxTeam) return
-    setExtraMembers((prev) => [...prev, { full_name: "", school: "", phone: "", email: "" }])
+    setExtraMembers((prev) => [...prev, { full_name: "", school: "", phone: "", email: "", national_id: "" }])
   }
   function removeMember(idx) {
     if (teamCount <= minTeam) return
@@ -89,6 +93,16 @@ export default function RegisterPage() {
 
     setSubmitting(true)
     try {
+      // ── ข้อ 5: เช็คสมัครซ้ำ (อีเมล หรือ เลขบัตรของสมาชิกซ้ำในคอร์สนี้) ──
+      const allNationalIds = [ownerNationalId, ...extraMembers.map((m) => m.national_id)].map((x) => (x || "").trim()).filter(Boolean)
+      const dup = await checkDuplicateRegistration(courseId, email.trim(), allNationalIds)
+      if (dup?.duplicate) {
+        setSubmitting(false)
+        if (dup.reason === "EMAIL_ALREADY_REGISTERED") return setError("คุณสมัครคอร์สนี้ไปแล้ว (สมัครซ้ำไม่ได้)")
+        if (dup.reason === "MEMBER_ALREADY_REGISTERED") return setError("มีสมาชิกในทีมที่เลขบัตรเคยสมัครคอร์สนี้แล้ว (สมัครซ้ำไม่ได้)")
+        return setError("ไม่สามารถสมัครซ้ำได้")
+      }
+
       const fresh = await fetchCourse(courseId)
       const unlimited = fresh.seat_mode === "unlimited" || (fresh.capacity || 0) === 0
       const willWaitlist = !unlimited && (fresh.seats_taken || 0) + 1 > (fresh.capacity || 0)
@@ -96,25 +110,36 @@ export default function RegisterPage() {
       const regId = await holdSeat(courseId, email.trim(), 1)
 
       // ผู้สมัครคนแรก = เจ้าของ profile
-      await addParticipant(regId, {
+      const ownerPid = await addParticipant(regId, {
         full_name: `${profile.title || ""} ${profile.first_name} ${profile.last_name}`.trim(),
         school: profile.school || "",
         grade_level: profile.grade_level || "",
         phone: profile.phone || "",
         email: email,
+        national_id: ownerNationalId.trim(),
         extra_info: {},
       })
+      if (ownerPid) await assignParticipantCode(ownerPid)  // ข้อ 4: ออกเลขประจำตัว
+
       // สมาชิกเพิ่มเติม
       for (const m of extraMembers) {
-        await addParticipant(regId, {
+        const pid = await addParticipant(regId, {
           full_name: m.full_name.trim(), school: m.school, grade_level: "",
-          phone: m.phone, email: (m.email || "").trim().toLowerCase(), extra_info: {},
+          phone: m.phone, email: (m.email || "").trim().toLowerCase(),
+          national_id: (m.national_id || "").trim(), extra_info: {},
         })
+        if (pid) await assignParticipantCode(pid)
       }
-      // ครูที่ปรึกษา (ถ้ามี)
+      // ครูที่ปรึกษา (ถ้ามี) — รวมอีเมล
       if (advisor.full_name.trim()) {
-        await addAdvisor(regId, { full_name: advisor.full_name.trim(), phone: advisor.phone, email: "" })
+        await addAdvisor(regId, { full_name: advisor.full_name.trim(), phone: advisor.phone, email: (advisor.email || "").trim() })
       }
+      // ชื่อธีม (ถ้ากรอก)
+      if (themeName.trim()) {
+        await saveRegistrationTheme(regId, themeName.trim())
+      }
+      // สำรอง: ออกเลขประจำตัวให้ครบทุกคน (กันกรณีบางคนยังไม่ได้เลข)
+      await assignCodesForRegistration(regId)
       // ลิงก์ผลงาน (ถ้าวิชากำหนด)
       const hasPortfolio = course.require_portfolio && portfolioUrl.trim()
       if (hasPortfolio) {
@@ -243,6 +268,7 @@ export default function RegisterPage() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <input className={inputCls} placeholder="ชื่อ-สกุล *" value={m.full_name} onChange={(e) => updateMember(i, "full_name", e.target.value)} />
+                    <input className={inputCls} placeholder="เลขบัตรประชาชน 13 หลัก" value={m.national_id || ""} onChange={(e) => updateMember(i, "national_id", e.target.value.replace(/[^0-9]/g, "").slice(0, 13))} />
                     <input className={inputCls} type="email" placeholder="Gmail ของน้องคนนี้" value={m.email || ""} onChange={(e) => updateMember(i, "email", e.target.value)} />
                     <input className={inputCls} placeholder="โรงเรียน" value={m.school} onChange={(e) => updateMember(i, "school", e.target.value)} />
                     <input className={inputCls} placeholder="เบอร์โทร" value={m.phone} onChange={(e) => updateMember(i, "phone", e.target.value.replace(/[^0-9]/g, "").slice(0, 10))} />
@@ -272,6 +298,8 @@ export default function RegisterPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <input className={inputCls} placeholder={t("reg.advisorName") + " *"} value={advisor.full_name} onChange={(e) => setAdvisor({ ...advisor, full_name: e.target.value })} />
               <input className={inputCls} placeholder={t("reg.advisorPhone")} value={advisor.phone} onChange={(e) => setAdvisor({ ...advisor, phone: e.target.value.replace(/[^0-9]/g, "").slice(0, 10) })} />
+              <input className={inputCls} type="email" placeholder="อีเมลที่ปรึกษา" value={advisor.email} onChange={(e) => setAdvisor({ ...advisor, email: e.target.value })} />
+              <input className={inputCls} placeholder="ชื่อทีม / ชื่อธีมผลงาน" value={themeName} onChange={(e) => setThemeName(e.target.value)} />
             </div>
           </div>
         )}
