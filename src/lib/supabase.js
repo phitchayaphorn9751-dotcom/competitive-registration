@@ -257,7 +257,7 @@ export async function fetchRegistration(registrationId) {
   const { data, error } = await supabase
     .from("registrations")
     .select(
-      "id, status, submitter_email, submitter_phone, seats_held, qr_token, waitlist_pos, created_at, reject_reason, course_id, courses(title, price, course_types:type_id(label,requires_payment)), advisors(id,full_name,phone,email), participants(id,full_name,school,grade_level,phone,email,qr_token,checkins(id,scanned_at)), payments(id,amount,slip_url,status,created_at)"
+      "id, status, submitter_email, submitter_phone, seats_held, qr_token, waitlist_pos, created_at, reject_reason, portfolio_url, course_id, courses(title, price, require_portfolio, portfolio_label, course_types:type_id(label,requires_payment)), advisors(id,full_name,phone,email), participants(id,full_name,school,grade_level,phone,email,qr_token,checkins(id,scanned_at)), payments(id,amount,slip_url,status,created_at)"
     )
     .eq("id", registrationId)
     .single()

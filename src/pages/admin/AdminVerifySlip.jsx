@@ -76,7 +76,8 @@ export default function AdminVerifySlip() {
   const advisors = data.advisors || []
   const isPaid = (data.courses?.price || 0) > 0
   const canApprove = ["slip_uploaded", "submitted", "approved", "held"].includes(data.status)
-  const canReject = isPaid && ["slip_uploaded", "submitted"].includes(data.status)
+  // เสียเงิน: ตีกลับสลิป / ฟรี+แนบผลงาน: ไม่อนุมัติผลงาน
+  const canReject = ["slip_uploaded", "submitted"].includes(data.status)
   const canRelease = ["confirmed", "approved", "pending_payment", "slip_uploaded", "held"].includes(data.status)
   const checkedIn = participants.filter((p) => (p.checkins?.length || 0) > 0).length
 
@@ -98,22 +99,45 @@ export default function AdminVerifySlip() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* LEFT: Slip */}
+        {/* LEFT: Slip (เสียเงิน) หรือ ผลงาน (ฟรี+แนบผลงาน) */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="bg-gray-50 border-b border-gray-100 px-4 py-3">
-            <span className="text-sm font-bold text-gray-600">🧾 สลิปการชำระเงิน</span>
+            <span className="text-sm font-bold text-gray-600">{isPaid ? "🧾 สลิปการชำระเงิน" : "📎 ผลงานที่แนบ"}</span>
           </div>
           <div className="p-4">
-            {payment?.slip_url ? (
-              <a href={payment.slip_url} target="_blank" rel="noreferrer" className="block group">
-                <img src={payment.slip_url} alt="slip" className="w-full object-contain max-h-[480px] rounded-xl border border-gray-100 bg-gray-50 group-hover:opacity-90 transition" />
-                <p className="text-center text-xs text-[#F15A24] mt-2 font-bold">🔍 คลิกเพื่อเปิดเต็มจอ · ยอด ฿{payment.amount?.toLocaleString()}</p>
-              </a>
+            {isPaid ? (
+              payment?.slip_url ? (
+                <a href={payment.slip_url} target="_blank" rel="noreferrer" className="block group">
+                  <img src={payment.slip_url} alt="slip" className="w-full object-contain max-h-[480px] rounded-xl border border-gray-100 bg-gray-50 group-hover:opacity-90 transition" />
+                  <p className="text-center text-xs text-[#F15A24] mt-2 font-bold">🔍 คลิกเพื่อเปิดเต็มจอ · ยอด ฿{payment.amount?.toLocaleString()}</p>
+                </a>
+              ) : (
+                <div className="h-48 rounded-xl bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-300 gap-2">
+                  <span className="text-4xl">🧾</span><span className="text-sm">ยังไม่มีรูปสลิป</span>
+                </div>
+              )
             ) : (
-              <div className="h-48 rounded-xl bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-300 gap-2">
-                <span className="text-4xl">🧾</span>
-                <span className="text-sm">{isPaid ? "ยังไม่มีรูปสลิป" : "คอร์สนี้ไม่มีค่าใช้จ่าย"}</span>
-              </div>
+              // คอร์สฟรี
+              data.portfolio_url ? (
+                <div className="space-y-3">
+                  <div className="bg-orange-50 border border-orange-100 rounded-xl p-4">
+                    <p className="text-xs font-bold text-gray-500 mb-1.5">{data.courses?.portfolio_label || "ลิงก์ผลงานที่แนบมา"}</p>
+                    <a href={data.portfolio_url} target="_blank" rel="noreferrer"
+                      className="text-[#F15A24] font-bold text-sm break-all hover:underline flex items-start gap-1.5">
+                      <span className="shrink-0">🔗</span><span>{data.portfolio_url}</span>
+                    </a>
+                  </div>
+                  <a href={data.portfolio_url} target="_blank" rel="noreferrer"
+                    className="block text-center bg-[#F15A24] text-white py-2.5 rounded-xl font-bold text-sm hover:bg-orange-600 transition">
+                    เปิดดูผลงาน →
+                  </a>
+                </div>
+              ) : (
+                <div className="h-48 rounded-xl bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-300 gap-2">
+                  <span className="text-4xl">📎</span>
+                  <span className="text-sm">{data.courses?.require_portfolio ? "ผู้สมัครยังไม่แนบผลงาน" : "คอร์สนี้ไม่ต้องแนบผลงาน"}</span>
+                </div>
+              )
             )}
           </div>
         </div>
@@ -129,7 +153,7 @@ export default function AdminVerifySlip() {
               {[
                 ["วิชาที่สมัคร", data.courses?.title, true],
                 ["อีเมลผู้สมัคร", data.submitter_email, false],
-                ["ยอดที่ต้องชำระ", isPaid ? `${(data.courses?.price || 0).toLocaleString()} บาท` : "ฟรี", false],
+                ["ยอดที่ต้องชำระ", isPaid ? `${(data.courses?.price || 0).toLocaleString()} บาท` : "ไม่มีค่าใช้จ่าย", false],
               ].map(([label, value, hl]) => (
                 <div key={label} className="flex justify-between items-center py-2.5 border-b border-gray-50 last:border-0 gap-3">
                   <span className="text-xs font-bold text-gray-500 shrink-0">{label}:</span>
@@ -217,10 +241,10 @@ export default function AdminVerifySlip() {
         <div className="bg-white w-full sm:rounded-2xl sm:max-w-md shadow-2xl overflow-hidden rounded-t-2xl" onClick={(e) => e.stopPropagation()}>
           <div className="h-1.5 bg-red-500" />
           <div className="p-5 sm:p-6">
-            <h3 className="font-bold text-gray-800 text-lg mb-1">❌ ตีกลับสลิป</h3>
-            <p className="text-sm text-gray-500 mb-4">ระบุเหตุผล ผู้สมัครจะเห็นและส่งสลิปใหม่ได้</p>
+            <h3 className="font-bold text-gray-800 text-lg mb-1">{isPaid ? "❌ ตีกลับสลิป" : "❌ ไม่อนุมัติผลงาน"}</h3>
+            <p className="text-sm text-gray-500 mb-4">{isPaid ? "ระบุเหตุผล ผู้สมัครจะเห็นและส่งสลิปใหม่ได้" : "ระบุเหตุผล ผู้สมัครจะเห็นเหตุผลที่ไม่ผ่าน"}</p>
             <textarea rows="3" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="เช่น สลิปไม่ชัด / ยอดเงินไม่ตรง / ไม่พบรายการโอน"
+              placeholder={isPaid ? "เช่น สลิปไม่ชัด / ยอดเงินไม่ตรง / ไม่พบรายการโอน" : "เช่น ผลงานไม่ตรงโจทย์ / ลิงก์เปิดไม่ได้ / ผิดเงื่อนไข"}
               className="w-full px-3 py-2.5 border border-gray-200 rounded-xl outline-none focus:border-red-400 focus:ring-1 focus:ring-red-400 text-sm resize-none" />
           </div>
           <div className="px-5 sm:px-6 pb-5 sm:pb-6 grid grid-cols-2 gap-3">
