@@ -359,17 +359,31 @@ export function PaymentScreen({ course, regId, t, navigate }) {
   const [done, setDone] = useState(false)
   const [copied, setCopied] = useState(false)
   const [err, setErr] = useState(null)
-  const deadlineRef = useRef(Date.now() + DEADLINE_MIN * 60 * 1000)
+
+  // deadline ผูกกับ regId — เก็บใน sessionStorage ไม่รีเซ็ตตอนรีเฟรช
+  const deadlineRef = useRef(null)
+  if (deadlineRef.current === null) {
+    const key = `pay_deadline_${regId}`
+    let saved = null
+    try { saved = sessionStorage.getItem(key) } catch (_) {}
+    if (saved) {
+      deadlineRef.current = parseInt(saved, 10)
+    } else {
+      deadlineRef.current = Date.now() + DEADLINE_MIN * 60 * 1000
+      try { sessionStorage.setItem(key, String(deadlineRef.current)) } catch (_) {}
+    }
+  }
 
   useEffect(() => {
-    const iv = setInterval(() => {
+    const tick = () => {
       const diff = deadlineRef.current - Date.now()
-      if (diff <= 0) { setExpired(true); setTimeLeft("00:00"); clearInterval(iv) }
-      else {
-        const m = Math.floor(diff / 1000 / 60), s = Math.floor((diff / 1000) % 60)
-        setTimeLeft(`${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`)
-      }
-    }, 1000)
+      if (diff <= 0) { setExpired(true); setTimeLeft("00:00"); return false }
+      const m = Math.floor(diff / 1000 / 60), s = Math.floor((diff / 1000) % 60)
+      setTimeLeft(`${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`)
+      return true
+    }
+    tick()
+    const iv = setInterval(() => { if (!tick()) clearInterval(iv) }, 1000)
     return () => clearInterval(iv)
   }, [])
 
@@ -385,12 +399,19 @@ export function PaymentScreen({ course, regId, t, navigate }) {
     if (!file) { setErr(t("pay.tapSelect")); return }
     setUploading(true); setErr(null)
     try {
-      const url = await uploadSlip(file, regId)
-      await attachSlip(regId, url, course.price || 0)
+      // กัน hang นานเกินไป — timeout 45 วิ
+      const withTimeout = (p, ms) => Promise.race([
+        p, new Promise((_, rej) => setTimeout(() => rej(new Error("TIMEOUT")), ms)),
+      ])
+      const url = await withTimeout(uploadSlip(file, regId), 45000)
+      await withTimeout(attachSlip(regId, url, course.price || 0), 20000)
+      // เคลียร์ deadline เมื่อส่งสำเร็จ
+      try { sessionStorage.removeItem(`pay_deadline_${regId}`) } catch (_) {}
       setDone(true)
     } catch (e) {
-      // ใบสมัครหมดเวลา (ที่นั่งถูกปล่อยแล้ว)
-      if (e.message?.includes("INVALID_STATE") || e.message?.includes("expired")) {
+      if (e.message === "TIMEOUT") {
+        setErr("⏳ การส่งใช้เวลานานผิดปกติ — ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง")
+      } else if (e.message?.includes("INVALID_STATE") || e.message?.includes("expired")) {
         setExpired(true)
         setErr("⏰ ใบสมัครนี้หมดเวลาชำระเงินแล้ว ที่นั่งถูกปล่อยให้คิวถัดไป กรุณาสมัครใหม่อีกครั้ง")
       } else {

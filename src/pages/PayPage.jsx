@@ -22,6 +22,10 @@ export default function PayPage() {
         const reg = regs.find((r) => r.id === regId)
         if (!reg) { setError("ไม่พบใบสมัครนี้ หรือคุณไม่มีสิทธิ์เข้าถึง"); return }
         if ((reg.price || 0) <= 0) { setError("วิชานี้ไม่ต้องชำระเงิน"); return }
+        // ถ้าถูกตีกลับ (slip_rejected) → เริ่มนับเวลาใหม่ (ล้าง deadline เดิม)
+        if (reg.status === "slip_rejected" || reg.reject_reason) {
+          try { sessionStorage.removeItem(`pay_deadline_${regId}`) } catch (_) {}
+        }
         // โหลดข้อมูลคอร์ส (เลขบัญชี/ธนาคาร/ราคา)
         const c = await fetchCourse(reg.course_id)
         setCourse(c)
