@@ -90,6 +90,24 @@ export async function addParticipant(registrationId, p) {
   return data // participant id
 }
 
+// ข้อ 11: ลบผู้ใช้ + ประวัติทั้งหมด
+export async function adminDeleteUser(email) {
+  const { data, error } = await supabase.rpc("admin_delete_user", { p_email: email })
+  if (error) throw error
+  return data
+}
+// ข้อ 9: แก้ข้อมูลนักเรียน (ไม่แตะ national_id/email)
+export async function adminUpdateStudent(profileId, fields) {
+  const { error } = await supabase.from("profiles").update({
+    title: fields.title, first_name: fields.first_name, last_name: fields.last_name,
+    nickname: fields.nickname, age: fields.age ? Number(fields.age) : null, phone: fields.phone,
+    grade_level: fields.grade_level, line_id: fields.line_id, school: fields.school,
+    parent_full_name: fields.parent_full_name, parent_phone: fields.parent_phone,
+  }).eq("id", profileId)
+  if (error) throw error
+  return true
+}
+
 // ข้อ 6: แอดมินเปลี่ยนคอร์สของใบสมัคร
 export async function adminChangeCourse(regId, newCourseId) {
   const { data, error } = await supabase.rpc("admin_change_course", { p_reg_id: regId, p_new_course_id: newCourseId })
@@ -698,4 +716,39 @@ export async function searchSchools(query) {
   const { data, error } = await supabase.rpc("search_schools", { p_query: query.trim() })
   if (error) throw error
   return (data || []).map((r) => r.name)
+}
+
+// ข้อ 12: ค้นหาที่อยู่ไทย (ตำบล→อำเภอ/จังหวัด/รหัสไปรษณีย์) แบบ browser-safe
+// โหลดข้อมูลจาก CDN ครั้งเดียว เก็บใน memory (ไม่ใช้ package ที่พึ่ง Node)
+let _thaiAddrCache = null
+let _thaiAddrLoading = null
+async function loadThaiAddrData() {
+  if (_thaiAddrCache) return _thaiAddrCache
+  if (_thaiAddrLoading) return _thaiAddrLoading
+  _thaiAddrLoading = fetch("https://raw.githubusercontent.com/kongvut/thai-province-data/master/api_province_with_amphure_tambon.json")
+    .then((r) => r.json())
+    .then((provinces) => {
+      const flat = []
+      for (const p of provinces) {
+        for (const a of (p.amphure || [])) {
+          for (const t of (a.tambon || [])) {
+            flat.push({
+              subDistrict: t.name_th, district: a.name_th, province: p.name_th,
+              postalCode: String(t.zip_code || ""),
+            })
+          }
+        }
+      }
+      _thaiAddrCache = flat
+      return flat
+    })
+    .catch(() => { _thaiAddrCache = []; return [] })
+  return _thaiAddrLoading
+}
+
+export async function searchThaiAddress(query) {
+  if (!query || query.trim().length < 2) return []
+  const q = query.trim()
+  const data = await loadThaiAddrData()
+  return data.filter((a) => a.subDistrict.includes(q)).slice(0, 10)
 }

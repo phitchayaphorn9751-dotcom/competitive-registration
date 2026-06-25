@@ -265,20 +265,9 @@ function CheckinModal({ reg, t, onClose }) {
   const [qrUrl, setQrUrl] = useState(null)
 
   useEffect(() => {
-    let cancelled = false
-    async function gen() {
-      try {
-        await loadScript("https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js")
-        // qrcodejs วาด DOM — ใช้ qrserver API เป็น fallback ที่ง่ายกว่า
-      } catch {}
-      // ใช้ image API สร้าง QR (ไม่ต้องพึ่ง DOM lib)
-      if (!cancelled) {
-        const token = reg.my_qr_token || reg.qr_token
-        setQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(token)}`)
-      }
-    }
-    gen()
-    return () => { cancelled = true }
+    const token = reg.my_qr_token || reg.qr_token || ""
+    // ข้อ 8: ใช้บาร์โค้ด Code128 (image API ไม่ต้องลง library)
+    setQrUrl(`https://barcodeapi.org/api/128/${encodeURIComponent(token)}`)
   }, [reg])
 
   return (
@@ -290,8 +279,8 @@ function CheckinModal({ reg, t, onClose }) {
           <p className="text-blue-200 text-xs mt-1">{t("myreg.checkinSub")}</p>
         </div>
         <div className="p-6 bg-gray-50 flex flex-col items-center">
-          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4">
-            {qrUrl ? <img src={qrUrl} alt="QR check-in" className="w-48 h-48" /> : <div className="w-48 h-48 flex items-center justify-center text-gray-300">…</div>}
+          <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4 w-full flex justify-center">
+            {qrUrl ? <img src={qrUrl} alt="barcode check-in" className="h-28 w-auto max-w-full object-contain" /> : <div className="h-28 flex items-center justify-center text-gray-300">…</div>}
           </div>
           {/* รหัสสั้นสำหรับกรอกมือ (กรณีสแกนไม่ได้) */}
           {(() => {
@@ -299,7 +288,7 @@ function CheckinModal({ reg, t, onClose }) {
             const shortCode = token.slice(0, 6).toUpperCase()
             return shortCode ? (
               <div className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 mb-2 text-center">
-                <p className="text-[11px] text-gray-400 mb-0.5">รหัสเช็คอิน (กรณีสแกน QR ไม่ได้)</p>
+                <p className="text-[11px] text-gray-400 mb-0.5">รหัสเช็คอิน (กรณีสแกนบาร์โค้ดไม่ได้)</p>
                 <p className="font-mono text-2xl font-extrabold text-gray-800 tracking-[0.3em]">{shortCode}</p>
               </div>
             ) : null

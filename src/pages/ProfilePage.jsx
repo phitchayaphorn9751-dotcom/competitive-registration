@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { getSession, isAdminUser, fetchMyProfile, saveProfile, searchSchools } from "../lib/supabase.js"
+import { getSession, isAdminUser, fetchMyProfile, saveProfile, searchSchools, searchThaiAddress } from "../lib/supabase.js"
 import { useLang } from "../lib/i18n.jsx"
 
 const TITLES = ["เด็กชาย", "เด็กหญิง", "นาย", "นางสาว", "นาง"]
@@ -106,9 +106,13 @@ export default function ProfilePage() {
   function pickSchool(name) { set("school", name); setSchoolVerified(true); setCustomSchool(false); setShowSchoolDD(false) }
   function toggleCustomSchool() { setCustomSchool((p) => !p); set("school", ""); setSchoolVerified(false); setShowSchoolDD(false) }
 
-  function onSubdistrictInput(val) {
-    // กรอกที่อยู่เอง (ปิด autocomplete ชั่วคราว — กรอกตำบล/อำเภอ/จังหวัด/รหัสไปรษณีย์ด้วยตนเอง)
-    set("subdistrict", val)
+  async function onSubdistrictInput(val) {
+    setF((prev) => ({ ...prev, subdistrict: val, district: "", province: "", zipcode: "" }))
+    setAddrVerified(false)
+    if (val.trim().length >= 2) {
+      try { const list = await searchThaiAddress(val); setAddrOptions(list); setShowAddrDD(true) }
+      catch { setAddrOptions([]) }
+    } else { setShowAddrDD(false) }
   }
   function pickAddress(a) {
     setF((prev) => ({ ...prev, subdistrict: a.subDistrict, district: a.district, province: a.province, zipcode: a.postalCode }))

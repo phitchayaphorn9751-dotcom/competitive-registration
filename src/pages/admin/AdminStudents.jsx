@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react"
-import { fetchAllProfiles, fetchRegistrationsByEmail } from "../../lib/supabase.js"
+import { fetchAllProfiles, fetchRegistrationsByEmail, adminDeleteUser, adminUpdateStudent } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
 
 const TX_STATUS = {
@@ -23,7 +23,7 @@ function txBar(s) {
 }
 
 export default function AdminStudents() {
-  const { toast } = useDialog()
+  const { toast, confirm } = useDialog()
   const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState("")
@@ -33,10 +33,28 @@ export default function AdminStudents() {
   const [selected, setSelected] = useState(null)
   const [txs, setTxs] = useState([])
   const [loadingTx, setLoadingTx] = useState(false)
+  const [editStudent, setEditStudent] = useState(null)
 
-  useEffect(() => {
+  function load() {
+    setLoading(true)
     fetchAllProfiles().then(setStudents).catch((e) => toast("โหลดไม่สำเร็จ: " + e.message, "error")).finally(() => setLoading(false))
-  }, [toast])
+  }
+  useEffect(() => { load() }, [])
+
+  // ข้อ 11: ลบผู้ใช้ + ประวัติการสมัครทั้งหมด
+  async function doDeleteUser(u) {
+    const ok = await confirm({
+      title: "🗑 ลบผู้ใช้นี้?",
+      message: `ลบ "${u.first_name || ""} ${u.last_name || ""}" (${u.email})\nประวัติการสมัครทั้งหมดของผู้ใช้นี้จะถูกลบถาวร กู้คืนไม่ได้`,
+      confirmText: "ลบถาวร", tone: "danger",
+    })
+    if (!ok) return
+    try {
+      await adminDeleteUser(u.email)
+      toast("ลบผู้ใช้เรียบร้อย", "success")
+      setSelected(null); load()
+    } catch (e) { toast("ลบไม่สำเร็จ: " + e.message, "error") }
+  }
 
   const schools = useMemo(() => [...new Set(students.map((s) => s.school).filter(Boolean))].sort(), [students])
 
@@ -255,9 +273,79 @@ export default function AdminStudents() {
                 </div>
               </div>
             </div>
+            {/* Footer: แก้ไข / ลบ */}
+            <div className="border-t border-gray-100 p-4 flex gap-3 justify-end bg-white">
+              <button onClick={() => setEditStudent(selected)}
+                className="px-4 py-2.5 rounded-xl bg-gray-100 text-gray-700 font-bold text-sm hover:bg-gray-200 transition">✏️ แก้ไขข้อมูล</button>
+              <button onClick={() => doDeleteUser(selected)}
+                className="px-4 py-2.5 rounded-xl bg-red-50 text-red-600 border border-red-200 font-bold text-sm hover:bg-red-100 transition">🗑 ลบผู้ใช้</button>
+            </div>
           </div>
         </div>
       )}
+      {editStudent && <EditStudentModal student={editStudent} onClose={() => setEditStudent(null)}
+        onSaved={() => { setEditStudent(null); setSelected(null); load() }} toast={toast} />}
+    </div>
+  )
+}
+
+// ข้อ 9: แก้ข้อมูลนักเรียน (ล็อกเลขบัตร + อีเมล)
+function EditStudentModal({ student, onClose, onSaved, toast }) {
+  const [f, setF] = useState({
+    title: student.title || "", first_name: student.first_name || "", last_name: student.last_name || "",
+    nickname: student.nickname || "", age: student.age || "", phone: student.phone || "",
+    grade_level: student.grade_level || "", line_id: student.line_id || "", school: student.school || "",
+    parent_full_name: student.parent_full_name || "", parent_phone: student.parent_phone || "",
+  })
+  const [busy, setBusy] = useState(false)
+  const set = (k, v) => setF((p) => ({ ...p, [k]: v }))
+  const inputCls = "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#F15A24]"
+
+  async function save() {
+    setBusy(true)
+    try { await adminUpdateStudent(student.id, f); toast("บันทึกข้อมูลแล้ว", "success"); onSaved() }
+    catch (e) { toast("บันทึกไม่สำเร็จ: " + e.message, "error"); setBusy(false) }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl max-h-[90dvh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="h-1.5 bg-[#F15A24]" />
+        <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
+          <h3 className="font-bold text-gray-800">✏️ แก้ไขข้อมูลนักเรียน</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
+        </div>
+        <div className="p-5 overflow-y-auto space-y-4">
+          {/* ล็อก: เลขบัตร + อีเมล */}
+          <div className="bg-gray-100 rounded-xl p-3 space-y-2">
+            <div>
+              <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">เลขบัตร/Passport (แก้ไม่ได้) 🔒</label>
+              <div className="text-sm font-mono font-bold text-gray-500 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">{student.national_id || student.passport_no || "-"}</div>
+            </div>
+            <div>
+              <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">อีเมล (แก้ไม่ได้) 🔒</label>
+              <div className="text-sm font-mono text-gray-500 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">{student.email || "-"}</div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">คำนำหน้า</label><input className={inputCls} value={f.title} onChange={(e) => set("title", e.target.value)} /></div>
+            <div><label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">ชื่อเล่น</label><input className={inputCls} value={f.nickname} onChange={(e) => set("nickname", e.target.value)} /></div>
+            <div><label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">ชื่อจริง</label><input className={inputCls} value={f.first_name} onChange={(e) => set("first_name", e.target.value)} /></div>
+            <div><label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">นามสกุล</label><input className={inputCls} value={f.last_name} onChange={(e) => set("last_name", e.target.value)} /></div>
+            <div><label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">อายุ</label><input className={inputCls} value={f.age} onChange={(e) => set("age", e.target.value.replace(/[^0-9]/g, ""))} /></div>
+            <div><label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">เบอร์โทร</label><input className={inputCls} value={f.phone} onChange={(e) => set("phone", e.target.value.replace(/[^0-9]/g, "").slice(0, 10))} /></div>
+            <div><label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">ระดับชั้น</label><input className={inputCls} value={f.grade_level} onChange={(e) => set("grade_level", e.target.value)} /></div>
+            <div><label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Line ID</label><input className={inputCls} value={f.line_id} onChange={(e) => set("line_id", e.target.value)} /></div>
+            <div className="col-span-2"><label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">โรงเรียน</label><input className={inputCls} value={f.school} onChange={(e) => set("school", e.target.value)} /></div>
+            <div><label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">ชื่อผู้ปกครอง</label><input className={inputCls} value={f.parent_full_name} onChange={(e) => set("parent_full_name", e.target.value)} /></div>
+            <div><label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">เบอร์ผู้ปกครอง</label><input className={inputCls} value={f.parent_phone} onChange={(e) => set("parent_phone", e.target.value.replace(/[^0-9]/g, "").slice(0, 10))} /></div>
+          </div>
+        </div>
+        <div className="p-4 border-t border-gray-100 grid grid-cols-2 gap-3">
+          <button onClick={onClose} className="py-2.5 bg-gray-100 text-gray-700 rounded-xl font-bold text-sm hover:bg-gray-200 transition">ยกเลิก</button>
+          <button onClick={save} disabled={busy} className="py-2.5 bg-[#F15A24] text-white rounded-xl font-bold text-sm hover:bg-orange-600 transition disabled:opacity-50">บันทึก</button>
+        </div>
+      </div>
     </div>
   )
 }
