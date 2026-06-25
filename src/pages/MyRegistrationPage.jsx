@@ -42,6 +42,7 @@ export default function MyRegistrationPage() {
   const [error, setError] = useState(null)
   const [filter, setFilter] = useState("all")
   const [barcodeReg, setBarcodeReg] = useState(null)
+  const [detailReg, setDetailReg] = useState(null)
 
   useEffect(() => {
     getSession().then(async (s) => {
@@ -52,6 +53,14 @@ export default function MyRegistrationPage() {
       finally { setLoading(false) }
     })
   }, [navigate])
+
+  // refresh อัตโนมัติทุก 30 วินาที (อัปเดตสถานะการสมัคร เช่น อนุมัติ/ตีกลับ)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      fetchMyRegistrations().then(setRegs).catch(() => {})
+    }, 30000)
+    return () => clearInterval(timer)
+  }, [])
 
 
   const counts = regs.reduce((acc, r) => { const d = displayStatus(r); acc[d] = (acc[d] || 0) + 1; return acc }, {})
@@ -97,7 +106,6 @@ export default function MyRegistrationPage() {
             </div>
             <div className="flex items-center gap-3">
               <LangToggle />
-              <button onClick={() => navigate("/")} className="text-sm text-[#F15A24] font-bold hover:underline">{t("myreg.addMore")}</button>
             </div>
           </div>
 
@@ -140,7 +148,8 @@ export default function MyRegistrationPage() {
               const d = displayStatus(reg)
               const cfg = STATUS_CFG[d] || STATUS_CFG.held
               return (
-                <div key={reg.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+                <div key={reg.id} onClick={() => setDetailReg(reg)}
+                  className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow cursor-pointer">
                   <div className={`h-1 w-full ${cfg.dot}`} />
                   <div className="p-5 sm:p-6">
                     <div className="flex flex-col sm:flex-row sm:items-start gap-4">
@@ -159,14 +168,22 @@ export default function MyRegistrationPage() {
                             {d === "waitlist" && reg.waitlist_pos ? ` — คิวที่ ${reg.waitlist_pos}` : ""}
                           </span>
                           {d === "waitlist" && <span className="text-[11px] text-gray-400 pl-1">*เมื่อมีที่ว่าง ระบบจะเรียกคิวอัตโนมัติ</span>}
+                          {d === "rejected" && reg.reject_reason && <span className="text-[11px] text-red-400 pl-1">เหตุผล: {reg.reject_reason}</span>}
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap gap-2 shrink-0">
+                      <div className="flex flex-wrap gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                         {d === "pending_payment" && (
                           <button onClick={() => navigate(`/pay/${reg.id}`)}
                             className="px-4 py-2 rounded-xl bg-[#ec9213] hover:bg-[#d6810b] text-white font-bold text-sm shadow-sm transition">
                             {t("myreg.payNow")}
+                          </button>
+                        )}
+                        {/* ข้อ 2.2: ถูกตีกลับ → ส่งใหม่ด้วยใบเดิม */}
+                        {d === "rejected" && (reg.price || 0) > 0 && (
+                          <button onClick={() => navigate(`/pay/${reg.id}`)}
+                            className="px-4 py-2 rounded-xl bg-[#F15A24] hover:bg-orange-600 text-white font-bold text-sm shadow-sm transition">
+                            ส่งสลิปใหม่
                           </button>
                         )}
                         {d === "confirmed" && (reg.my_qr_token || reg.qr_token) && (
@@ -186,11 +203,64 @@ export default function MyRegistrationPage() {
       </div>
 
       {barcodeReg && <CheckinModal reg={barcodeReg} t={t} onClose={() => setBarcodeReg(null)} />}
+      {detailReg && <RegDetailModal reg={detailReg} t={t} navigate={navigate} onClose={() => setDetailReg(null)} />}
     </div>
   )
 }
 
 // Modal แสดง QR เช็คอิน (encode qr_token ให้เครื่องสแกนของแอดมินอ่าน)
+function RegDetailModal({ reg, t, navigate, onClose }) {
+  const d = displayStatus(reg)
+  const cfg = STATUS_CFG[d] || STATUS_CFG.held
+  function fmtDate(s) { if (!s) return "-"; const dt = new Date(s); return dt.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) }
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden max-h-[90dvh] flex flex-col">
+        <div className={`${cfg.bg} px-6 py-5 border-b ${cfg.border}`}>
+          <p className="text-xs text-gray-400 mb-1">รายละเอียดการสมัคร</p>
+          <h3 className="font-extrabold text-lg text-gray-800 leading-snug">{reg.course_title}</h3>
+          <span className={`inline-flex items-center gap-1.5 mt-2 text-xs font-bold px-3 py-1.5 rounded-full border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
+            {cfg.icon} {t(cfg.key)}
+          </span>
+        </div>
+        <div className="p-6 space-y-3 overflow-y-auto text-sm">
+          <Row label="รหัสใบสมัคร" value={reg.id.slice(0, 8)} mono />
+          {reg.participant_code && <Row label="เลขประจำตัว" value={reg.participant_code} mono />}
+          <Row label="วันที่สมัคร" value={fmtDate(reg.created_at)} />
+          {reg.theme_name && <Row label="ชื่อทีม/ธีม" value={reg.theme_name} />}
+          {(reg.price || 0) > 0 && <Row label="ค่าลงทะเบียน" value={`${Number(reg.price).toLocaleString()} บาท`} />}
+          {(reg.price || 0) === 0 && <Row label="ค่าลงทะเบียน" value="ไม่มีค่าใช้จ่าย" />}
+          {d === "waitlist" && reg.waitlist_pos && <Row label="คิวสำรอง" value={`ลำดับที่ ${reg.waitlist_pos}`} />}
+          {d === "rejected" && reg.reject_reason && (
+            <div className="bg-red-50 border border-red-100 rounded-xl p-3">
+              <p className="text-xs font-bold text-red-500 mb-1">เหตุผลที่ไม่ผ่าน</p>
+              <p className="text-sm text-red-700">{reg.reject_reason}</p>
+            </div>
+          )}
+        </div>
+        <div className="p-4 border-t border-gray-100 flex gap-2">
+          {d === "pending_payment" && (
+            <button onClick={() => navigate(`/pay/${reg.id}`)} className="flex-1 bg-[#ec9213] text-white py-3 rounded-xl font-bold text-sm hover:bg-[#d6810b] transition">ชำระเงิน</button>
+          )}
+          {d === "rejected" && (reg.price || 0) > 0 && (
+            <button onClick={() => navigate(`/pay/${reg.id}`)} className="flex-1 bg-[#F15A24] text-white py-3 rounded-xl font-bold text-sm hover:bg-orange-600 transition">ส่งสลิปใหม่</button>
+          )}
+          <button onClick={onClose} className="flex-1 bg-gray-100 text-gray-600 py-3 rounded-xl font-bold text-sm hover:bg-gray-200 transition">ปิด</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+function Row({ label, value, mono }) {
+  return (
+    <div className="flex justify-between items-center gap-3 py-1.5 border-b border-gray-50 last:border-0">
+      <span className="text-gray-400 text-xs shrink-0">{label}</span>
+      <span className={`text-gray-800 font-bold text-right ${mono ? "font-mono" : ""}`}>{value}</span>
+    </div>
+  )
+}
+
 function CheckinModal({ reg, t, onClose }) {
   const [qrUrl, setQrUrl] = useState(null)
 

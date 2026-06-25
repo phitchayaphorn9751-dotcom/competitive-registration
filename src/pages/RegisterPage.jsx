@@ -416,10 +416,6 @@ export function PaymentScreen({ course, regId, t, navigate }) {
                 <p className="text-xs text-orange-200 mb-1 font-medium">{expired ? t("pay.expired") : "⏱ " + t("pay.deadline")}</p>
                 <p className={`text-4xl font-mono font-extrabold tracking-widest ${expired ? "text-red-300" : "text-yellow-300"}`}>{timeLeft || "..."}</p>
               </div>
-              <div className="bg-white/15 rounded-2xl p-4 mb-5">
-                <p className="text-orange-200 text-xs mb-1">{t("pay.regId")}</p>
-                <p className="text-lg font-mono font-bold break-all">{regId}</p>
-              </div>
               <div className="bg-white/10 rounded-xl p-3.5">
                 <p className="text-orange-200 text-xs mb-0.5">{t("pay.amount")}</p>
                 <p className="text-2xl font-extrabold">{course.price?.toLocaleString()} <span className="text-lg font-normal text-orange-200">{t("pay.baht")}</span></p>

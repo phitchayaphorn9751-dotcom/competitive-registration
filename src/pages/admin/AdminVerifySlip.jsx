@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate, useOutletContext } from "react-router-dom"
-import { fetchRegistration, confirmRegistration, releaseSeat, rejectRegistration } from "../../lib/supabase.js"
+import { fetchRegistration, confirmRegistration, releaseSeat, rejectRegistration, fetchCoursesAdmin, adminChangeCourse, adminUpdatePaymentAmount } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
 
 const STATUS = {
@@ -28,6 +28,7 @@ export default function AdminVerifySlip() {
   const [err, setErr] = useState(null)
   const [rejectModal, setRejectModal] = useState(false)
   const [rejectReason, setRejectReason] = useState("")
+  const [editOpen, setEditOpen] = useState(false)
 
   useEffect(() => { load() }, [registrationId])
   async function load() {
@@ -146,8 +147,11 @@ export default function AdminVerifySlip() {
         <div className="flex flex-col gap-4">
           {/* Applicant info */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="bg-gradient-to-r from-[#fff5f0] to-[#fff9f6] border-b border-orange-100 px-4 py-3">
+            <div className="bg-gradient-to-r from-[#fff5f0] to-[#fff9f6] border-b border-orange-100 px-4 py-3 flex justify-between items-center">
               <span className="text-sm font-bold text-[#F15A24]">👤 ข้อมูลผู้สมัคร</span>
+              {["pending_payment","slip_uploaded","submitted","held"].includes(data.status) && (
+                <button onClick={() => setEditOpen(true)} className="text-xs font-bold text-gray-500 hover:text-[#F15A24] border border-gray-200 rounded-lg px-2.5 py-1 transition">✏️ แก้ไข</button>
+              )}
             </div>
             <div className="p-4 space-y-0">
               {[
@@ -254,6 +258,65 @@ export default function AdminVerifySlip() {
         </div>
       </div>
     )}
+    {editOpen && <EditRegistrationModal data={data} eventId={data.courses?.event_id} isPaid={isPaid}
+      onClose={() => setEditOpen(false)} onSaved={() => { setEditOpen(false); load() }} toast={toast} />}
     </>
+  )
+}
+
+// ข้อ 6 + 7: แก้ไขใบสมัคร (เปลี่ยนคอร์ส / แก้จำนวนเงิน)
+function EditRegistrationModal({ data, eventId, isPaid, onClose, onSaved, toast }) {
+  const [courses, setCourses] = useState([])
+  const [courseId, setCourseId] = useState(data.course_id)
+  const [amount, setAmount] = useState((data.payments?.[0]?.amount ?? data.courses?.price ?? 0))
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    fetchCoursesAdmin(eventId).then(setCourses).catch(() => {})
+  }, [eventId])
+
+  async function save() {
+    setBusy(true)
+    try {
+      if (courseId !== data.course_id) await adminChangeCourse(data.id, courseId)
+      if (isPaid && Number(amount) !== Number(data.payments?.[0]?.amount ?? data.courses?.price ?? 0)) {
+        await adminUpdatePaymentAmount(data.id, Number(amount))
+      }
+      toast("บันทึกการแก้ไขแล้ว", "success")
+      onSaved()
+    } catch (e) {
+      const msg = e.message?.includes("ALREADY_FINALIZED") ? "แก้ไม่ได้ — อนุมัติไปแล้ว" : "บันทึกไม่สำเร็จ: " + e.message
+      toast(msg, "error"); setBusy(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="h-1.5 bg-[#F15A24]" />
+        <div className="p-5 sm:p-6 space-y-4">
+          <h3 className="font-bold text-gray-800 text-lg">✏️ แก้ไขใบสมัคร</h3>
+          <div>
+            <label className="text-xs font-bold text-gray-500 block mb-1.5">เปลี่ยนวิชา</label>
+            <select value={courseId} onChange={(e) => setCourseId(e.target.value)}
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#F15A24]">
+              {courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+            </select>
+          </div>
+          {isPaid && (
+            <div>
+              <label className="text-xs font-bold text-gray-500 block mb-1.5">จำนวนเงินที่ต้องชำระ (บาท)</label>
+              <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)}
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#F15A24]" />
+              <p className="text-[11px] text-gray-400 mt-1">แก้ได้เฉพาะก่อนอนุมัติ</p>
+            </div>
+          )}
+        </div>
+        <div className="px-5 sm:px-6 pb-5 sm:pb-6 grid grid-cols-2 gap-3">
+          <button onClick={onClose} className="py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition text-sm">ยกเลิก</button>
+          <button onClick={save} disabled={busy} className="py-3 bg-[#F15A24] text-white rounded-xl font-bold hover:bg-orange-600 shadow-sm transition text-sm disabled:opacity-50">บันทึก</button>
+        </div>
+      </div>
+    </div>
   )
 }

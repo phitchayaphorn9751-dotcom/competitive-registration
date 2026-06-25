@@ -90,6 +90,19 @@ export async function addParticipant(registrationId, p) {
   return data // participant id
 }
 
+// ข้อ 6: แอดมินเปลี่ยนคอร์สของใบสมัคร
+export async function adminChangeCourse(regId, newCourseId) {
+  const { data, error } = await supabase.rpc("admin_change_course", { p_reg_id: regId, p_new_course_id: newCourseId })
+  if (error) throw error
+  return data
+}
+// ข้อ 7: แอดมินแก้จำนวนเงิน
+export async function adminUpdatePaymentAmount(regId, amount) {
+  const { data, error } = await supabase.rpc("admin_update_payment_amount", { p_reg_id: regId, p_amount: amount })
+  if (error) throw error
+  return data
+}
+
 // ข้อ 3: ติดตามการเปลี่ยนแปลง registrations แบบเรียลไทม์
 export function subscribeRegistrations(onChange) {
   const channel = supabase
@@ -302,7 +315,7 @@ export async function fetchRegistration(registrationId) {
   const { data, error } = await supabase
     .from("registrations")
     .select(
-      "id, status, submitter_email, submitter_phone, seats_held, qr_token, waitlist_pos, created_at, reject_reason, portfolio_url, course_id, courses(title, price, require_portfolio, portfolio_label, course_types:type_id(label,requires_payment)), advisors(id,full_name,phone,email), participants(id,full_name,school,grade_level,phone,email,qr_token,checkins(id,scanned_at)), payments(id,amount,slip_url,status,created_at)"
+      "id, status, submitter_email, submitter_phone, seats_held, qr_token, waitlist_pos, created_at, reject_reason, portfolio_url, course_id, courses(title, price, event_id, require_portfolio, portfolio_label, course_types:type_id(label,requires_payment)), advisors(id,full_name,phone,email), participants(id,full_name,school,grade_level,phone,email,qr_token,checkins(id,scanned_at)), payments(id,amount,slip_url,status,created_at)"
     )
     .eq("id", registrationId)
     .single()
