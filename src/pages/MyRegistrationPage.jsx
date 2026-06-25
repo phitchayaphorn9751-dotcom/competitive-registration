@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { getSession, isAdminUser, fetchMyRegistrations } from "../lib/supabase.js"
+import { getSession, isAdminUser, fetchMyRegistrations, fetchCourse } from "../lib/supabase.js"
 import { useLang } from "../lib/i18n.jsx"
 
 // map สถานะ → สี/ไอคอน (อิงสถานะจริงในระบบเรา: held, confirmed, waitlist, cancelled + payment_status)
@@ -156,7 +156,6 @@ export default function MyRegistrationPage() {
                           {reg.is_team_member && <span className="text-[10px] font-bold bg-purple-50 text-purple-600 border border-purple-200 px-2 py-0.5 rounded-full">👥 เพื่อนสมัครให้</span>}
                         </h3>
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-400 mb-3">
-                          <span>{t("myreg.regId")}: <span className="font-mono font-bold text-gray-600">{reg.id.slice(0, 8)}</span></span>
                           {reg.participant_code && <span className="font-mono font-bold text-[#F15A24] bg-orange-50 border border-orange-200 px-2 py-0.5 rounded">🪪 {reg.participant_code}</span>}
                           <span>{t("myreg.registeredOn")} {fmtDate(reg.created_at)}</span>
                           {reg.theme_name && <span>· ทีม: <span className="font-bold text-gray-600">{reg.theme_name}</span></span>}
@@ -207,86 +206,137 @@ export default function MyRegistrationPage() {
   )
 }
 
-// Modal แสดง QR เช็คอิน (encode qr_token ให้เครื่องสแกนของแอดมินอ่าน)
+// Modal รายละเอียด 2 ฝั่ง: ซ้าย=ข้อมูลวิชา ขวา=ข้อมูลที่กรอกตอนสมัคร
 function RegDetailModal({ reg, t, navigate, onClose }) {
   const d = displayStatus(reg)
   const cfg = STATUS_CFG[d] || STATUS_CFG.held
   const isPaid = (reg.price || 0) > 0
   const isConfirmed = d === "confirmed"
   const code = reg.participant_code || ""
-  // บาร์โค้ด encode รหัสนักเรียน — สแกนแล้วเช็คอินได้เลย
   const barcodeUrl = code ? `https://barcodeapi.org/api/128/${encodeURIComponent(code)}` : null
+  const [course, setCourse] = useState(null)
+  const [imgIdx, setImgIdx] = useState(0)
+
+  useEffect(() => {
+    fetchCourse(reg.course_id).then(setCourse).catch(() => {})
+  }, [reg.course_id])
+
   function fmtDate(s) { if (!s) return "-"; const dt = new Date(s); return dt.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) }
+  function fmtThaiDate(s) { if (!s) return "-"; try { return new Date(s).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" }) } catch { return s } }
+
+  const images = course ? [course.image_url, ...(course.image_urls || [])].filter(Boolean) : []
+
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden max-h-[90dvh] flex flex-col">
-        <div className={`${cfg.bg} px-6 py-5 border-b ${cfg.border} shrink-0`}>
-          <p className="text-xs text-gray-400 mb-1">รายละเอียดการสมัคร</p>
-          <h3 className="font-extrabold text-lg text-gray-800 leading-snug">{reg.course_title}</h3>
-          <span className={`inline-flex items-center gap-1.5 mt-2 text-xs font-bold px-3 py-1.5 rounded-full border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
-            {cfg.icon} {t(cfg.key)}
-            {d === "waitlist" && reg.waitlist_pos ? ` — คิวที่ ${reg.waitlist_pos}` : ""}
-          </span>
+      <div className="bg-white w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden max-h-[92dvh] flex flex-col">
+        {/* Header ส้ม */}
+        <div className="bg-gradient-to-br from-[#F15A24] to-[#d04810] px-6 py-4 text-white flex justify-between items-start shrink-0">
+          <div className="pr-4">
+            <p className="text-xs text-orange-200 mb-0.5 font-bold tracking-widest uppercase">{reg.course_type || "วิชา"}</p>
+            <h3 className="font-extrabold text-xl leading-tight">{reg.course_title}</h3>
+            <span className="inline-flex items-center gap-1.5 mt-2 text-xs font-bold px-3 py-1 rounded-full bg-white/20 backdrop-blur">
+              {cfg.icon} {t(cfg.key)}{d === "waitlist" && reg.waitlist_pos ? ` — คิวที่ ${reg.waitlist_pos}` : ""}
+            </span>
+          </div>
+          <button onClick={onClose} className="text-white/80 hover:text-white text-2xl leading-none shrink-0 w-8 h-8 flex items-center justify-center">×</button>
         </div>
-        <div className="p-6 space-y-1 overflow-y-auto text-sm">
-          {/* บาร์โค้ด + รหัสนักเรียน (เฉพาะยืนยันแล้ว) */}
-          {isConfirmed && code && (
-            <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 mb-3 flex flex-col items-center">
-              <div className="w-full bg-[#F15A24] text-white rounded-xl px-4 py-2.5 mb-3 text-center">
-                <p className="text-[10px] text-orange-100">รหัสนักเรียน (ใช้เช็คอิน)</p>
-                <p className="font-mono text-2xl font-extrabold tracking-wider">{code}</p>
+
+        {/* 2 ฝั่ง */}
+        <div className="overflow-y-auto flex-1 flex flex-col md:flex-row">
+          {/* ───── ซ้าย: ข้อมูลวิชา ───── */}
+          <div className="md:w-1/2 md:border-r border-gray-100 bg-[#fffbf8] p-5 space-y-4">
+            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">📚 ข้อมูลวิชา</p>
+            {/* รูป carousel */}
+            {images.length > 0 && (
+              <div className="relative h-40 rounded-2xl overflow-hidden bg-gray-200">
+                <img src={images[imgIdx]} className="w-full h-full object-cover" alt={reg.course_title} />
+                {images.length > 1 && (
+                  <>
+                    <button onClick={() => setImgIdx((imgIdx - 1 + images.length) % images.length)} className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/40 text-white flex items-center justify-center">‹</button>
+                    <button onClick={() => setImgIdx((imgIdx + 1) % images.length)} className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/40 text-white flex items-center justify-center">›</button>
+                  </>
+                )}
               </div>
-              {barcodeUrl && <img src={barcodeUrl} alt="barcode" className="h-16 w-auto max-w-full object-contain" />}
-              <p className="text-[10px] text-gray-400 mt-1">สแกนบาร์โค้ด หรือแจ้งรหัสนักเรียนเพื่อเช็คอิน</p>
-            </div>
-          )}
-
-          <Row label="รหัสใบสมัคร" value={reg.id.slice(0, 8)} mono />
-          {reg.course_type && <Row label="ประเภท" value={reg.course_type} />}
-          <Row label="รูปแบบการสมัคร" value={reg.count_mode === "team" ? "👥 ทีม" : reg.count_mode === "pair" ? "👯 คู่" : "👤 เดี่ยว"} />
-          <Row label="ค่าลงทะเบียน" value={isPaid ? `${Number(reg.price).toLocaleString()} บาท` : "ไม่มีค่าใช้จ่าย"} />
-          {reg.theme_name && <Row label="ชื่อทีม/ธีม" value={reg.theme_name} />}
-          <Row label="วันที่สมัคร" value={fmtDate(reg.created_at)} />
-
-          {/* ครูที่ปรึกษา */}
-          {reg.advisor_name && (
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 my-2">
-              <p className="text-xs font-bold text-blue-500 mb-1">👨‍🏫 ครูที่ปรึกษา</p>
-              <p className="text-sm text-gray-700 font-bold">{reg.advisor_name}</p>
-              {reg.advisor_phone && <p className="text-xs text-gray-500">📞 {reg.advisor_phone}</p>}
-              {reg.advisor_email && <p className="text-xs text-gray-500">✉️ {reg.advisor_email}</p>}
-            </div>
-          )}
-
-          {/* ลิงก์ผลงาน */}
-          {reg.require_portfolio && (
-            <div className="bg-orange-50 border border-orange-100 rounded-xl p-3 my-2">
-              <p className="text-xs font-bold text-[#F15A24] mb-1.5">📎 {reg.portfolio_label || "ผลงานที่แนบ"}</p>
-              {reg.portfolio_url ? (
-                <div className="space-y-1.5">
-                  {reg.portfolio_url.split(/[\n,]+/).map((link, i) => {
-                    const url = link.trim()
-                    if (!url) return null
-                    const isLink = /^https?:\/\//i.test(url)
-                    return isLink ? (
-                      <a key={i} href={url} target="_blank" rel="noreferrer" className="block text-sm text-[#F15A24] font-bold break-all hover:underline">{i + 1}. {url}</a>
-                    ) : (
-                      <p key={i} className="text-sm text-gray-700 break-all">{i + 1}. {url}</p>
-                    )
-                  })}
+            )}
+            {/* การ์ดวันที่ */}
+            <div className="grid grid-cols-3 gap-2">
+              {[["📅", "วันเริ่ม", fmtThaiDate(course?.start_date)], ["🏁", "วันสิ้นสุด", fmtThaiDate(course?.end_date)], ["⏱️", "ระยะเวลา", course?.duration || "-"]].map(([ic, lb, vl], i) => (
+                <div key={i} className="bg-white rounded-xl border border-gray-100 p-2.5 text-center">
+                  <div className="text-lg">{ic}</div>
+                  <p className="text-[9px] text-gray-400 mt-0.5">{lb}</p>
+                  <p className="text-[11px] font-bold text-gray-700 leading-tight">{vl}</p>
                 </div>
-              ) : <p className="text-xs text-gray-400">ยังไม่ได้แนบผลงาน</p>}
+              ))}
             </div>
-          )}
+            {course?.level && <Row label="ระดับ" value={course.level} />}
+            <Row label="ค่าลงทะเบียน" value={isPaid ? `${Number(reg.price).toLocaleString()} บาท` : "ไม่มีค่าใช้จ่าย"} />
+            {/* รายละเอียด */}
+            {course?.content && (
+              <div>
+                <p className="text-xs font-bold text-gray-500 mb-1">รายละเอียด</p>
+                <p className="text-xs text-gray-600 whitespace-pre-wrap leading-relaxed">{course.content}</p>
+              </div>
+            )}
+          </div>
 
-          {d === "rejected" && reg.reject_reason && (
-            <div className="bg-red-50 border border-red-100 rounded-xl p-3 my-2">
-              <p className="text-xs font-bold text-red-500 mb-1">เหตุผลที่ไม่ผ่าน</p>
-              <p className="text-sm text-red-700">{reg.reject_reason}</p>
-            </div>
-          )}
+          {/* ───── ขวา: ข้อมูลที่กรอกตอนสมัคร ───── */}
+          <div className="md:w-1/2 p-5 space-y-1">
+            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2">📝 ข้อมูลการสมัคร</p>
+
+            {/* บาร์โค้ด (เฉพาะยืนยันแล้ว) */}
+            {isConfirmed && code && (
+              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-3 mb-3 flex flex-col items-center">
+                <div className="w-full bg-[#F15A24] text-white rounded-xl px-3 py-2 mb-2 text-center">
+                  <p className="text-[10px] text-orange-100">รหัสนักเรียน (ใช้เช็คอิน)</p>
+                  <p className="font-mono text-xl font-extrabold tracking-wider">{code}</p>
+                </div>
+                {barcodeUrl && <img src={barcodeUrl} alt="barcode" className="h-14 w-auto max-w-full object-contain" />}
+              </div>
+            )}
+
+            <Row label="รูปแบบการสมัคร" value={reg.count_mode === "team" ? "👥 ทีม" : reg.count_mode === "pair" ? "👯 คู่" : "👤 เดี่ยว"} />
+            {reg.theme_name && <Row label="ชื่อทีม/ธีม" value={reg.theme_name} />}
+            <Row label="วันที่สมัคร" value={fmtDate(reg.created_at)} />
+
+            {/* ครูที่ปรึกษา */}
+            {reg.advisor_name && (
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 my-2">
+                <p className="text-xs font-bold text-blue-500 mb-1">👨‍🏫 ครูที่ปรึกษา</p>
+                <p className="text-sm text-gray-700 font-bold">{reg.advisor_name}</p>
+                {reg.advisor_phone && <p className="text-xs text-gray-500">📞 {reg.advisor_phone}</p>}
+                {reg.advisor_email && <p className="text-xs text-gray-500">✉️ {reg.advisor_email}</p>}
+              </div>
+            )}
+
+            {/* ลิงก์ผลงาน */}
+            {reg.require_portfolio && (
+              <div className="bg-orange-50 border border-orange-100 rounded-xl p-3 my-2">
+                <p className="text-xs font-bold text-[#F15A24] mb-1.5">📎 {reg.portfolio_label || "ผลงานที่แนบ"}</p>
+                {reg.portfolio_url ? (
+                  <div className="space-y-1.5">
+                    {reg.portfolio_url.split(/[\n,]+/).map((link, i) => {
+                      const url = link.trim(); if (!url) return null
+                      const isLink = /^https?:\/\//i.test(url)
+                      return isLink
+                        ? <a key={i} href={url} target="_blank" rel="noreferrer" className="block text-sm text-[#F15A24] font-bold break-all hover:underline">{i + 1}. {url}</a>
+                        : <p key={i} className="text-sm text-gray-700 break-all">{i + 1}. {url}</p>
+                    })}
+                  </div>
+                ) : <p className="text-xs text-gray-400">ยังไม่ได้แนบผลงาน</p>}
+              </div>
+            )}
+
+            {d === "rejected" && reg.reject_reason && (
+              <div className="bg-red-50 border border-red-100 rounded-xl p-3 my-2">
+                <p className="text-xs font-bold text-red-500 mb-1">เหตุผลที่ไม่ผ่าน</p>
+                <p className="text-sm text-red-700">{reg.reject_reason}</p>
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Footer */}
         <div className="p-4 border-t border-gray-100 flex gap-2 shrink-0">
           {d === "pending_payment" && (
             <button onClick={() => navigate(`/pay/${reg.id}`)} className="flex-1 bg-[#ec9213] text-white py-3 rounded-xl font-bold text-sm hover:bg-[#d6810b] transition">ชำระเงิน</button>
