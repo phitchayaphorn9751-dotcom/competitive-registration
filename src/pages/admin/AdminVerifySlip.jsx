@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate, useOutletContext } from "react-router-dom"
-import { fetchRegistration, confirmRegistration, releaseSeat, rejectRegistration, fetchCoursesAdmin, adminChangeCourse, adminUpdatePaymentAmount } from "../../lib/supabase.js"
+import { fetchRegistration, confirmRegistration, releaseSeat, rejectRegistration, fetchCoursesAdmin, adminChangeCourse, adminUpdatePaymentAmount, deleteRegistration } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
 
 const STATUS = {
@@ -57,6 +57,18 @@ export default function AdminVerifySlip() {
     setBusy(true)
     try { await releaseSeat(registrationId); toast("คืนที่นั่งเรียบร้อย", "success"); onBack() }
     catch (e) { toast("ผิดพลาด: " + e.message, "error") } finally { setBusy(false) }
+  }
+
+  async function doDelete() {
+    const ok = await confirm({
+      title: "🗑 ลบรายการสมัครนี้?",
+      message: "ลบใบสมัคร + ผู้เข้าร่วม + สลิป ออกจากระบบถาวร กู้คืนไม่ได้\n(ระบบจะคืนที่นั่งให้คอร์สอัตโนมัติ)",
+      confirmText: "ลบถาวร", tone: "danger",
+    })
+    if (!ok) return
+    setBusy(true)
+    try { await deleteRegistration(registrationId); toast("ลบรายการสมัครแล้ว", "success"); onBack() }
+    catch (e) { toast("ลบไม่สำเร็จ: " + e.message, "error"); setBusy(false) }
   }
 
   if (loading) {
@@ -224,6 +236,14 @@ export default function AdminVerifySlip() {
                 <div className="w-3.5 h-3.5 border-2 border-gray-300 border-t-[#F15A24] rounded-full animate-spin" /> กำลังดำเนินการ…
               </div>
             )}
+            {/* ลบรายการสมัครถาวร */}
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              <button onClick={doDelete} disabled={busy}
+                className="w-full flex items-center justify-center gap-2 py-2.5 text-red-600 rounded-xl font-bold hover:bg-red-50 disabled:opacity-40 transition text-xs border border-red-200">
+                🗑 ลบรายการสมัครนี้ถาวร
+              </button>
+              <p className="text-[10px] text-gray-400 text-center mt-1.5">ลบใบสมัคร + ผู้เข้าร่วม + สลิป ออกจากระบบถาวร (คืนที่นั่งให้)</p>
+            </div>
           </div>
 
           {/* Meta */}

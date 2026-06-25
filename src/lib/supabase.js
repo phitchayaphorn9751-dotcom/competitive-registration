@@ -90,6 +90,13 @@ export async function addParticipant(registrationId, p) {
   return data // participant id
 }
 
+// ลบรายการสมัคร (ใบเดียว) + คืนที่นั่ง
+export async function deleteRegistration(regId) {
+  const { data, error } = await supabase.rpc("admin_delete_registration", { p_reg_id: regId })
+  if (error) throw error
+  return data
+}
+
 // ข้อ 11: ลบผู้ใช้ + ประวัติทั้งหมด
 export async function adminDeleteUser(email) {
   const { data, error } = await supabase.rpc("admin_delete_user", { p_email: email })
