@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react"
-import { fetchAllProfiles, fetchRegistrationsByEmail, adminDeleteUser, adminUpdateStudent } from "../../lib/supabase.js"
+import { fetchAllProfiles, fetchRegistrationsByEmail, adminDeleteUser, adminUpdateStudent, fetchAllSchools, searchSchools } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
 
 const TX_STATUS = {
@@ -301,6 +301,24 @@ function EditStudentModal({ student, onClose, onSaved, toast }) {
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }))
   const inputCls = "w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#F15A24]"
 
+  // ── โรงเรียน autocomplete (เหมือนหน้าลงทะเบียน) ──
+  const [allSchools, setAllSchools] = useState([])
+  const [schoolOptions, setSchoolOptions] = useState([])
+  const [showSchoolDD, setShowSchoolDD] = useState(false)
+  useEffect(() => { fetchAllSchools().then(setAllSchools).catch(() => {}) }, [])
+  const normalizeSchool = (s) => (s || "").toLowerCase().replace(/โรงเรียน|ร\.ร\.|รร\./g, "").trim()
+  async function onSchoolInput(val) {
+    set("school", val)
+    if (val.trim().length === 0) { setShowSchoolDD(false); return }
+    const norm = normalizeSchool(val)
+    let list = allSchools.filter((s) => normalizeSchool(s).includes(norm)).slice(0, 10)
+    if (list.length === 0 && allSchools.length === 0) {
+      try { list = await searchSchools(val) } catch { list = [] }
+    }
+    setSchoolOptions(list); setShowSchoolDD(true)
+  }
+  function pickSchool(name) { set("school", name); setShowSchoolDD(false) }
+
   async function save() {
     setBusy(true)
     try { await adminUpdateStudent(student.id, f); toast("บันทึกข้อมูลแล้ว", "success"); onSaved() }
@@ -336,7 +354,18 @@ function EditStudentModal({ student, onClose, onSaved, toast }) {
             <div><label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">เบอร์โทร</label><input className={inputCls} value={f.phone} onChange={(e) => set("phone", e.target.value.replace(/[^0-9]/g, "").slice(0, 10))} /></div>
             <div><label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">ระดับชั้น</label><input className={inputCls} value={f.grade_level} onChange={(e) => set("grade_level", e.target.value)} /></div>
             <div><label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">Line ID</label><input className={inputCls} value={f.line_id} onChange={(e) => set("line_id", e.target.value)} /></div>
-            <div className="col-span-2"><label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">โรงเรียน</label><input className={inputCls} value={f.school} onChange={(e) => set("school", e.target.value)} /></div>
+            <div className="col-span-2 relative">
+              <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">โรงเรียน</label>
+              <input className={inputCls} value={f.school} placeholder="พิมพ์ชื่อโรงเรียน เช่น ยุพราช..."
+                onChange={(e) => onSchoolInput(e.target.value)} onBlur={() => setTimeout(() => setShowSchoolDD(false), 200)} />
+              {showSchoolDD && schoolOptions.length > 0 && (
+                <ul className="absolute z-30 w-full bg-white border border-gray-200 rounded-xl shadow-xl max-h-44 overflow-y-auto mt-1">
+                  {schoolOptions.map((s, i) => (
+                    <li key={i} onClick={() => pickSchool(s)} className="px-4 py-2.5 hover:bg-orange-50 cursor-pointer text-sm border-b last:border-b-0 text-gray-700">{s}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
             <div><label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">ชื่อผู้ปกครอง</label><input className={inputCls} value={f.parent_full_name} onChange={(e) => set("parent_full_name", e.target.value)} /></div>
             <div><label className="text-[10px] font-bold text-gray-400 uppercase block mb-1">เบอร์ผู้ปกครอง</label><input className={inputCls} value={f.parent_phone} onChange={(e) => set("parent_phone", e.target.value.replace(/[^0-9]/g, "").slice(0, 10))} /></div>
           </div>
