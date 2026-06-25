@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
 import {
   fetchCourse, fetchMyProfile, getSession,
-  holdSeat, finalizeRegistration, addParticipant, addAdvisor, uploadSlip, attachSlip, savePortfolioUrl,
+  holdSeat, finalizeRegistration, setPaymentDeadline, fetchRegistrationDeadline, addParticipant, addAdvisor, uploadSlip, attachSlip, savePortfolioUrl,
   checkDuplicateRegistration, assignParticipantCode, assignCodesForRegistration, saveRegistrationTheme,
 } from "../lib/supabase.js"
 import { useLang } from "../lib/i18n.jsx"
@@ -154,6 +154,10 @@ export default function RegisterPage() {
       }
 
       const requiresPayment = (course.price || 0) > 0
+      // ตั้งเวลาหมดอายุชำระเงินในฐานข้อมูล (รีเฟรชไม่รีเซ็ต)
+      if (requiresPayment && !willWaitlist) {
+        await setPaymentDeadline(regId)
+      }
       setResult({ regId, requiresPayment, isWaitlist: willWaitlist, status: finalStatus, hasPortfolio: !!hasPortfolio })
     } catch (e) {
       setError(translateError(e.message))
@@ -349,7 +353,7 @@ export default function RegisterPage() {
 }
 
 // ── หน้าจ่ายเงิน (workshop) — timer + อัปสลิป ตาม doc 24 ──
-export function PaymentScreen({ course, regId, t, navigate }) {
+export function PaymentScreen({ course, regId, t, navigate, deadline }) {
   const DEADLINE_MIN = 30
   const [timeLeft, setTimeLeft] = useState("")
   const [expired, setExpired] = useState(false)
@@ -359,24 +363,25 @@ export function PaymentScreen({ course, regId, t, navigate }) {
   const [done, setDone] = useState(false)
   const [copied, setCopied] = useState(false)
   const [err, setErr] = useState(null)
+  const [deadlineMs, setDeadlineMs] = useState(deadline ? new Date(deadline).getTime() : null)
 
-  // deadline ผูกกับ regId — เก็บใน sessionStorage ไม่รีเซ็ตตอนรีเฟรช
-  const deadlineRef = useRef(null)
-  if (deadlineRef.current === null) {
-    const key = `pay_deadline_${regId}`
-    let saved = null
-    try { saved = sessionStorage.getItem(key) } catch (_) {}
-    if (saved) {
-      deadlineRef.current = parseInt(saved, 10)
-    } else {
-      deadlineRef.current = Date.now() + DEADLINE_MIN * 60 * 1000
-      try { sessionStorage.setItem(key, String(deadlineRef.current)) } catch (_) {}
+  // ถ้าไม่มี deadline ส่งมา → ดึงจาก DB (รีเฟรชไม่รีเซ็ต)
+  useEffect(() => {
+    let cancelled = false
+    if (!deadlineMs) {
+      fetchRegistrationDeadline(regId).then((d) => {
+        if (cancelled) return
+        if (d) setDeadlineMs(new Date(d).getTime())
+        else setDeadlineMs(Date.now() + DEADLINE_MIN * 60 * 1000) // fallback
+      })
     }
-  }
+    return () => { cancelled = true }
+  }, [regId, deadlineMs])
 
   useEffect(() => {
+    if (!deadlineMs) return
     const tick = () => {
-      const diff = deadlineRef.current - Date.now()
+      const diff = deadlineMs - Date.now()
       if (diff <= 0) { setExpired(true); setTimeLeft("00:00"); return false }
       const m = Math.floor(diff / 1000 / 60), s = Math.floor((diff / 1000) % 60)
       setTimeLeft(`${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`)
@@ -385,7 +390,7 @@ export function PaymentScreen({ course, regId, t, navigate }) {
     tick()
     const iv = setInterval(() => { if (!tick()) clearInterval(iv) }, 1000)
     return () => clearInterval(iv)
-  }, [])
+  }, [deadlineMs])
 
   const account = course.bank_account || "-"
 
@@ -405,8 +410,6 @@ export function PaymentScreen({ course, regId, t, navigate }) {
       ])
       const url = await withTimeout(uploadSlip(file, regId), 45000)
       await withTimeout(attachSlip(regId, url, course.price || 0), 20000)
-      // เคลียร์ deadline เมื่อส่งสำเร็จ
-      try { sessionStorage.removeItem(`pay_deadline_${regId}`) } catch (_) {}
       setDone(true)
     } catch (e) {
       if (e.message === "TIMEOUT") {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
-import { getSession, fetchMyRegistrations, fetchCourse } from "../lib/supabase.js"
+import { getSession, fetchMyRegistrations, fetchCourse, setPaymentDeadline, resetPaymentDeadline } from "../lib/supabase.js"
 import { useLang } from "../lib/i18n.jsx"
 import { PaymentScreen } from "./RegisterPage.jsx"
 
@@ -10,6 +10,7 @@ export default function PayPage() {
   const navigate = useNavigate()
   const { t } = useLang()
   const [course, setCourse] = useState(null)
+  const [deadline, setDeadline] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -22,10 +23,14 @@ export default function PayPage() {
         const reg = regs.find((r) => r.id === regId)
         if (!reg) { setError("ไม่พบใบสมัครนี้ หรือคุณไม่มีสิทธิ์เข้าถึง"); return }
         if ((reg.price || 0) <= 0) { setError("วิชานี้ไม่ต้องชำระเงิน"); return }
-        // ถ้าถูกตีกลับ (slip_rejected) → เริ่มนับเวลาใหม่ (ล้าง deadline เดิม)
+        // ถ้าถูกตีกลับ → ตั้งเวลาใหม่ในฐานข้อมูล (30 นาที)
+        let dl = reg.payment_deadline
         if (reg.status === "slip_rejected" || reg.reject_reason) {
-          try { sessionStorage.removeItem(`pay_deadline_${regId}`) } catch (_) {}
+          dl = await resetPaymentDeadline(regId)
+        } else if (!dl) {
+          dl = await setPaymentDeadline(regId)
         }
+        setDeadline(dl)
         // โหลดข้อมูลคอร์ส (เลขบัญชี/ธนาคาร/ราคา)
         const c = await fetchCourse(reg.course_id)
         setCourse(c)
@@ -54,5 +59,5 @@ export default function PayPage() {
     )
   }
 
-  return <PaymentScreen course={course} regId={regId} t={t} navigate={navigate} />
+  return <PaymentScreen course={course} regId={regId} t={t} navigate={navigate} deadline={deadline} />
 }

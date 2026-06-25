@@ -62,6 +62,24 @@ export async function holdSeat(courseId, email, seats) {
   return data // registration uuid
 }
 
+// ตั้งเวลาหมดอายุชำระเงิน (DB) — รีเฟรชไม่รีเซ็ต
+export async function setPaymentDeadline(regId) {
+  const { data, error } = await supabase.rpc("set_payment_deadline", { p_reg_id: regId })
+  if (error) return null
+  return data
+}
+export async function fetchRegistrationDeadline(regId) {
+  const { data, error } = await supabase.from("registrations").select("payment_deadline").eq("id", regId).single()
+  if (error) return null
+  return data?.payment_deadline || null
+}
+// รีเซ็ตเวลาใหม่ (ตอนตีกลับ → ผู้สมัครได้ 30 นาทีใหม่)
+export async function resetPaymentDeadline(regId) {
+  const { data, error } = await supabase.rpc("reset_payment_deadline", { p_reg_id: regId })
+  if (error) return null
+  return data
+}
+
 // ปรับสถานะให้ถูกตามเงื่อนไข (ฟรี+ไม่แนบผลงาน=confirmed, ฟรี+แนบ=submitted, เสียเงิน=pending_payment)
 export async function finalizeRegistration(regId, hasPortfolio) {
   const { data, error } = await supabase.rpc("finalize_registration", {
