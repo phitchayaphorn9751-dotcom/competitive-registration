@@ -5,11 +5,12 @@ import { useDialog } from "../../lib/dialog.jsx"
 
 // สถานะ (ตรงกับระบบเรา)
 const STATUS = {
-  pending_payment: { label: "⚠️ รอชำระ", cls: "bg-yellow-100 text-yellow-700 border-yellow-200", color: "yellow" },
-  slip_uploaded:   { label: "⏳ รอตรวจสลิป", cls: "bg-blue-100 text-blue-700 border-blue-200", color: "blue" },
+  pending_payment: { label: "⚠️ รอชำระเงิน", cls: "bg-yellow-100 text-yellow-700 border-yellow-200", color: "yellow" },
+  pending_review:  { label: "⏳ รอพิจารณา", cls: "bg-blue-100 text-blue-700 border-blue-200", color: "blue" },
+  slip_uploaded:   { label: "⏳ รอพิจารณา", cls: "bg-blue-100 text-blue-700 border-blue-200", color: "blue" },
   submitted:       { label: "⏳ รอพิจารณา", cls: "bg-blue-100 text-blue-700 border-blue-200", color: "blue" },
   confirmed:       { label: "✅ ยืนยันแล้ว", cls: "bg-green-100 text-green-700 border-green-200", color: "green" },
-  approved:        { label: "✅ อนุมัติแล้ว", cls: "bg-green-100 text-green-700 border-green-200", color: "green" },
+  approved:        { label: "✅ ยืนยันแล้ว", cls: "bg-green-100 text-green-700 border-green-200", color: "green" },
   waitlist:        { label: "📋 คิวสำรอง", cls: "bg-purple-100 text-purple-700 border-purple-200", color: "purple" },
   expired:         { label: "⏰ หมดเวลา", cls: "bg-rose-50 text-rose-500 border-rose-200", color: "rose" },
   rejected:        { label: "❌ ไม่ผ่าน", cls: "bg-red-100 text-red-700 border-red-200", color: "red" },
@@ -21,21 +22,29 @@ function StatusBadge({ status }) {
 }
 
 // pills: key + label + สี
-const FILTERS_PAID = [
+// สถานะรวม 4 แบบ (ไม่แยกมีค่าใช้จ่าย/ไม่มี)
+const FILTERS = [
   { key: "all", label: "ทั้งหมด", color: "gray" },
   { key: "pending_payment", label: "รอชำระเงิน", color: "yellow" },
-  { key: "slip_uploaded", label: "รอตรวจสลิป", color: "blue" },
+  { key: "pending_review", label: "รอพิจารณา", color: "blue" },
   { key: "confirmed", label: "ยืนยันแล้ว", color: "green" },
   { key: "waitlist", label: "คิวสำรอง", color: "purple" },
   { key: "rejected", label: "ไม่ผ่าน", color: "red" },
 ]
-const FILTERS_FREE = [
-  { key: "all", label: "ทั้งหมด", color: "gray" },
-  { key: "submitted", label: "รอพิจารณา", color: "blue" },
-  { key: "confirmed", label: "ยืนยันแล้ว", color: "green" },
-  { key: "waitlist", label: "คิวสำรอง", color: "purple" },
-  { key: "rejected", label: "ไม่ผ่าน", color: "red" },
-]
+
+// แปลง DB status → หมวดรวม 4 แบบ
+function unifyStatus(r) {
+  const s = r.status
+  const paid = (r.courses?.price || 0) > 0
+  if (s === "waitlist") return "waitlist"
+  if (s === "confirmed" || s === "approved") return "confirmed"
+  if (s === "rejected" || s === "slip_rejected") return "rejected"
+  // รอพิจารณา = แนบสลิปแล้ว (slip_uploaded) หรือ แนบลิงก์ผลงานแล้ว (submitted)
+  if (s === "slip_uploaded" || s === "submitted") return "pending_review"
+  // รอชำระเงิน = คอร์สเสียเงินที่ยังไม่จ่าย
+  if (s === "pending_payment" || s === "held") return paid ? "pending_payment" : "pending_review"
+  return s
+}
 const PILL = {
   gray: "bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200",
   green: "bg-green-50 text-green-700 border-green-300 hover:bg-green-100",
@@ -66,7 +75,6 @@ export default function AdminApplicants() {
   const [search, setSearch] = useState("")
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(20)
-  const [paySection, setPaySection] = useState("paid") // paid | free
 
   useEffect(() => { load() }, [event?.id])
   // ข้อ 3: เรียลไทม์ — มีผู้สมัครใหม่/อัปเดต ข้อมูลขึ้นทันทีไม่ต้องรีเฟรช
@@ -86,28 +94,21 @@ export default function AdminApplicants() {
     try { setRegs(await fetchRegistrations(event?.id) || []) } catch (_) {}
   }
 
-  const isPaidReg = (r) => (r.courses?.price || 0) > 0
-
-  // แยกตามมี/ไม่มีค่าใช้จ่าย
-  const sectionRegs = useMemo(() =>
-    regs.filter((r) => paySection === "paid" ? isPaidReg(r) : !isPaidReg(r)),
-    [regs, paySection])
-
-  // นับสถานะ (เฉพาะ section ปัจจุบัน)
+  // นับสถานะ (รวมทุกใบ ใช้สถานะรวม)
   const counts = useMemo(() => {
-    const c = {}; sectionRegs.forEach((r) => { c[r.status] = (c[r.status] || 0) + 1 }); return c
-  }, [sectionRegs])
+    const c = {}; regs.forEach((r) => { const u = unifyStatus(r); c[u] = (c[u] || 0) + 1 }); return c
+  }, [regs])
 
   // รายการวิชา (สำหรับ filter)
   const courseOptions = useMemo(() => {
     const m = {}
-    sectionRegs.forEach((r) => { if (r.course_id) m[r.course_id] = r.courses?.title || "ไม่ทราบวิชา" })
+    regs.forEach((r) => { if (r.course_id) m[r.course_id] = r.courses?.title || "ไม่ทราบวิชา" })
     return Object.entries(m).sort((a, b) => a[1].localeCompare(b[1]))
-  }, [sectionRegs])
+  }, [regs])
 
   const filtered = useMemo(() => {
-    return sectionRegs.filter((r) => {
-      if (filter !== "all" && r.status !== filter) return false
+    return regs.filter((r) => {
+      if (filter !== "all" && unifyStatus(r) !== filter) return false
       if (courseFilter !== "all" && r.course_id !== courseFilter) return false
       if (search) {
         const q = search.toLowerCase()
@@ -121,7 +122,7 @@ export default function AdminApplicants() {
       }
       return true
     })
-  }, [sectionRegs, filter, courseFilter, search])
+  }, [regs, filter, courseFilter, search])
 
   const totalPages = Math.ceil(filtered.length / perPage)
   const firstIdx = (page - 1) * perPage
@@ -175,22 +176,10 @@ export default function AdminApplicants() {
         </button>
       </div>
 
-      {/* แท็บแยกมีค่าใช้จ่าย / ไม่มีค่าใช้จ่าย */}
-      <div className="flex gap-2 mb-4 bg-gray-100 p-1 rounded-xl w-fit">
-        <button onClick={() => { setPaySection("paid"); setFilter("all"); setPage(1) }}
-          className={`px-4 py-2 rounded-lg text-sm font-bold transition ${paySection === "paid" ? "bg-white text-[#F15A24] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
-          💰 มีค่าใช้จ่าย
-        </button>
-        <button onClick={() => { setPaySection("free"); setFilter("all"); setPage(1) }}
-          className={`px-4 py-2 rounded-lg text-sm font-bold transition ${paySection === "free" ? "bg-white text-[#F15A24] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
-          🆓 ไม่มีค่าใช้จ่าย
-        </button>
-      </div>
-
-      {/* Quick filter pills */}
+      {/* Quick filter pills (สถานะรวม) */}
       <div className="flex flex-wrap gap-2 mb-4">
-        {(paySection === "paid" ? FILTERS_PAID : FILTERS_FREE).map(({ key, label, color }) => {
-          const count = key === "all" ? sectionRegs.length : counts[key] || 0
+        {FILTERS.map(({ key, label, color }) => {
+          const count = key === "all" ? regs.length : counts[key] || 0
           const active = filter === key
           return (
             <button key={key} onClick={() => { setFilter(key); setPage(1) }}
@@ -267,7 +256,7 @@ export default function AdminApplicants() {
                     <div className="font-mono text-xs text-gray-600 flex items-center gap-1">📞 {mainPhone(r)}</div>
                     <div className="text-xs text-gray-400 truncate max-w-[160px] mt-0.5">{r.submitter_email || "-"}</div>
                   </td>
-                  <td className="px-4 py-3.5"><StatusBadge status={r.status} /></td>
+                  <td className="px-4 py-3.5"><StatusBadge status={unifyStatus(r)} /></td>
                   <td className="px-4 py-3.5 text-right">
                     <span className="text-[#F15A24] text-xs font-bold opacity-0 group-hover:opacity-100 transition inline-flex items-center gap-1">ตรวจสอบ →</span>
                   </td>
@@ -293,7 +282,7 @@ export default function AdminApplicants() {
                   <div className="font-bold text-gray-800 text-sm">{mainName(r)}</div>
                   {(r.participants?.length || 0) > 1 && <div className="text-[10px] text-purple-500 font-bold">+ ทีม {r.participants.length} คน</div>}
                 </div>
-                <StatusBadge status={r.status} />
+                <StatusBadge status={unifyStatus(r)} />
               </div>
               <div className="text-xs text-gray-600 font-medium mb-1 line-clamp-1">📚 {r.courses?.title || "-"}</div>
               <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-400">
