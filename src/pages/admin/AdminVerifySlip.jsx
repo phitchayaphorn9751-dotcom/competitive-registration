@@ -105,11 +105,20 @@ export default function AdminVerifySlip() {
   const participants = data.participants || []
   const advisors = data.advisors || []
   const isPaid = (data.courses?.price || 0) > 0
-  // ประเภท 2 = ฟรี + ต้องแนบผลงาน
+  // ประเภท 2 = ฟรี + ต้องแนบผลงาน / ประเภท 1 = ฟรี + ไม่แนบผลงาน
   const isType2 = !isPaid && (data.courses?.require_portfolio === true)
-  const canApprove = ["slip_uploaded", "submitted", "approved", "held", "pending_payment", "waitlist"].includes(data.status)
-  // ประเภท 2: "ไม่ผ่าน" = กลับคิวสำรอง (เฉพาะตอน submitted/confirmed) / เสียเงิน: ตีกลับขอสลิปใหม่
-  const canReject = isType2
+  const isType1 = !isPaid && (data.courses?.require_portfolio !== true)
+  const isFreePortfolioLike = isType1 || isType2  // ฟรีทั้งคู่ ใช้ปุ่มไม่ผ่าน=กลับคิวสำรอง
+
+  // อนุมัติ: ประเภท 1 confirmed แล้วไม่ต้องอนุมัติซ้ำ (ได้ที่นั่งอัตโนมัติ) — อนุมัติเฉพาะ waitlist
+  const canApprove = isType1
+    ? data.status === "waitlist"
+    : ["slip_uploaded", "submitted", "approved", "held", "pending_payment", "waitlist"].includes(data.status)
+  // ไม่ผ่าน: ประเภท 1 เฉพาะ waitlist (กลับคิว) — confirmed ไม่มีปุ่มไม่ผ่าน (ใช้คืนที่นั่งแทน)
+  //         ประเภท 2 = submitted/confirmed (กลับคิว) / เสียเงิน: ตีกลับขอสลิปใหม่
+  const canReject = isType1
+    ? data.status === "waitlist"
+    : isType2
     ? ["submitted", "confirmed", "approved"].includes(data.status)
     : ["slip_uploaded", "submitted", "approved", "confirmed", "pending_payment"].includes(data.status)
   const canRelease = ["confirmed", "approved", "pending_payment", "slip_uploaded", "submitted", "waitlist", "held", "slip_rejected"].includes(data.status)
@@ -273,7 +282,7 @@ export default function AdminVerifySlip() {
                 className="flex flex-col items-center gap-1.5 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200 disabled:opacity-40 transition text-xs">
                 <span className="text-lg">🗑️</span> ยกเลิก / คืนที่นั่ง
               </button>
-              <button onClick={() => isType2 ? rejectPortfolioAction() : setRejectModal(true)} disabled={busy || !canReject}
+              <button onClick={() => isFreePortfolioLike ? rejectPortfolioAction() : setRejectModal(true)} disabled={busy || !canReject}
                 className="flex flex-col items-center gap-1.5 py-3 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 disabled:opacity-40 transition text-xs border border-red-100">
                 <span className="text-lg">❌</span> ไม่ผ่าน
               </button>
