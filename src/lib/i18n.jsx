@@ -112,6 +112,7 @@ const T = {
   "myreg.st.waitlist": { th: "Waitlist", en: "Waitlist" },
   "myreg.st.cancelled": { th: "ยกเลิกแล้ว", en: "Cancelled" },
   "myreg.st.rejected": { th: "ไม่ผ่าน", en: "Rejected" },
+  "myreg.st.expired": { th: "หมดเวลาชำระเงิน", en: "Payment Expired" },
 
   // ---- ProfilePage ----
   "profile.title": { th: "ลงทะเบียนประวัติสมาชิก", en: "Member Registration" },

@@ -12,12 +12,14 @@ const STATUS_CFG = {
   waitlist:        { key: "myreg.st.waitlist",        icon: "📋", bg: "bg-gray-100",  text: "text-gray-600",   border: "border-gray-200",   dot: "bg-gray-400" },
   cancelled:       { key: "myreg.st.cancelled",       icon: "🚫", bg: "bg-gray-50",   text: "text-gray-400",   border: "border-gray-100",   dot: "bg-gray-300" },
   rejected:        { key: "myreg.st.rejected",        icon: "❌", bg: "bg-red-50",    text: "text-red-700",    border: "border-red-200",    dot: "bg-red-500" },
+  expired:         { key: "myreg.st.expired",         icon: "🕐", bg: "bg-rose-50",   text: "text-rose-500",   border: "border-rose-100",   dot: "bg-rose-400" },
 }
 
 // แปลงสถานะดิบ (รวม payment) → key เดียวสำหรับแสดงผล
 function displayStatus(r) {
   if (r.status === "waitlist") return "waitlist"
   if (r.status === "cancelled") return "cancelled"
+  if (r.status === "expired") return "expired"
   if (r.status === "confirmed" || r.status === "approved") return "confirmed"
   if (r.status === "submitted") return "pending_review"  // ฟรี+แนบผลงาน รออนุมัติ
   if (r.status === "rejected" || r.status === "slip_rejected") return "rejected"
@@ -25,6 +27,11 @@ function displayStatus(r) {
   const needPay = (r.price || 0) > 0
   if (r.status === "held" || r.status === "pending_payment" || r.status === "slip_uploaded") {
     if (needPay) {
+      // เลย deadline แล้ว → หมดเวลา
+      if (r.payment_deadline && new Date(r.payment_deadline).getTime() < Date.now()
+          && r.payment_status !== "submitted" && r.payment_status !== "pending" && r.status !== "slip_uploaded") {
+        return "expired"
+      }
       if (r.payment_status === "submitted" || r.payment_status === "pending" || r.status === "slip_uploaded") return "pending_review"
       if (r.payment_status === "rejected") return "rejected"
       return "pending_payment"
@@ -182,6 +189,13 @@ export default function MyRegistrationPage() {
                           <button onClick={() => navigate(`/pay/${reg.id}`)}
                             className="px-4 py-2 rounded-xl bg-[#F15A24] hover:bg-orange-600 text-white font-bold text-sm shadow-sm transition">
                             ส่งสลิปใหม่
+                          </button>
+                        )}
+                        {/* หมดเวลาชำระ → สมัครใหม่ (คอร์สเดิม) */}
+                        {d === "expired" && (
+                          <button onClick={() => navigate(`/register/${reg.course_id}`)}
+                            className="px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-sm shadow-sm transition">
+                            🔄 สมัครใหม่
                           </button>
                         )}
                         {d === "confirmed" && (reg.participant_code || reg.my_qr_token || reg.qr_token) && (
