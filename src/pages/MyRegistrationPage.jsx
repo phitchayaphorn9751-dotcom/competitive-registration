@@ -165,34 +165,37 @@ export default function MyRegistrationPage() {
                   className="group bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md hover:border-gray-200 transition-all cursor-pointer flex flex-col">
                   <div className={`h-1 w-full ${cfg.dot}`} />
                   <div className="p-4 sm:p-5 flex flex-col flex-1">
-                    {/* แถวบน: สถานะ (ซ้าย) — ราคา (ขวา) อยู่ระดับเดียวกันเสมอ */}
-                    <div className="flex items-center justify-between gap-3 mb-2.5">
-                      <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
-                        {cfg.icon} {t(cfg.key)}
-                        {d === "waitlist" && reg.waitlist_pos ? ` — คิวที่ ${reg.waitlist_pos}` : ""}
-                      </span>
-                      <div className="text-right shrink-0">
-                        {isPaid
-                          ? <span className="text-lg sm:text-xl font-extrabold text-green-600 leading-none whitespace-nowrap">{Number(reg.price).toLocaleString()}<span className="text-xs font-bold text-gray-400 ml-1">บาท</span></span>
-                          : <span className="text-sm font-extrabold text-green-600 whitespace-nowrap">ฟรี</span>}
+                    {/* แถวบน: ซ้าย = วันที่ / ชื่อวิชา / หมวดหมู่  |  ขวา = สถานะ (บน) + เงิน (ล่าง) */}
+                    <div className="flex items-start justify-between gap-3">
+                      {/* ───── ซ้าย ───── */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-gray-400">{t("myreg.registeredOn")} {fmtDate(reg.created_at)}</p>
+                        <h3 className="font-extrabold text-base sm:text-lg text-gray-800 leading-snug flex items-start gap-2 flex-wrap mt-1">
+                          <span className="min-w-0">{reg.course_title}</span>
+                          {reg.is_team_member && <span className="text-[10px] font-bold bg-purple-50 text-purple-600 border border-purple-200 px-2 py-0.5 rounded-full shrink-0">👥 เพื่อนสมัครให้</span>}
+                        </h3>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                          {reg.course_type && <span className="text-[11px] font-bold bg-orange-50 text-[#F15A24] border border-orange-200 px-2.5 py-0.5 rounded-full">{reg.course_type}</span>}
+                          {reg.theme_name && <span className="text-[11px] font-bold bg-gray-100 text-gray-600 px-2.5 py-0.5 rounded-full">ทีม: {reg.theme_name}</span>}
+                        </div>
+                      </div>
+
+                      {/* ───── ขวา: status บน, เงินล่าง ───── */}
+                      <div className="flex flex-col items-end justify-between gap-2 shrink-0 self-stretch">
+                        <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
+                          {cfg.icon} {t(cfg.key)}
+                          {d === "waitlist" && reg.waitlist_pos ? ` — คิวที่ ${reg.waitlist_pos}` : ""}
+                        </span>
+                        <div className="text-right mt-auto">
+                          {isPaid
+                            ? <span className="text-lg sm:text-xl font-extrabold text-[#F15A24] leading-none whitespace-nowrap">{Number(reg.price).toLocaleString()}<span className="text-xs font-bold text-gray-400 ml-1">บาท</span></span>
+                            : <span className="text-sm font-extrabold text-[#F15A24] whitespace-nowrap">ฟรี</span>}
+                        </div>
                       </div>
                     </div>
 
-                    {/* ชื่อวิชา */}
-                    <h3 className="font-extrabold text-base sm:text-lg text-gray-800 leading-snug flex items-start gap-2 flex-wrap mb-1.5">
-                      <span className="flex-1 min-w-0">{reg.course_title}</span>
-                      {reg.is_team_member && <span className="text-[10px] font-bold bg-purple-50 text-purple-600 border border-purple-200 px-2 py-0.5 rounded-full shrink-0">👥 เพื่อนสมัครให้</span>}
-                    </h3>
-
-                    {/* meta: รหัส / วันที่ / ทีม */}
-                    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-gray-400">
-                      {reg.participant_code && <span className="font-mono font-bold text-[#F15A24] bg-orange-50 border border-orange-200 px-2 py-0.5 rounded">🪪 {reg.participant_code}</span>}
-                      <span>{t("myreg.registeredOn")} {fmtDate(reg.created_at)}</span>
-                      {reg.theme_name && <span>· ทีม: <span className="font-bold text-gray-600">{reg.theme_name}</span></span>}
-                    </div>
-
                     {/* หมายเหตุสถานะ */}
-                    {d === "waitlist" && <p className="text-[11px] text-gray-400 mt-2">*จำนวนเต็มแล้ว — เมื่อมีที่ว่างระบบจะเรียกคิวอัตโนมัติ</p>}
+                    {d === "waitlist" && <p className="text-[11px] text-gray-400 mt-3">*จำนวนเต็มแล้ว — เมื่อมีที่ว่างระบบจะเรียกคิวอัตโนมัติ</p>}
                     {d === "rejected" && reg.reject_reason && <p className="text-[11px] text-red-400 mt-2">เหตุผล: {reg.reject_reason}</p>}
 
                     {/* ปุ่ม action — แถวล่างสุด ดันชิดท้ายการ์ดเสมอ กดง่ายบนมือถือ */}
