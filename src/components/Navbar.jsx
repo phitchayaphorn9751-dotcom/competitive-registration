@@ -58,6 +58,11 @@ export default function Navbar() {
   const lineUrl = `https://line.me/ti/p/~${lineId}`
   const telHref = `tel:${phone.replace(/[^0-9+]/g, "")}`
 
+  // ตั้งชื่อแท็บเบราว์เซอร์ตามชื่องานที่เปิด
+  useEffect(() => {
+    if (settings.site_title) document.title = settings.site_title
+  }, [settings.site_title])
+
   return (
     <nav ref={menuRef} className={`sticky top-0 z-50 bg-[#f15a24] text-white transition-shadow duration-200 ${scrolled ? "shadow-lg" : "shadow-sm"}`}>
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">

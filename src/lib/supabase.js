@@ -154,6 +154,12 @@ export async function adminUpdatePaymentAmount(regId, amount) {
 }
 
 // ข้อ 3: ติดตามการเปลี่ยนแปลง registrations แบบเรียลไทม์
+// คำนวณจำนวนที่นั่งใหม่ทุกคอร์ส (แก้ seats_taken ค้าง)
+export async function recalcAllSeats() {
+  const { error } = await supabase.rpc("recalc_all_seats")
+  if (error) throw error
+}
+
 export function subscribeRegistrations(onChange) {
   const channel = supabase
     .channel("registrations-realtime")

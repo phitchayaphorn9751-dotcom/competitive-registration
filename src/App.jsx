@@ -1,4 +1,6 @@
 import { Routes, Route, Navigate, useLocation } from "react-router-dom"
+import { useEffect } from "react"
+import { fetchOpenEvent, fetchEventSettings } from "./lib/supabase.js"
 import Navbar from "./components/Navbar.jsx"
 import HomePage from "./pages/HomePage.jsx"
 import LoginPage from "./pages/LoginPage.jsx"
@@ -24,6 +26,23 @@ import AdminEvents from "./pages/admin/AdminEvents.jsx"
 
 export default function App() {
   const location = useLocation()
+
+  // ตั้งชื่อแท็บเบราว์เซอร์ตามชื่องานที่เปิด (จากหน้า settings)
+  useEffect(() => {
+    (async () => {
+      try {
+        const ev = await fetchOpenEvent()
+        if (!ev) return
+        let title = ev.name
+        try {
+          const es = await fetchEventSettings(ev.id)
+          if (es?.site_title) title = es.site_title
+        } catch (_) {}
+        if (title) document.title = title
+      } catch (_) {}
+    })()
+  }, [])
+
   // ซ่อน Navbar เฉพาะหน้า checkin และ admin (หน้าเหล่านี้มี layout เต็มจอของตัวเอง)
   const hideNavbar = location.pathname.startsWith("/checkin") || location.pathname.startsWith("/admin")
 
