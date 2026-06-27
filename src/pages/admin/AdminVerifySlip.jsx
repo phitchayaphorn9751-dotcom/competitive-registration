@@ -100,7 +100,7 @@ export default function AdminVerifySlip() {
   const canApprove = ["slip_uploaded", "submitted", "approved", "held", "pending_payment"].includes(data.status)
   // เสียเงิน: ตีกลับขอสลิปใหม่ (ได้แม้อนุมัติแล้ว) / ฟรี: ไม่อนุมัติผลงาน
   const canReject = ["slip_uploaded", "submitted", "approved", "confirmed", "pending_payment"].includes(data.status)
-  const canRelease = ["confirmed", "approved", "pending_payment", "slip_uploaded", "held"].includes(data.status)
+  const canRelease = ["confirmed", "approved", "pending_payment", "slip_uploaded", "submitted", "waitlist", "held", "slip_rejected"].includes(data.status)
   const checkedIn = participants.filter((p) => (p.checkins?.length || 0) > 0).length
 
   return (
