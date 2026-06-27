@@ -161,12 +161,26 @@ export default function CheckInPage() {
         await loadScript("https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js")
         if (cancelled) return
         const Html5Qrcode = window.Html5Qrcode
-        const scanner = new Html5Qrcode(QR_REGION_ID)
+        const formats = window.Html5QrcodeSupportedFormats
+        // รองรับทั้ง QR และบาร์โค้ด 1D (Code128/Code39/EAN)
+        const supported = formats ? [
+          formats.QR_CODE, formats.CODE_128, formats.CODE_39,
+          formats.EAN_13, formats.EAN_8, formats.UPC_A, formats.ITF,
+        ] : undefined
+        const scanner = new Html5Qrcode(QR_REGION_ID, supported ? { formatsToSupport: supported } : undefined)
         scannerRef.current = scanner
         await scanner.start(
           { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 240, height: 240 } },
-          (decoded) => { stopCamera(); process(decoded, "qr") },
+          {
+            fps: 10,
+            // กรอบแนวนอน (กว้างกว่าสูง) — เหมาะกับบาร์โค้ด 1D
+            qrbox: (vw, vh) => {
+              const w = Math.floor(Math.min(vw, 320))
+              return { width: w, height: Math.floor(w * 0.5) }
+            },
+            aspectRatio: 1.33,
+          },
+          (decoded) => { stopCamera(); process(decoded, "barcode") },
           () => {}
         )
         if (!cancelled) setScanning(true)
