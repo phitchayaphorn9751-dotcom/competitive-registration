@@ -273,9 +273,9 @@ function CourseCard({ course, t, onDetail, onRegister }) {
                 ปิดรับสมัคร
               </button>
             ) : (
-              <button onClick={onRegister} disabled={isFull}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all shadow-md ${isFull ? "bg-gray-400 cursor-not-allowed" : "bg-[#F15A24] hover:bg-[#C44215]"}`}>
-                {isFull ? "Waitlist" : t("home.register")}
+              <button onClick={onRegister}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all shadow-md ${isFull ? "bg-amber-500 hover:bg-amber-600" : "bg-[#F15A24] hover:bg-[#C44215]"}`}>
+                {isFull ? "📋 สมัคร (คิวสำรอง)" : t("home.register")}
               </button>
             )}
           </div>
