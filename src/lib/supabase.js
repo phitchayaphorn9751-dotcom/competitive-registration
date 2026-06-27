@@ -164,6 +164,25 @@ export function subscribeRegistrations(onChange) {
   return channel
 }
 
+// realtime การเช็คอิน (สำหรับหน้าเช็คอิน — log ขึ้นทันที)
+export function subscribeCheckins(onChange) {
+  const channel = supabase
+    .channel("checkins-realtime")
+    .on("postgres_changes", { event: "*", schema: "public", table: "checkins" }, (payload) => onChange(payload))
+    .subscribe()
+  return channel
+}
+
+// realtime ใบสมัครของฉัน (สถานะเปลี่ยน user เห็นทันที)
+export function subscribeMyRegistrations(onChange) {
+  const channel = supabase
+    .channel("my-reg-realtime")
+    .on("postgres_changes", { event: "*", schema: "public", table: "registrations" }, () => onChange())
+    .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, () => onChange())
+    .subscribe()
+  return channel
+}
+
 // ข้อ 5: เช็คสมัครซ้ำ (อีเมล/เลขบัตร ในคอร์สเดียวกัน)
 export async function checkDuplicateRegistration(courseId, email, nationalIds) {
   const { data, error } = await supabase.rpc("check_duplicate_registration", {

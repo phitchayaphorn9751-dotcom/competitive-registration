@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { getSession, isAdminUser, fetchMyRegistrations, fetchCourse, fetchRegistrationMembers } from "../lib/supabase.js"
+import { getSession, isAdminUser, fetchMyRegistrations, fetchCourse, fetchRegistrationMembers, subscribeMyRegistrations } from "../lib/supabase.js"
 import { useLang } from "../lib/i18n.jsx"
 
 // map สถานะ → สี/ไอคอน (อิงสถานะจริงในระบบเรา: held, confirmed, waitlist, cancelled + payment_status)
@@ -54,12 +54,12 @@ export default function MyRegistrationPage() {
     })
   }, [navigate])
 
-  // refresh อัตโนมัติทุก 30 วินาที (อัปเดตสถานะการสมัคร เช่น อนุมัติ/ตีกลับ)
+  // อัปเดตสถานะแบบ realtime (อนุมัติ/ตีกลับ user เห็นทันที ไม่ต้องรีเฟรช)
   useEffect(() => {
-    const timer = setInterval(() => {
+    const ch = subscribeMyRegistrations(() => {
       fetchMyRegistrations().then(setRegs).catch(() => {})
-    }, 30000)
-    return () => clearInterval(timer)
+    })
+    return () => { ch.unsubscribe() }
   }, [])
 
 

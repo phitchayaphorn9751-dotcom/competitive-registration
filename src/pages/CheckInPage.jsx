@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useNavigate, useOutletContext } from "react-router-dom"
-import { fetchCoursesAdmin, checkInDaily, attendanceDaily } from "../lib/supabase.js"
+import { fetchCoursesAdmin, checkInDaily, attendanceDaily, subscribeCheckins } from "../lib/supabase.js"
 
 // เสียงตอบรับ
 function playSound(type) {
@@ -97,8 +97,9 @@ export default function CheckInPage() {
   useEffect(() => {
     loadLogs()
     if (!courseId || !dateKey) return
-    const iv = setInterval(loadLogs, 5000)
-    return () => clearInterval(iv)
+    // realtime — log เช็คอินขึ้นทันทีไม่ต้องรอ polling
+    const ch = subscribeCheckins(() => loadLogs())
+    return () => { ch.unsubscribe() }
   }, [courseId, dateKey, loadLogs])
 
   // ประมวลผลเช็คอิน
