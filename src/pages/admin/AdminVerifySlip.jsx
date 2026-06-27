@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate, useOutletContext } from "react-router-dom"
-import { fetchRegistration, confirmRegistration, releaseSeat, cancelRegistration, rejectRegistration, rejectPortfolio, fetchCoursesAdmin, adminChangeCourse, adminUpdatePaymentAmount, deleteRegistration, saveRegistrationTheme } from "../../lib/supabase.js"
+import { fetchRegistration, confirmRegistration, releaseSeat, cancelRegistration, rejectRegistration, rejectPortfolio, promoteWaitlist, fetchCoursesAdmin, adminChangeCourse, adminUpdatePaymentAmount, deleteRegistration, saveRegistrationTheme } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
 
 const STATUS = {
@@ -60,6 +60,17 @@ export default function AdminVerifySlip() {
     try { await rejectRegistration(registrationId, rejectReason.trim()); toast("ตีกลับเรียบร้อย (ผู้สมัครส่งสลิปใหม่ได้)", "success"); setRejectModal(false); onBack() }
     catch (e) { toast("ผิดพลาด: " + e.message, "error") } finally { setBusy(false) }
   }
+  // ประเภท 3 (เสียเงิน): ให้สิทธิ์คิวสำรอง → รอชำระเงิน (ไม่จับเวลา)
+  async function promoteAction() {
+    const ok = await confirm({ title: "ให้สิทธิ์ชำระเงิน?", message: "ดึงจากคิวสำรอง → ผู้สมัครแนบสลิปได้ (ไม่จับเวลา)", confirmText: "ให้สิทธิ์", tone: "success" })
+    if (!ok) return
+    setBusy(true)
+    try { await promoteWaitlist(registrationId); toast("ให้สิทธิ์เรียบร้อย — ผู้สมัครชำระเงินได้แล้ว", "success"); onBack() }
+    catch (e) {
+      const msg = e.message?.includes("COURSE_FULL") ? "❌ คอร์สเต็มแล้ว — คืนที่นั่งก่อนจึงให้สิทธิ์ได้" : "ผิดพลาด: " + e.message
+      toast(msg, "error")
+    } finally { setBusy(false) }
+  }
   // ประเภท 2 (ฟรี+ผลงาน): ไม่ผ่าน → กลับคิวสำรอง ไม่มี popup
   async function rejectPortfolioAction() {
     const ok = await confirm({ title: "ผลงานไม่ผ่าน?", message: "ส่งกลับไปเป็นคิวสำรอง — อนุมัติกลับมาได้ภายหลัง", confirmText: "ไม่ผ่าน", tone: "danger" })
@@ -110,10 +121,16 @@ export default function AdminVerifySlip() {
   const isType1 = !isPaid && (data.courses?.require_portfolio !== true)
   const isFreePortfolioLike = isType1 || isType2  // ฟรีทั้งคู่ ใช้ปุ่มไม่ผ่าน=กลับคิวสำรอง
 
-  // อนุมัติ: ประเภท 1 confirmed แล้วไม่ต้องอนุมัติซ้ำ (ได้ที่นั่งอัตโนมัติ) — อนุมัติเฉพาะ waitlist
+  // อนุมัติ: ประเภท 1 confirmed แล้วไม่ต้องอนุมัติซ้ำ — อนุมัติเฉพาะ waitlist
+  //         ประเภท 3 (เสียเงิน) waitlist → ใช้ปุ่ม "ให้สิทธิ์" (promote) แทน ไม่ใช่ "อนุมัติ"
+  const isPaidWaitlist = isPaid && data.status === "waitlist"
   const canApprove = isType1
     ? data.status === "waitlist"
+    : isPaid
+    ? ["slip_uploaded", "submitted", "approved", "pending_payment"].includes(data.status)  // เสียเงิน: อนุมัติหลังแนบสลิป (ไม่รวม waitlist)
     : ["slip_uploaded", "submitted", "approved", "held", "pending_payment", "waitlist"].includes(data.status)
+  // ให้สิทธิ์ (promote): เฉพาะประเภท 3 (เสียเงิน) ที่เป็นคิวสำรอง
+  const canPromote = isPaidWaitlist
   // ไม่ผ่าน: ประเภท 1 เฉพาะ waitlist (กลับคิว) — confirmed ไม่มีปุ่มไม่ผ่าน (ใช้คืนที่นั่งแทน)
   //         ประเภท 2 = submitted/confirmed (กลับคิว) / เสียเงิน: ตีกลับขอสลิปใหม่
   const canReject = isType1
@@ -286,10 +303,17 @@ export default function AdminVerifySlip() {
                 className="flex flex-col items-center gap-1.5 py-3 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 disabled:opacity-40 transition text-xs border border-red-100">
                 <span className="text-lg">❌</span> ไม่ผ่าน
               </button>
-              <button onClick={approve} disabled={busy || !canApprove}
-                className="flex flex-col items-center gap-1.5 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 disabled:opacity-40 disabled:bg-gray-400 shadow-sm transition text-xs">
-                <span className="text-lg">✅</span> อนุมัติ
-              </button>
+              {canPromote ? (
+                <button onClick={promoteAction} disabled={busy}
+                  className="flex flex-col items-center gap-1.5 py-3 bg-amber-500 text-white rounded-xl font-bold hover:bg-amber-600 disabled:opacity-40 shadow-sm transition text-xs">
+                  <span className="text-lg">🎟️</span> ให้สิทธิ์
+                </button>
+              ) : (
+                <button onClick={approve} disabled={busy || !canApprove}
+                  className="flex flex-col items-center gap-1.5 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 disabled:opacity-40 disabled:bg-gray-400 shadow-sm transition text-xs">
+                  <span className="text-lg">✅</span> อนุมัติ
+                </button>
+              )}
             </div>
             {busy && (
               <div className="flex items-center justify-center gap-2 text-xs text-gray-400 py-2 mt-2">

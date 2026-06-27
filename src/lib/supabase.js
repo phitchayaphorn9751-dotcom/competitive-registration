@@ -400,6 +400,14 @@ export async function rejectPortfolio(registrationId) {
   if (error) throw error
 }
 
+// ประเภท 3 (เสียเงิน): admin กด "ให้สิทธิ์" ดึงคิวสำรองขึ้นมา → รอชำระเงิน (ไม่จับเวลา)
+export async function promoteWaitlist(registrationId) {
+  const { error } = await supabase.rpc("promote_waitlist", {
+    p_registration_id: registrationId,
+  })
+  if (error) throw error
+}
+
 // ดึงใบสมัครเดียว (รายละเอียดเต็ม สำหรับหน้าตรวจสลิป)
 export async function fetchRegistration(registrationId) {
   const { data, error } = await supabase
