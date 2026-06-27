@@ -77,11 +77,19 @@ export default function AdminApplicants() {
   const [perPage, setPerPage] = useState(20)
 
   useEffect(() => { load() }, [event?.id])
-  // ข้อ 3: เรียลไทม์ — มีผู้สมัครใหม่/อัปเดต ข้อมูลขึ้นทันทีไม่ต้องรีเฟรช
+  // เรียลไทม์ — มีผู้สมัครใหม่/อัปเดต/ลบ ข้อมูลขึ้นทันทีไม่ต้องรีเฟรช
   useEffect(() => {
     if (!event?.id) return
     const ch = subscribeRegistrations(() => loadSilent())
-    return () => { ch.unsubscribe() }
+    // fallback: โหลดใหม่เมื่อกลับมาที่แท็บ/หน้านี้ (กันกรณี realtime UPDATE ไม่ส่ง)
+    const onVisible = () => { if (document.visibilityState === "visible") loadSilent() }
+    document.addEventListener("visibilitychange", onVisible)
+    window.addEventListener("focus", loadSilent)
+    return () => {
+      ch.unsubscribe()
+      document.removeEventListener("visibilitychange", onVisible)
+      window.removeEventListener("focus", loadSilent)
+    }
   }, [event?.id])
 
   async function load() {
