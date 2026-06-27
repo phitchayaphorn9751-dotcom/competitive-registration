@@ -384,6 +384,14 @@ export async function releaseSeat(registrationId) {
   if (error) throw error
 }
 
+// คืนที่นั่ง = ยกเลิกใบสมัคร (status cancelled + ดึง waitlist)
+export async function cancelRegistration(registrationId) {
+  const { error } = await supabase.rpc("cancel_registration", {
+    p_registration_id: registrationId,
+  })
+  if (error) throw error
+}
+
 // ดึงใบสมัครเดียว (รายละเอียดเต็ม สำหรับหน้าตรวจสลิป)
 export async function fetchRegistration(registrationId) {
   const { data, error } = await supabase

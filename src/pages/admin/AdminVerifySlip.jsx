@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate, useOutletContext } from "react-router-dom"
-import { fetchRegistration, confirmRegistration, releaseSeat, rejectRegistration, fetchCoursesAdmin, adminChangeCourse, adminUpdatePaymentAmount, deleteRegistration, saveRegistrationTheme } from "../../lib/supabase.js"
+import { fetchRegistration, confirmRegistration, releaseSeat, cancelRegistration, rejectRegistration, fetchCoursesAdmin, adminChangeCourse, adminUpdatePaymentAmount, deleteRegistration, saveRegistrationTheme } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
 
 const STATUS = {
@@ -56,10 +56,10 @@ export default function AdminVerifySlip() {
     catch (e) { toast("ผิดพลาด: " + e.message, "error") } finally { setBusy(false) }
   }
   async function release() {
-    const ok = await confirm({ title: "คืนที่นั่ง?", message: "ระบบจะดึง waitlist ขึ้นมาแทนถ้ามี", confirmText: "คืนที่นั่ง", tone: "danger" })
+    const ok = await confirm({ title: "ยกเลิกใบสมัคร?", message: "คืนที่นั่ง + ยกเลิกใบสมัครนี้\nระบบจะดึง waitlist ขึ้นมาแทนถ้ามี", confirmText: "ยกเลิกใบสมัคร", tone: "danger" })
     if (!ok) return
     setBusy(true)
-    try { await releaseSeat(registrationId); toast("คืนที่นั่งเรียบร้อย", "success"); onBack() }
+    try { await cancelRegistration(registrationId); toast("ยกเลิกใบสมัครเรียบร้อย", "success"); onBack() }
     catch (e) { toast("ผิดพลาด: " + e.message, "error") } finally { setBusy(false) }
   }
 
@@ -254,7 +254,7 @@ export default function AdminVerifySlip() {
             <div className="grid grid-cols-3 gap-2">
               <button onClick={release} disabled={busy || !canRelease}
                 className="flex flex-col items-center gap-1.5 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200 disabled:opacity-40 transition text-xs">
-                <span className="text-lg">🗑️</span> คืนที่นั่ง
+                <span className="text-lg">🗑️</span> ยกเลิก / คืนที่นั่ง
               </button>
               <button onClick={() => setRejectModal(true)} disabled={busy || !canReject}
                 className="flex flex-col items-center gap-1.5 py-3 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 disabled:opacity-40 transition text-xs border border-red-100">
