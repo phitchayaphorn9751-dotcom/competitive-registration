@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate, useOutletContext } from "react-router-dom"
-import { fetchRegistration, confirmRegistration, releaseSeat, cancelRegistration, rejectRegistration, fetchCoursesAdmin, adminChangeCourse, adminUpdatePaymentAmount, deleteRegistration, saveRegistrationTheme } from "../../lib/supabase.js"
+import { fetchRegistration, confirmRegistration, releaseSeat, cancelRegistration, rejectRegistration, rejectPortfolio, fetchCoursesAdmin, adminChangeCourse, adminUpdatePaymentAmount, deleteRegistration, saveRegistrationTheme } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
 
 const STATUS = {
@@ -60,6 +60,14 @@ export default function AdminVerifySlip() {
     try { await rejectRegistration(registrationId, rejectReason.trim()); toast("ตีกลับเรียบร้อย (ผู้สมัครส่งสลิปใหม่ได้)", "success"); setRejectModal(false); onBack() }
     catch (e) { toast("ผิดพลาด: " + e.message, "error") } finally { setBusy(false) }
   }
+  // ประเภท 2 (ฟรี+ผลงาน): ไม่ผ่าน → กลับคิวสำรอง ไม่มี popup
+  async function rejectPortfolioAction() {
+    const ok = await confirm({ title: "ผลงานไม่ผ่าน?", message: "ส่งกลับไปเป็นคิวสำรอง — อนุมัติกลับมาได้ภายหลัง", confirmText: "ไม่ผ่าน", tone: "danger" })
+    if (!ok) return
+    setBusy(true)
+    try { await rejectPortfolio(registrationId); toast("ส่งกลับคิวสำรองแล้ว", "success"); onBack() }
+    catch (e) { toast("ผิดพลาด: " + e.message, "error") } finally { setBusy(false) }
+  }
   async function release() {
     const ok = await confirm({ title: "ยกเลิกใบสมัคร?", message: "คืนที่นั่ง + ยกเลิกใบสมัครนี้\nระบบจะดึง waitlist ขึ้นมาแทนถ้ามี", confirmText: "ยกเลิกใบสมัคร", tone: "danger" })
     if (!ok) return
@@ -97,9 +105,13 @@ export default function AdminVerifySlip() {
   const participants = data.participants || []
   const advisors = data.advisors || []
   const isPaid = (data.courses?.price || 0) > 0
-  const canApprove = ["slip_uploaded", "submitted", "approved", "held", "pending_payment"].includes(data.status)
-  // เสียเงิน: ตีกลับขอสลิปใหม่ (ได้แม้อนุมัติแล้ว) / ฟรี: ไม่อนุมัติผลงาน
-  const canReject = ["slip_uploaded", "submitted", "approved", "confirmed", "pending_payment"].includes(data.status)
+  // ประเภท 2 = ฟรี + ต้องแนบผลงาน
+  const isType2 = !isPaid && (data.courses?.require_portfolio === true)
+  const canApprove = ["slip_uploaded", "submitted", "approved", "held", "pending_payment", "waitlist"].includes(data.status)
+  // ประเภท 2: "ไม่ผ่าน" = กลับคิวสำรอง (เฉพาะตอน submitted/confirmed) / เสียเงิน: ตีกลับขอสลิปใหม่
+  const canReject = isType2
+    ? ["submitted", "confirmed", "approved"].includes(data.status)
+    : ["slip_uploaded", "submitted", "approved", "confirmed", "pending_payment"].includes(data.status)
   const canRelease = ["confirmed", "approved", "pending_payment", "slip_uploaded", "submitted", "waitlist", "held", "slip_rejected"].includes(data.status)
   const checkedIn = participants.filter((p) => (p.checkins?.length || 0) > 0).length
 
@@ -261,7 +273,7 @@ export default function AdminVerifySlip() {
                 className="flex flex-col items-center gap-1.5 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200 disabled:opacity-40 transition text-xs">
                 <span className="text-lg">🗑️</span> ยกเลิก / คืนที่นั่ง
               </button>
-              <button onClick={() => setRejectModal(true)} disabled={busy || !canReject}
+              <button onClick={() => isType2 ? rejectPortfolioAction() : setRejectModal(true)} disabled={busy || !canReject}
                 className="flex flex-col items-center gap-1.5 py-3 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 disabled:opacity-40 transition text-xs border border-red-100">
                 <span className="text-lg">❌</span> ไม่ผ่าน
               </button>

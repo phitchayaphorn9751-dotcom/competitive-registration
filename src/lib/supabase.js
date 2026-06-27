@@ -392,6 +392,14 @@ export async function cancelRegistration(registrationId) {
   if (error) throw error
 }
 
+// ประเภท 2 (ฟรี+ผลงาน): admin กด "ไม่ผ่าน" → ส่งกลับคิวสำรอง (ไม่ต้องใส่เหตุผล)
+export async function rejectPortfolio(registrationId) {
+  const { error } = await supabase.rpc("reject_portfolio", {
+    p_registration_id: registrationId,
+  })
+  if (error) throw error
+}
+
 // ดึงใบสมัครเดียว (รายละเอียดเต็ม สำหรับหน้าตรวจสลิป)
 export async function fetchRegistration(registrationId) {
   const { data, error } = await supabase
