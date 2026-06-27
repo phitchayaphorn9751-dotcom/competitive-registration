@@ -3,7 +3,7 @@ import { useOutletContext } from "react-router-dom"
 import {
   fetchAllEvents, fetchCourseTypes, fetchCoursesAdmin, saveCourse, deleteCourse,
   toggleCourseOpen, updateCapacity, emergencyCloseAll, fetchCourseParticipants,
-  uploadCourseAsset, duplicateCourses, recalcAllSeats,
+  uploadCourseAsset, duplicateCourses,
 } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
 
@@ -98,11 +98,6 @@ export default function AdminCourses() {
     catch (e) { toast("ทำไม่สำเร็จ: " + e.message, "error") }
   }
 
-  async function doRecalc() {
-    try { await recalcAllSeats(); toast("คำนวณจำนวนผู้สมัครใหม่เรียบร้อย", "success"); loadCourses(selEvent) }
-    catch (e) { toast("ทำไม่สำเร็จ: " + e.message, "error") }
-  }
-
   const filtered = courses.filter((c) => {
     const matchSearch = c.title?.toLowerCase().includes(search.toLowerCase())
     const matchStatus = statusFilter === "all" || (statusFilter === "open" ? c.is_open : !c.is_open)
@@ -135,9 +130,6 @@ export default function AdminCourses() {
           </button>
           <button onClick={() => setShowDup(true)} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-blue-700 shadow-sm transition text-sm">
             📋 คัดลอกจากงานเก่า
-          </button>
-          <button onClick={doRecalc} className="flex items-center gap-2 bg-violet-600 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-violet-700 shadow-sm transition text-sm">
-            🔄 ซิงค์จำนวนผู้สมัคร
           </button>
           <button onClick={doEmergency} className="flex items-center gap-2 bg-red-600 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-red-700 shadow-sm transition text-sm border-2 border-red-400">
             🚨 ปิดรับทั้งหมด
