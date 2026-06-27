@@ -15,6 +15,26 @@ const STATUS_CFG = {
   expired:         { key: "myreg.st.expired",         icon: "🕐", bg: "bg-rose-50",   text: "text-rose-500",   border: "border-rose-100",   dot: "bg-rose-400" },
 }
 
+// สีหมวดหมู่ — กระจายสีตามชื่อหมวด (หมวดเดียวกันได้สีเดิมเสมอ)
+const CATEGORY_PALETTE = [
+  { bg: "bg-orange-50",  text: "text-[#F15A24]", border: "border-orange-200" },
+  { bg: "bg-blue-50",    text: "text-blue-600",  border: "border-blue-200" },
+  { bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-200" },
+  { bg: "bg-purple-50",  text: "text-purple-600", border: "border-purple-200" },
+  { bg: "bg-pink-50",    text: "text-pink-600",  border: "border-pink-200" },
+  { bg: "bg-cyan-50",    text: "text-cyan-600",  border: "border-cyan-200" },
+  { bg: "bg-amber-50",   text: "text-amber-600", border: "border-amber-200" },
+  { bg: "bg-indigo-50",  text: "text-indigo-600", border: "border-indigo-200" },
+  { bg: "bg-teal-50",    text: "text-teal-600",  border: "border-teal-200" },
+  { bg: "bg-rose-50",    text: "text-rose-600",  border: "border-rose-200" },
+]
+function categoryCfg(name) {
+  if (!name) return CATEGORY_PALETTE[0]
+  let h = 0
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0
+  return CATEGORY_PALETTE[h % CATEGORY_PALETTE.length]
+}
+
 // แปลงสถานะดิบ (รวม payment) → key เดียวสำหรับแสดงผล
 function displayStatus(r) {
   if (r.status === "waitlist") return "waitlist"
@@ -163,7 +183,6 @@ export default function MyRegistrationPage() {
               return (
                 <div key={reg.id} onClick={() => setDetailReg(reg)}
                   className="group bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md hover:border-gray-200 transition-all cursor-pointer flex flex-col">
-                  <div className={`h-1 w-full ${cfg.dot}`} />
                   <div className="p-4 sm:p-5 flex flex-col flex-1">
                     {/* แถวบน: ซ้าย=ข้อมูล / ขวา=สถานะ(บน) + เงิน(ล่าง) */}
                     <div className="flex items-start justify-between gap-3">
@@ -179,7 +198,9 @@ export default function MyRegistrationPage() {
                         </h3>
 
                         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-gray-400">
-                          {reg.course_type && <span className="font-bold bg-orange-50 text-[#F15A24] border border-orange-200 px-2 py-0.5 rounded-full">{reg.course_type}</span>}
+                          {reg.course_type && (() => { const cc = categoryCfg(reg.course_type); return (
+                            <span className={`font-bold px-2 py-0.5 rounded-full border ${cc.bg} ${cc.text} ${cc.border}`}>{reg.course_type}</span>
+                          ) })()}
                           {reg.theme_name && <span>· ทีม: <span className="font-bold text-gray-600">{reg.theme_name}</span></span>}
                         </div>
                       </div>
