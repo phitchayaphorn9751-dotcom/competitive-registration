@@ -21,7 +21,11 @@ function displayStatus(r) {
   if (r.status === "cancelled") return "cancelled"
   if (r.status === "expired") return "expired"
   if (r.status === "confirmed" || r.status === "approved") return "confirmed"
-  if (r.status === "submitted") return "pending_review"  // ฟรี+แนบผลงาน รออนุมัติ
+  if (r.status === "submitted") {
+    // ประเภท 2 (ฟรี+แนบงาน): ถ้าอนุมัติครบโควตาแล้ว submitted ที่เหลือ = คิวสำรอง
+    if (r.type2_waitlisted) return "waitlist"
+    return "pending_review"  // ยังไม่ครบโควตา = รอพิจารณา
+  }
   if (r.status === "rejected" || r.status === "slip_rejected") return "rejected"
   // ต้องจ่ายเงิน = วิชามีราคา (price > 0)
   const needPay = (r.price || 0) > 0
@@ -172,7 +176,7 @@ export default function MyRegistrationPage() {
                             {cfg.icon} {t(cfg.key)}
                             {d === "waitlist" && reg.waitlist_pos ? ` — คิวที่ ${reg.waitlist_pos}` : ""}
                           </span>
-                          {d === "waitlist" && <span className="text-[11px] text-gray-400 pl-1">*เมื่อมีที่ว่าง ระบบจะเรียกคิวอัตโนมัติ</span>}
+                          {d === "waitlist" && <span className="text-[11px] text-gray-400 pl-1">*จำนวนเต็มแล้ว — เมื่อมีที่ว่างระบบจะเรียกคิวอัตโนมัติ</span>}
                           {d === "rejected" && reg.reject_reason && <span className="text-[11px] text-red-400 pl-1">เหตุผล: {reg.reject_reason}</span>}
                         </div>
                       </div>

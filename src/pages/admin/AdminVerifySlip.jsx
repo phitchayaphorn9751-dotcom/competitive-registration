@@ -47,7 +47,12 @@ export default function AdminVerifySlip() {
     if (!ok) return
     setBusy(true)
     try { await confirmRegistration(registrationId, session?.user?.id); toast("อนุมัติเรียบร้อย!", "success"); onBack() }
-    catch (e) { toast("ผิดพลาด: " + e.message, "error") } finally { setBusy(false) }
+    catch (e) {
+      const msg = e.message?.includes("COURSE_FULL")
+        ? "❌ คอร์สเต็มแล้ว — อนุมัติเพิ่มไม่ได้ (ผู้สมัครที่เหลือเป็นคิวสำรอง)"
+        : "ผิดพลาด: " + e.message
+      toast(msg, "error")
+    } finally { setBusy(false) }
   }
   async function doReject() {
     if (!rejectReason.trim()) return toast("กรุณาระบุเหตุผล", "error")
