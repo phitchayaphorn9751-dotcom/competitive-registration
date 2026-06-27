@@ -118,23 +118,25 @@ export default function MyRegistrationPage() {
             </div>
           </div>
 
-          {/* Filter tabs */}
-          <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-            {tabs.map((tab) => (
-              <button key={tab.key} onClick={() => setFilter(tab.key)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${
-                  filter === tab.key ? "bg-[#F15A24] text-white border-[#F15A24] shadow-sm" : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"}`}>
-                {tab.label}
-                {tab.count > 0 && (
-                  <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-full ${filter === tab.key ? "bg-white/30 text-white" : "bg-gray-100 text-gray-500"}`}>{tab.count}</span>
-                )}
-              </button>
-            ))}
+          {/* Filter tabs — มือถือ: เลื่อนแนวนอนลื่น / desktop: ขึ้นบรรทัดใหม่พอดีจอ */}
+          <div className="-mx-4 sm:mx-0 px-4 sm:px-0">
+            <div className="flex gap-2 overflow-x-auto pb-1 snap-x sm:flex-wrap sm:overflow-visible" style={{ scrollbarWidth: "none" }}>
+              {tabs.map((tab) => (
+                <button key={tab.key} onClick={() => setFilter(tab.key)}
+                  className={`snap-start flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs sm:text-[13px] font-bold whitespace-nowrap transition-all border ${
+                    filter === tab.key ? "bg-[#F15A24] text-white border-[#F15A24] shadow-sm" : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 active:scale-95"}`}>
+                  {tab.label}
+                  {tab.count > 0 && (
+                    <span className={`min-w-[18px] text-center text-[10px] font-extrabold px-1.5 py-0.5 rounded-full ${filter === tab.key ? "bg-white/30 text-white" : "bg-gray-100 text-gray-500"}`}>{tab.count}</span>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 mt-6">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 mt-5 sm:mt-6">
         {error && <div className="bg-red-50 border border-red-100 text-red-700 rounded-2xl p-4 mb-6 text-sm">{error}</div>}
 
         {regs.length === 0 ? (
@@ -152,65 +154,79 @@ export default function MyRegistrationPage() {
             <p className="font-semibold">{t("myreg.noneInTab")}</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {filtered.map((reg) => {
               const d = displayStatus(reg)
               const cfg = STATUS_CFG[d] || STATUS_CFG.held
+              const isPaid = (reg.price || 0) > 0
+              const hasAction = d === "pending_payment" || (d === "rejected" && (reg.price || 0) > 0) || d === "expired" || (d === "confirmed" && (reg.participant_code || reg.my_qr_token || reg.qr_token))
               return (
                 <div key={reg.id} onClick={() => setDetailReg(reg)}
-                  className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow cursor-pointer">
+                  className="group bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md hover:border-gray-200 transition-all cursor-pointer flex flex-col">
                   <div className={`h-1 w-full ${cfg.dot}`} />
-                  <div className="p-5 sm:p-6">
-                    <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-extrabold text-base sm:text-lg text-gray-800 mb-1 leading-snug flex items-center gap-2 flex-wrap">
-                          {reg.course_title}
-                          {reg.is_team_member && <span className="text-[10px] font-bold bg-purple-50 text-purple-600 border border-purple-200 px-2 py-0.5 rounded-full">👥 เพื่อนสมัครให้</span>}
-                        </h3>
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-400 mb-3">
-                          {reg.participant_code && <span className="font-mono font-bold text-[#F15A24] bg-orange-50 border border-orange-200 px-2 py-0.5 rounded">🪪 {reg.participant_code}</span>}
-                          <span>{t("myreg.registeredOn")} {fmtDate(reg.created_at)}</span>
-                          {reg.theme_name && <span>· ทีม: <span className="font-bold text-gray-600">{reg.theme_name}</span></span>}
-                        </div>
-                        <div className="flex flex-col gap-1">
-                          <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border w-fit ${cfg.bg} ${cfg.text} ${cfg.border}`}>
-                            {cfg.icon} {t(cfg.key)}
-                            {d === "waitlist" && reg.waitlist_pos ? ` — คิวที่ ${reg.waitlist_pos}` : ""}
-                          </span>
-                          {d === "waitlist" && <span className="text-[11px] text-gray-400 pl-1">*จำนวนเต็มแล้ว — เมื่อมีที่ว่างระบบจะเรียกคิวอัตโนมัติ</span>}
-                          {d === "rejected" && reg.reject_reason && <span className="text-[11px] text-red-400 pl-1">เหตุผล: {reg.reject_reason}</span>}
-                        </div>
+                  <div className="p-4 sm:p-5 flex flex-col flex-1">
+                    {/* แถวบน: สถานะ (ซ้าย) — ราคา (ขวา) อยู่ระดับเดียวกันเสมอ */}
+                    <div className="flex items-center justify-between gap-3 mb-2.5">
+                      <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full border ${cfg.bg} ${cfg.text} ${cfg.border}`}>
+                        {cfg.icon} {t(cfg.key)}
+                        {d === "waitlist" && reg.waitlist_pos ? ` — คิวที่ ${reg.waitlist_pos}` : ""}
+                      </span>
+                      <div className="text-right shrink-0">
+                        {isPaid
+                          ? <span className="text-lg sm:text-xl font-extrabold text-green-600 leading-none whitespace-nowrap">{Number(reg.price).toLocaleString()}<span className="text-xs font-bold text-gray-400 ml-1">บาท</span></span>
+                          : <span className="text-sm font-extrabold text-green-600 whitespace-nowrap">ฟรี</span>}
                       </div>
+                    </div>
 
-                      <div className="flex flex-wrap gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    {/* ชื่อวิชา */}
+                    <h3 className="font-extrabold text-base sm:text-lg text-gray-800 leading-snug flex items-start gap-2 flex-wrap mb-1.5">
+                      <span className="flex-1 min-w-0">{reg.course_title}</span>
+                      {reg.is_team_member && <span className="text-[10px] font-bold bg-purple-50 text-purple-600 border border-purple-200 px-2 py-0.5 rounded-full shrink-0">👥 เพื่อนสมัครให้</span>}
+                    </h3>
+
+                    {/* meta: รหัส / วันที่ / ทีม */}
+                    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-gray-400">
+                      {reg.participant_code && <span className="font-mono font-bold text-[#F15A24] bg-orange-50 border border-orange-200 px-2 py-0.5 rounded">🪪 {reg.participant_code}</span>}
+                      <span>{t("myreg.registeredOn")} {fmtDate(reg.created_at)}</span>
+                      {reg.theme_name && <span>· ทีม: <span className="font-bold text-gray-600">{reg.theme_name}</span></span>}
+                    </div>
+
+                    {/* หมายเหตุสถานะ */}
+                    {d === "waitlist" && <p className="text-[11px] text-gray-400 mt-2">*จำนวนเต็มแล้ว — เมื่อมีที่ว่างระบบจะเรียกคิวอัตโนมัติ</p>}
+                    {d === "rejected" && reg.reject_reason && <p className="text-[11px] text-red-400 mt-2">เหตุผล: {reg.reject_reason}</p>}
+
+                    {/* ปุ่ม action — แถวล่างสุด ดันชิดท้ายการ์ดเสมอ กดง่ายบนมือถือ */}
+                    {hasAction && (
+                      <div className="flex flex-wrap gap-2 mt-auto pt-3" onClick={(e) => e.stopPropagation()}>
+                        <div className="w-full border-t border-gray-50 -mt-1 mb-1" />
                         {d === "pending_payment" && (
                           <button onClick={() => navigate(`/pay/${reg.id}`)}
-                            className="px-4 py-2 rounded-xl bg-[#ec9213] hover:bg-[#d6810b] text-white font-bold text-sm shadow-sm transition">
+                            className="flex-1 min-w-[130px] px-4 py-2.5 rounded-xl bg-[#ec9213] hover:bg-[#d6810b] active:scale-[0.98] text-white font-bold text-sm shadow-sm transition">
                             {t("myreg.payNow")}
                           </button>
                         )}
                         {/* ข้อ 2.2: ถูกตีกลับ → ส่งใหม่ด้วยใบเดิม */}
                         {d === "rejected" && (reg.price || 0) > 0 && (
                           <button onClick={() => navigate(`/pay/${reg.id}`)}
-                            className="px-4 py-2 rounded-xl bg-[#F15A24] hover:bg-orange-600 text-white font-bold text-sm shadow-sm transition">
+                            className="flex-1 min-w-[130px] px-4 py-2.5 rounded-xl bg-[#F15A24] hover:bg-orange-600 active:scale-[0.98] text-white font-bold text-sm shadow-sm transition">
                             ส่งสลิปใหม่
                           </button>
                         )}
                         {/* หมดเวลาชำระ → สมัครใหม่ (คอร์สเดิม) */}
                         {d === "expired" && (
                           <button onClick={() => navigate(`/register/${reg.course_id}`)}
-                            className="px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-sm shadow-sm transition">
+                            className="flex-1 min-w-[130px] px-4 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 active:scale-[0.98] text-white font-bold text-sm shadow-sm transition">
                             🔄 สมัครใหม่
                           </button>
                         )}
                         {d === "confirmed" && (reg.participant_code || reg.my_qr_token || reg.qr_token) && (
                           <button onClick={() => setBarcodeReg(reg)}
-                            className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-sm transition">
+                            className="flex-1 min-w-[130px] px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-bold text-sm shadow-sm transition">
                             {t("myreg.showBarcode")}
                           </button>
                         )}
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               )
@@ -250,19 +266,19 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
   const images = course ? [course.image_url, ...(course.image_urls || [])].filter(Boolean) : []
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="bg-white w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden max-h-[92dvh] flex flex-col">
+      <div className="bg-white w-full sm:max-w-3xl rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden max-h-[94dvh] sm:max-h-[92dvh] flex flex-col">
         {/* Header ส้ม */}
-        <div className="bg-gradient-to-br from-[#F15A24] to-[#d04810] px-6 py-4 text-white flex justify-between items-start shrink-0">
-          <div className="pr-4">
+        <div className="bg-gradient-to-br from-[#F15A24] to-[#d04810] px-5 sm:px-6 py-4 text-white flex justify-between items-start shrink-0">
+          <div className="pr-4 min-w-0">
             <p className="text-xs text-orange-200 mb-0.5 font-bold tracking-widest uppercase">{reg.course_type || "วิชา"}</p>
-            <h3 className="font-extrabold text-xl leading-tight">{reg.course_title}</h3>
+            <h3 className="font-extrabold text-lg sm:text-xl leading-tight">{reg.course_title}</h3>
             <span className="inline-flex items-center gap-1.5 mt-2 text-xs font-bold px-3 py-1 rounded-full bg-white/20 backdrop-blur">
               {cfg.icon} {t(cfg.key)}{d === "waitlist" && reg.waitlist_pos ? ` — คิวที่ ${reg.waitlist_pos}` : ""}
             </span>
           </div>
-          <button onClick={onClose} className="text-white/80 hover:text-white text-2xl leading-none shrink-0 w-8 h-8 flex items-center justify-center">×</button>
+          <button onClick={onClose} aria-label="ปิด" className="text-white/80 hover:text-white text-2xl leading-none shrink-0 w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition">×</button>
         </div>
 
         {/* 2 ฝั่ง */}
@@ -271,7 +287,7 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
           <div className="md:w-1/2 md:border-r border-gray-100 bg-[#fffbf8] p-5 space-y-4">
             {/* รูป carousel */}
             {images.length > 0 && (
-              <div className="relative h-48 rounded-2xl overflow-hidden bg-gray-200">
+              <div className="relative h-44 sm:h-48 rounded-2xl overflow-hidden bg-gray-200">
                 <img src={images[imgIdx]} className="w-full h-full object-cover" alt={reg.course_title} />
                 {images.length > 1 && (
                   <>
@@ -323,7 +339,7 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
           <div className="md:w-1/2 p-5 space-y-1">
             <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2">📝 ข้อมูลการสมัคร</p>
 
-            {/* บาร์โค้ด (เฉพาะยืนยันแล้ว) */}
+            {/* บาร์โค้ด (เฉพาะยืนยันแล้ว) — รหัสในแถบส้ม + บาร์โค้ดใต้รหัส (จุดเดียว) */}
             {isConfirmed && code && (
               <div className="bg-gray-50 border border-gray-200 rounded-2xl p-3 mb-3 flex flex-col items-center">
                 <div className="w-full bg-[#F15A24] text-white rounded-xl px-3 py-2 mb-2 text-center">
@@ -467,7 +483,8 @@ function MemberBarcodeModal({ member, courseTitle, onClose }) {
           <p className="text-blue-200 text-xs mt-0.5 truncate">📚 {courseTitle}</p>
         </div>
         <div className="p-6 bg-gray-50 flex flex-col items-center">
-          <div className="w-full bg-[#F15A24] text-white rounded-xl px-4 py-3 mb-4 text-center shadow-sm">
+          {/* รหัส + บาร์โค้ด เป็นจุดเดียวต่อกัน */}
+          <div className="w-full bg-[#F15A24] text-white rounded-xl px-4 py-3 mb-3 text-center shadow-sm">
             <p className="text-[11px] text-orange-100 mb-0.5">รหัสนักเรียน (เช็คอิน)</p>
             <p className="font-mono text-3xl font-extrabold tracking-wider">{code}</p>
           </div>
@@ -517,9 +534,9 @@ function CheckinModal({ reg, t, onClose }) {
           <p className="text-blue-200 text-xs mt-1">{t("myreg.checkinSub")}</p>
         </div>
         <div className="p-6 bg-gray-50 flex flex-col items-center">
-          {/* รหัสนักเรียน — เด่นสุด ใช้เช็คอินได้เลย */}
+          {/* รหัสนักเรียน — เด่นสุด ใช้เช็คอินได้เลย / บาร์โค้ดอยู่ใต้รหัส (จุดเดียว) */}
           {code && (
-            <div className="w-full bg-[#F15A24] text-white rounded-xl px-4 py-3 mb-4 text-center shadow-sm">
+            <div className="w-full bg-[#F15A24] text-white rounded-xl px-4 py-3 mb-3 text-center shadow-sm">
               <p className="text-[11px] text-orange-100 mb-0.5">รหัสนักเรียน (แจ้งเจ้าหน้าที่เพื่อเช็คอิน)</p>
               <p className="font-mono text-3xl font-extrabold tracking-wider">{code}</p>
             </div>
