@@ -390,7 +390,7 @@ export default function RegisterPage() {
 }
 
 // ── หน้าจ่ายเงิน (workshop) — timer + อัปสลิป ตาม doc 24 ──
-export function PaymentScreen({ course, regId, t, navigate, deadline }) {
+export function PaymentScreen({ course, regId, t, navigate, deadline, isRejected = false }) {
   const DEADLINE_MIN = 30
   const [timeLeft, setTimeLeft] = useState("")
   const [expired, setExpired] = useState(false)
@@ -403,7 +403,9 @@ export function PaymentScreen({ course, regId, t, navigate, deadline }) {
   const [deadlineMs, setDeadlineMs] = useState(deadline ? new Date(deadline).getTime() : null)
 
   // ถ้าไม่มี deadline ส่งมา → ดึงจาก DB (รีเฟรชไม่รีเซ็ต)
+  // กรณีถูกตีกลับ (isRejected) → ไม่จับเวลาเลย ตาม reference
   useEffect(() => {
+    if (isRejected) return
     let cancelled = false
     if (!deadlineMs) {
       fetchRegistrationDeadline(regId).then((d) => {
@@ -413,10 +415,10 @@ export function PaymentScreen({ course, regId, t, navigate, deadline }) {
       })
     }
     return () => { cancelled = true }
-  }, [regId, deadlineMs])
+  }, [regId, deadlineMs, isRejected])
 
   useEffect(() => {
-    if (!deadlineMs) return
+    if (isRejected || !deadlineMs) return
     const tick = () => {
       const diff = deadlineMs - Date.now()
       if (diff <= 0) { setExpired(true); setTimeLeft("00:00"); return false }
@@ -427,7 +429,7 @@ export function PaymentScreen({ course, regId, t, navigate, deadline }) {
     tick()
     const iv = setInterval(() => { if (!tick()) clearInterval(iv) }, 1000)
     return () => clearInterval(iv)
-  }, [deadlineMs])
+  }, [deadlineMs, isRejected])
 
   const account = course.bank_account || "-"
 
@@ -471,12 +473,20 @@ export function PaymentScreen({ course, regId, t, navigate, deadline }) {
           <div className="lg:w-5/12 bg-gradient-to-br from-[#F15A24] via-[#e8501f] to-[#c9420f] text-white p-5 sm:p-8 flex flex-col justify-between relative overflow-hidden">
             <div className="absolute -top-16 -right-16 w-48 h-48 bg-white/5 rounded-full" />
             <div className="relative">
-              <p className="text-orange-200 text-xs font-bold uppercase tracking-widest mb-1">{t("pay.title")}</p>
-              <h2 className="text-2xl sm:text-3xl font-extrabold mb-6">💳 {t("pay.title")}</h2>
-              <div className={`rounded-2xl p-4 mb-6 border-2 text-center ${expired ? "bg-red-500/20 border-red-400/50" : "bg-black/20 border-white/20"}`}>
-                <p className="text-xs text-orange-200 mb-1 font-medium">{expired ? t("pay.expired") : "⏱ " + t("pay.deadline")}</p>
-                <p className={`text-4xl font-mono font-extrabold tracking-widest ${expired ? "text-red-300" : "text-yellow-300"}`}>{timeLeft || "..."}</p>
-              </div>
+              <p className="text-orange-200 text-xs font-bold uppercase tracking-widest mb-1">{isRejected ? "ส่งหลักฐานใหม่" : t("pay.title")}</p>
+              <h2 className="text-2xl sm:text-3xl font-extrabold mb-6">{isRejected ? "📤 อัปโหลดสลิปใหม่" : "💳 " + t("pay.title")}</h2>
+              {isRejected ? (
+                <div className="rounded-2xl p-4 mb-6 border-2 bg-black/20 border-white/20 text-center">
+                  <p className="text-xs text-orange-200 mb-1 font-medium">สถานะ</p>
+                  <p className="text-lg font-bold text-yellow-300">สลิปถูกตีกลับ — ส่งใหม่ได้เลย</p>
+                  <p className="text-[11px] text-orange-200 mt-1">ไม่มีการจับเวลา</p>
+                </div>
+              ) : (
+                <div className={`rounded-2xl p-4 mb-6 border-2 text-center ${expired ? "bg-red-500/20 border-red-400/50" : "bg-black/20 border-white/20"}`}>
+                  <p className="text-xs text-orange-200 mb-1 font-medium">{expired ? t("pay.expired") : "⏱ " + t("pay.deadline")}</p>
+                  <p className={`text-4xl font-mono font-extrabold tracking-widest ${expired ? "text-red-300" : "text-yellow-300"}`}>{timeLeft || "..."}</p>
+                </div>
+              )}
               <div className="bg-white/10 rounded-xl p-3.5">
                 <p className="text-orange-200 text-xs mb-0.5">{t("pay.amount")}</p>
                 <p className="text-2xl font-extrabold">{course.price?.toLocaleString()} <span className="text-lg font-normal text-orange-200">{t("pay.baht")}</span></p>
