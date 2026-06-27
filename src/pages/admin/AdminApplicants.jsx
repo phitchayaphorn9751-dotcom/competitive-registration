@@ -31,6 +31,7 @@ const FILTERS = [
   { key: "confirmed", label: "ยืนยันแล้ว", color: "green" },
   { key: "waitlist", label: "คิวสำรอง", color: "purple" },
   { key: "rejected", label: "ไม่ผ่าน", color: "red" },
+  { key: "cancelled", label: "ยกเลิก", color: "gray" },
 ]
 
 // แปลง DB status → หมวดรวม 4 แบบ

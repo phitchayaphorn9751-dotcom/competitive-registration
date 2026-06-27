@@ -83,6 +83,7 @@ export default function MyRegistrationPage() {
     { key: "confirmed", label: t("myreg.tabApproved"), count: counts["confirmed"] || 0 },
     { key: "pending_payment", label: t("myreg.tabPending"), count: counts["pending_payment"] || 0 },
     { key: "waitlist", label: t("myreg.tabWaitlist"), count: counts["waitlist"] || 0 },
+    { key: "cancelled", label: t("myreg.tabCancelled"), count: counts["cancelled"] || 0 },
   ]
 
   const filtered = regs.filter((r) => {
