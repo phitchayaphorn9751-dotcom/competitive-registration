@@ -14,6 +14,7 @@ const STATUS = {
   waitlist:        { label: "📋 คิวสำรอง", cls: "bg-purple-100 text-purple-700 border-purple-200", color: "purple" },
   expired:         { label: "⏰ หมดเวลา", cls: "bg-rose-50 text-rose-500 border-rose-200", color: "rose" },
   rejected:        { label: "❌ ไม่ผ่าน", cls: "bg-red-100 text-red-700 border-red-200", color: "red" },
+  cancelled:       { label: "🚫 ยกเลิกแล้ว", cls: "bg-gray-100 text-gray-400 border-gray-200", color: "gray" },
   held:            { label: "🕓 กันที่นั่ง", cls: "bg-orange-100 text-orange-700 border-orange-200", color: "orange" },
 }
 function StatusBadge({ status }) {
@@ -37,12 +38,19 @@ function unifyStatus(r) {
   const s = r.status
   const paid = (r.courses?.price || 0) > 0
   if (s === "waitlist") return "waitlist"
+  if (s === "cancelled") return "cancelled"
+  if (s === "expired") return "expired"
   if (s === "confirmed" || s === "approved") return "confirmed"
   if (s === "rejected" || s === "slip_rejected") return "rejected"
   // รอพิจารณา = แนบสลิปแล้ว (slip_uploaded) หรือ แนบลิงก์ผลงานแล้ว (submitted)
   if (s === "slip_uploaded" || s === "submitted") return "pending_review"
-  // รอชำระเงิน = คอร์สเสียเงินที่ยังไม่จ่าย
-  if (s === "pending_payment" || s === "held") return paid ? "pending_payment" : "pending_review"
+  // held/pending_payment: เสียเงิน = รอชำระ / ฟรี = ยืนยันแล้ว (กันที่นั่งเลย ตรงกับฝั่ง user)
+  if (s === "pending_payment" || s === "held") {
+    if (!paid) return "confirmed"
+    // เสียเงิน + เลย deadline → หมดเวลา
+    if (r.payment_deadline && new Date(r.payment_deadline).getTime() < Date.now()) return "expired"
+    return "pending_payment"
+  }
   return s
 }
 const PILL = {
