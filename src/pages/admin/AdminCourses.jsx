@@ -217,6 +217,12 @@ export default function AdminCourses() {
           onClose={() => setShowDup(false)}
           onDone={(n) => { setShowDup(false); toast(`คัดลอก ${n} วิชาแล้ว (ปิดรับไว้ก่อน — เปิดเองภายหลัง)`, "success"); loadCourses(selEvent) }} />
       )}
+
+      {/* Footer */}
+      <footer className="mt-10 pt-6 border-t border-slate-200 text-center text-xs text-slate-400">
+        <p>© 2026 College of Arts, Media and Technology (CAMT) | College Administration Portal</p>
+        <p className="mt-1">ระบบจัดการการแข่งขันและกิจกรรมโครงการดิจิทัล</p>
+      </footer>
     </div>
   )
 }
@@ -327,77 +333,66 @@ function CourseCard({ course, onEdit, onDelete, onToggle, onView }) {
   const isFree = (course.price || 0) === 0
   const unit = course.count_mode === "team" ? "ทีม" : "คน"
   return (
-    <div className="bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-md hover:border-orange-200 transition duration-300 grid grid-cols-1 md:grid-cols-2 overflow-hidden">
-      {/* ───── ซ้าย 50%: รูปเต็มกรอบ ───── */}
-      <div className="relative w-full h-52 md:h-full min-h-[220px] bg-slate-100">
-        {course.image_url
-          ? <img src={course.image_url} alt="" className="w-full h-full object-cover absolute inset-0" />
-          : <div className="w-full h-full flex items-center justify-center text-slate-300"><Ico.book className="w-12 h-12" /></div>}
-        <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-black/30 md:from-black/10 via-transparent to-transparent pointer-events-none" />
-      </div>
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-orange-200 transition duration-300 overflow-hidden">
+      <div className="flex">
+        {/* ───── ซ้าย: รูป (แนวนอน ขนาดพอดี) ───── */}
+        <div className="w-32 sm:w-44 shrink-0 bg-slate-100 relative">
+          {course.image_url
+            ? <img src={course.image_url} alt="" className="w-full h-full object-cover absolute inset-0" />
+            : <div className="w-full h-full min-h-[150px] flex items-center justify-center text-slate-300"><Ico.book className="w-9 h-9" /></div>}
+        </div>
 
-      {/* ───── ขวา 50%: 2 section (บน=ข้อมูล / ล่าง=ปุ่ม) ───── */}
-      <div className="p-5 flex flex-col justify-between gap-4 min-w-0">
-        {/* ── section บน ── */}
-        <div className="space-y-3">
-          {/* badge: หมวด (สี palette) + รูปแบบ */}
-          <div className="flex flex-wrap items-center gap-2">
-            {typeLabel && <span className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full ${cc.bg} ${cc.text}`}>{typeLabel}</span>}
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[10px] font-bold rounded-full bg-slate-100 text-slate-500 border border-slate-200"><Ico.users className="w-3 h-3" /> {modeLabel(course)}</span>
+        {/* ───── ขวา: ข้อมูล ───── */}
+        <div className="flex-1 p-4 min-w-0">
+          {/* แถวบน: badge (ซ้าย) + toggle (ขวาบนสุด) */}
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+              {typeLabel && <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${cc.bg} ${cc.text}`}>{typeLabel}</span>}
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-slate-100 text-slate-500 border border-slate-200"><Ico.users className="w-3 h-3" /> {modeLabel(course)}</span>
+            </div>
+            {/* toggle เปิด/ปิด — ขวาบนสุด */}
+            <div className="flex flex-col items-end gap-0.5 shrink-0">
+              <button onClick={() => onToggle(course)} className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors ${course.is_open ? "bg-emerald-500" : "bg-slate-300"}`}>
+                <span className={`inline-block w-4 h-4 bg-white rounded-full shadow transition-transform ${course.is_open ? "translate-x-6" : "translate-x-1"}`} />
+              </button>
+              <span className={`text-[9px] font-bold ${course.is_open ? "text-emerald-600" : "text-slate-400"}`}>{course.is_open ? "เปิดรับ" : "ปิดรับ"}</span>
+            </div>
           </div>
 
-          {/* ชื่อวิชา */}
-          <h3 className="text-base sm:text-lg font-extrabold text-[#F15A24] leading-snug">{course.title}</h3>
+          {/* ชื่อวิชา + ผู้สอน */}
+          <h3 className="text-sm sm:text-base font-extrabold text-[#F15A24] leading-snug mt-1.5">{course.title}</h3>
+          {instructors.length > 0 && <p className="text-xs text-slate-500 truncate inline-flex items-center gap-1 mt-1"><Ico.cap className="w-3 h-3 shrink-0" /> {instructors.join(", ")}</p>}
 
-          {/* ผู้สอน */}
-          {instructors.length > 0 && <p className="text-xs text-slate-500 truncate inline-flex items-center gap-1"><Ico.cap className="w-3 h-3 shrink-0" /> {instructors.join(", ")}</p>}
-
-          {/* ราคา (ใหญ่ ขวา) */}
-          <div className="flex items-end justify-between gap-2 pt-1">
-            <span className="text-[11px] text-slate-400 font-bold">ค่าลงทะเบียน</span>
-            <span className={`text-2xl font-extrabold leading-none ${isFree ? "text-emerald-600" : "text-[#F15A24]"}`}>
+          {/* ราคา (ใหญ่ ขวา) + ที่นั่ง */}
+          <div className="flex items-end justify-between gap-2 mt-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex justify-between items-end text-xs mb-1">
+                <span className="text-slate-500">รับ: <span className={`font-bold ${isFull && !unlimited ? "text-rose-600" : "text-slate-700"}`}>{taken} / {unlimited ? "ไม่จำกัด" : `${cap} ${unit}`}</span></span>
+                {!unlimited && <span className={`font-bold ${isFull ? "text-rose-500" : "text-[#F15A24]"}`}>{pct}%</span>}
+              </div>
+              {!unlimited && (
+                <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                  <div className={`h-full rounded-full transition-all ${isFull ? "bg-gradient-to-r from-rose-500 to-red-600" : "bg-gradient-to-r from-amber-400 to-[#F15A24]"}`} style={{ width: `${pct}%` }} />
+                </div>
+              )}
+            </div>
+            <span className={`text-xl font-extrabold leading-none shrink-0 ${isFree ? "text-emerald-600" : "text-[#F15A24]"}`}>
               {isFree ? "ฟรี" : <>฿{Number(course.price).toLocaleString()}</>}
             </span>
           </div>
 
-          {/* กล่องสถานะ + ที่นั่ง */}
-          <div className="bg-slate-50 rounded-2xl border border-slate-100 p-3 space-y-2.5">
-            {/* toggle เปิด/ปิด */}
-            <div className="flex items-center justify-between">
-              <span className={`text-[11px] font-bold uppercase tracking-wide ${course.is_open ? "text-emerald-500" : "text-slate-400"}`}>
-                {course.is_open ? "● กำลังเปิดรับสมัคร" : "○ ปิดรับสมัคร"}
-              </span>
-              <button onClick={() => onToggle(course)} className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors ${course.is_open ? "bg-emerald-500" : "bg-slate-300"}`}>
-                <span className={`inline-block w-4 h-4 bg-white rounded-full shadow transition-transform ${course.is_open ? "translate-x-6" : "translate-x-1"}`} />
-              </button>
-            </div>
-
-            {/* แถบที่นั่ง — จุดเดียว มีหน่วยกำกับ */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between items-end text-xs">
-                <span className="text-slate-500">รับสมัคร: <span className={`font-extrabold ${isFull && !unlimited ? "text-rose-600" : "text-slate-700"}`}>{taken} / {unlimited ? "ไม่จำกัด" : `${cap} ${unit}`}</span></span>
-                {!unlimited && <span className={`font-extrabold ${isFull ? "text-rose-500" : "text-[#F15A24]"}`}>{pct}%</span>}
-              </div>
-              {!unlimited && (
-                <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-                  <div className={`h-full rounded-full transition-all duration-500 ${isFull ? "bg-gradient-to-r from-rose-500 to-red-600" : "bg-gradient-to-r from-amber-400 to-[#F15A24]"}`} style={{ width: `${pct}%` }} />
-                </div>
-              )}
-            </div>
+          {/* ปุ่ม 3 ปุ่ม */}
+          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100">
+            <button onClick={() => onView(course)} className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition border border-slate-200">
+              <Ico.eye className="w-3.5 h-3.5 text-blue-500" /> ผู้สมัคร
+            </button>
+            <button onClick={() => onEdit(course)} className="flex-1 flex items-center justify-center gap-1.5 px-2 py-2 text-xs font-bold text-[#F15A24] bg-orange-50 hover:bg-[#F15A24] hover:text-white rounded-lg transition border border-orange-100">
+              <Ico.pencil className="w-3.5 h-3.5 shrink-0" /> แก้ไข
+            </button>
+            <button onClick={() => onDelete(course)} className="flex items-center justify-center p-2 rounded-lg border border-rose-100 text-rose-500 hover:bg-rose-500 hover:text-white transition shrink-0">
+              <Ico.trash className="w-3.5 h-3.5" />
+            </button>
           </div>
-        </div>
-
-        {/* ── section ล่าง: ปุ่ม 3 ปุ่ม ── */}
-        <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
-          <button onClick={() => onView(course)} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition border border-slate-200">
-            <Ico.eye className="w-4 h-4 text-blue-500" /> ผู้สมัคร
-          </button>
-          <button onClick={() => onEdit(course)} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-bold text-[#F15A24] bg-orange-50 hover:bg-[#F15A24] hover:text-white rounded-xl transition border border-orange-100">
-            <Ico.pencil className="w-4 h-4 shrink-0" /> แก้ไข
-          </button>
-          <button onClick={() => onDelete(course)} className="flex items-center justify-center p-2.5 rounded-xl border border-rose-100 text-rose-500 hover:bg-rose-500 hover:text-white transition shrink-0">
-            <Ico.trash className="w-4 h-4" />
-          </button>
         </div>
       </div>
     </div>

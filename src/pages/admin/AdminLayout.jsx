@@ -12,12 +12,13 @@ const BIco = {
   gear:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>),
 }
 
-// เมนูใน bottom bar (มือถือ) — เลือกเมนูหลักที่ใช้บ่อย
+// เมนูใน bottom bar (มือถือ) — เช็คอินตรงกลางเป็นปุ่มเด่น
+// เรียง: Dashboard · รายวิชา · เช็คอิน(กลาง) · ผู้สมัคร · ตั้งค่า
 const BOTTOM_NAV = [
   { to: "/admin/dashboard", label: "Dashboard", icon: "grid" },
-  { to: "/admin/applicants", label: "ผู้สมัคร", icon: "users" },
   { to: "/admin/courses", label: "รายวิชา", icon: "book" },
-  { to: "/admin/checkin", label: "เช็คอิน", icon: "scan" },
+  { to: "/admin/checkin", label: "เช็คอิน", icon: "scan", center: true },
+  { to: "/admin/applicants", label: "ผู้สมัคร", icon: "users" },
   { to: "/admin/settings", label: "ตั้งค่า", icon: "gear" },
 ]
 
@@ -162,13 +163,25 @@ function AdminBottomBar() {
   const path = location.pathname
   return (
     <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/90 backdrop-blur-md border-t border-gray-100 shadow-[0_-2px_10px_rgba(0,0,0,0.04)]">
-      <div className="max-w-4xl mx-auto px-1 flex items-center justify-around h-16">
+      <div className="max-w-4xl mx-auto px-1 flex items-end justify-around h-16">
         {BOTTOM_NAV.map((it) => {
           const Icon = BIco[it.icon]
           const active = path.startsWith(it.to)
+          // ปุ่มกลาง (เช็คอิน) — วงกลมส้มนูนขึ้นมา
+          if (it.center) {
+            return (
+              <button key={it.to} onClick={() => navigate(it.to)}
+                className="flex flex-col items-center flex-1 -mt-5">
+                <span className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg shadow-orange-500/30 border-4 border-white transition active:scale-95 ${active ? "bg-[#d14e1e]" : "bg-[#F15A24]"}`}>
+                  <Icon className="w-6 h-6 text-white" />
+                </span>
+                <span className={`text-[10px] mt-0.5 ${active ? "text-[#F15A24] font-bold" : "text-gray-400 font-medium"}`}>{it.label}</span>
+              </button>
+            )
+          }
           return (
             <button key={it.to} onClick={() => navigate(it.to)}
-              className={`flex flex-col items-center gap-0.5 flex-1 transition ${active ? "text-[#F15A24]" : "text-gray-400 hover:text-gray-600"}`}>
+              className={`flex flex-col items-center gap-0.5 flex-1 pb-1 transition ${active ? "text-[#F15A24]" : "text-gray-400 hover:text-gray-600"}`}>
               <Icon className="w-5 h-5" />
               <span className={`text-[10px] ${active ? "font-bold" : "font-medium"}`}>{it.label}</span>
             </button>
