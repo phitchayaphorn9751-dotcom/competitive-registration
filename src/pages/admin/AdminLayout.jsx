@@ -122,7 +122,7 @@ export default function AdminLayout() {
             )
           })}
         </nav>
-        <button onClick={handleLogout} className="m-3 mb-20 lg:mb-3 shrink-0 flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-bold text-rose-500 hover:bg-rose-50 transition border-t border-slate-100 pt-3">
+        <button onClick={handleLogout} className="m-3 shrink-0 flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-bold text-rose-500 hover:bg-rose-50 transition border-t border-slate-100 pt-3">
           <BIco.logout className="w-5 h-5 shrink-0" /> ออกจากระบบ
         </button>
       </aside>

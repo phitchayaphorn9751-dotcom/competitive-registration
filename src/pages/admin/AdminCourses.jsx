@@ -185,13 +185,16 @@ export default function AdminCourses() {
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <button onClick={openAdd} className="flex items-center gap-1.5 bg-[#F15A24] text-white px-4 py-2.5 rounded-xl font-bold hover:bg-[#c44215] shadow-md shadow-orange-500/20 transition active:scale-95 text-sm">
+          {/* ปุ่มหลัก — gradient ส้ม-เหลือง เด่นสุด */}
+          <button onClick={openAdd} className="flex items-center gap-1.5 bg-gradient-to-r from-[#F15A24] to-amber-500 text-white px-4 py-2.5 rounded-xl font-bold hover:from-[#d94e1e] hover:to-amber-600 shadow-md shadow-orange-500/25 transition active:scale-95 text-sm">
             <Ico.plus className="w-4 h-4" /> เพิ่มวิชาใหม่
           </button>
-          <button onClick={() => setShowDup(true)} className="flex items-center gap-1.5 bg-slate-700 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-slate-800 shadow-sm transition active:scale-95 text-sm">
-            <Ico.copy className="w-4 h-4" /> คัดลอกจากงานเก่า
+          {/* ปุ่มรอง — slate นุ่ม */}
+          <button onClick={() => setShowDup(true)} className="flex items-center gap-1.5 bg-slate-100 text-slate-700 border border-slate-200 px-4 py-2.5 rounded-xl font-bold hover:bg-slate-200 transition active:scale-95 text-sm">
+            <Ico.copy className="w-4 h-4 text-[#F15A24]" /> คัดลอกจากงานเก่า
           </button>
-          <button onClick={doEmergency} className="flex items-center gap-1.5 bg-rose-600 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-rose-700 shadow-sm transition active:scale-95 text-sm">
+          {/* ปุ่มอันตราย — rose นุ่ม (outline) */}
+          <button onClick={doEmergency} className="flex items-center gap-1.5 bg-rose-50 text-rose-600 border border-rose-200 px-4 py-2.5 rounded-xl font-bold hover:bg-rose-100 transition active:scale-95 text-sm">
             <Ico.alert className="w-4 h-4" /> ปิดรับทั้งหมด
           </button>
         </div>
