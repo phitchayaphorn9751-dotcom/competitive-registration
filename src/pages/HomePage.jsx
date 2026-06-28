@@ -3,18 +3,6 @@ import { Link, useNavigate } from "react-router-dom"
 import { fetchOpenEvent, fetchCourses, fetchSettings, fetchEventSettings } from "../lib/supabase.js"
 import { useLang, LangToggle } from "../lib/i18n.jsx"
 
-// ───── ไอคอน SVG inline (สไตล์ lucide) — โทนเดียวกับหน้ารายการสมัครของฉัน ─────
-const Ico = {
-  search:  (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>),
-  cap:     (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>),
-  users:   (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>),
-  lock:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>),
-  clip:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>),
-  book:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>),
-  arrow:   (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M5 12h14M12 5l7 7-7 7"/></svg>),
-  list:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>),
-}
-
 export default function HomePage() {
   const { t } = useLang()
   const navigate = useNavigate()
@@ -25,6 +13,8 @@ export default function HomePage() {
   const [notice, setNotice] = useState("")
   const [siteTitle, setSiteTitle] = useState("")
   const [heroSub, setHeroSub] = useState("")
+  const [scheduleImg, setScheduleImg] = useState("")
+  const [scheduleOpen, setScheduleOpen] = useState(false)
 
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState("All")
@@ -44,6 +34,7 @@ export default function HomePage() {
           setNotice(es.home_notice || "")
           setSiteTitle(es.site_title || "")
           setHeroSub(es.hero_subtitle || "")
+          setScheduleImg(es.schedule_image_url || "")
         }
       } catch (e) {
         setError(e.message || "โหลดข้อมูลไม่สำเร็จ")
@@ -76,17 +67,17 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 pb-10">
-        <div className="bg-gradient-to-r from-[#F15A24] to-amber-500 h-64 w-full animate-pulse" />
+      <div className="min-h-screen bg-gray-50 pb-10">
+        <div className="bg-gradient-to-br from-[#F15A24] to-[#e04010] h-64 w-full animate-pulse" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden animate-pulse">
-                <div className="h-48 bg-slate-200" />
+              <div key={i} className="bg-white rounded-2xl shadow overflow-hidden animate-pulse">
+                <div className="h-48 bg-gray-200" />
                 <div className="p-5 space-y-3">
-                  <div className="h-5 bg-slate-200 rounded w-3/4" />
-                  <div className="h-4 bg-slate-100 rounded w-1/2" />
-                  <div className="h-16 bg-slate-100 rounded" />
+                  <div className="h-5 bg-gray-200 rounded w-3/4" />
+                  <div className="h-4 bg-gray-100 rounded w-1/2" />
+                  <div className="h-16 bg-gray-100 rounded" />
                 </div>
               </div>
             ))}
@@ -97,9 +88,9 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-16">
+    <div className="min-h-screen bg-gray-50 pb-16">
       {/* ─── Hero Banner ─── */}
-      <div className="relative bg-gradient-to-r from-[#F15A24] to-amber-500 text-white overflow-hidden shadow-md">
+      <div className="relative bg-gradient-to-br from-[#F15A24] to-[#cc4618] text-white overflow-hidden shadow-inner">
         <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: `linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)`, backgroundSize: "40px 40px" }} />
         <div className="absolute top-0 right-0 w-full h-[400px] bg-gradient-to-b from-black/10 to-transparent pointer-events-none" />
 
@@ -121,13 +112,13 @@ export default function HomePage() {
           <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 sm:p-5 border border-white/20 max-w-4xl mx-auto">
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
-                <Ico.search className="w-4 h-4 absolute inset-y-0 left-3.5 my-auto text-slate-400 pointer-events-none" />
+                <span className="absolute inset-y-0 left-3 flex items-center text-gray-400 pointer-events-none">🔍</span>
                 <input type="text" placeholder={t("common.search") + "…"}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl text-slate-800 text-sm outline-none focus:ring-2 focus:ring-[#F15A24]/40 bg-white placeholder-slate-400"
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl text-gray-800 text-sm outline-none focus:ring-2 focus:ring-orange-300 bg-white placeholder-gray-400"
                   value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
               </div>
               {types.length > 0 && (
-                <select className="px-4 py-2.5 rounded-xl text-slate-800 text-sm outline-none focus:ring-2 focus:ring-[#F15A24]/40 bg-white sm:w-52"
+                <select className="px-4 py-2.5 rounded-xl text-gray-800 text-sm outline-none focus:ring-2 focus:ring-orange-300 bg-white sm:w-52"
                   value={filterType} onChange={(e) => setFilterType(e.target.value)}>
                   <option value="All">ทุกหมวดหมู่</option>
                   {types.map((tp) => <option key={tp} value={tp}>{tp}</option>)}
@@ -147,25 +138,41 @@ export default function HomePage() {
               <p className="text-white text-sm sm:text-[15px] leading-relaxed whitespace-pre-line">{notice}</p>
             </div>
           )}
+
+          {/* กรอบตารางกิจกรรม — กดเปิดดูรูปเต็ม (popup) */}
+          {scheduleImg && (
+            <button onClick={() => setScheduleOpen(true)}
+              className="mt-4 w-full max-w-4xl mx-auto bg-white hover:bg-orange-50 border border-white/40 rounded-2xl px-5 py-4 flex items-center gap-4 shadow-lg transition active:scale-[0.99] group">
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#F15A24] to-amber-500 flex items-center justify-center shrink-0 shadow-sm">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-white"><path d="M8 2v4M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/></svg>
+              </div>
+              <div className="flex-1 text-left min-w-0">
+                <div className="font-extrabold text-slate-800 text-sm sm:text-base">ตารางกิจกรรมทั้งงาน</div>
+                <div className="text-xs text-slate-500 mt-0.5">แตะเพื่อดูตารางเต็ม · บันทึกรูปได้</div>
+              </div>
+              <span className="inline-flex items-center gap-1 text-[#F15A24] font-bold text-xs sm:text-sm shrink-0 group-hover:gap-2 transition-all">
+                ดูตาราง
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </span>
+            </button>
+          )}
         </div>
       </div>
 
       {/* ─── Course Grid ─── */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
         {error && (
-          <div className="bg-rose-50 border border-rose-100 text-rose-700 rounded-2xl p-4 mb-6 text-sm">
+          <div className="bg-red-50 border border-red-100 text-red-700 rounded-2xl p-4 mb-6 text-sm">
             {t("home.error")}: {error}
           </div>
         )}
         {!error && filtered.length === 0 ? (
           <div className="text-center py-20">
-            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mx-auto mb-4">
-              <Ico.search className="w-7 h-7" />
-            </div>
-            <p className="text-slate-700 text-xl font-semibold">{t("home.noCourses")}</p>
+            <p className="text-5xl mb-4">🔍</p>
+            <p className="text-gray-500 text-xl font-semibold">{t("home.noCourses")}</p>
             {(searchTerm || filterType !== "All") && (
               <button onClick={() => { setSearchTerm(""); setFilterType("All") }}
-                className="mt-4 px-5 py-2 bg-[#F15A24] text-white rounded-xl font-bold hover:bg-[#C44215] transition text-sm shadow-md shadow-orange-500/20">
+                className="mt-4 px-5 py-2 bg-[#F15A24] text-white rounded-xl font-bold hover:bg-[#C44215] transition text-sm">
                 ล้างตัวกรอง
               </button>
             )}
@@ -182,10 +189,10 @@ export default function HomePage() {
           <div className="space-y-10">
             {groupedByType.map(({ label, items }, gi) => (
               <section key={label}>
-                {gi > 0 && <div className="border-t border-slate-200 mb-8" />}
+                {gi > 0 && <div className="border-t border-gray-200 mb-8" />}
                 <div className="flex items-center gap-3 mb-5">
-                  <h2 className="text-lg sm:text-xl font-bold text-slate-800">{label}</h2>
-                  <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">{items.length}</span>
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-800">{label}</h2>
+                  <span className="text-xs font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{items.length}</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {items.map((course) => (
@@ -199,6 +206,40 @@ export default function HomePage() {
       </div>
 
       {selected && <DetailModal course={selected} t={t} onClose={() => setSelected(null)} onRegister={() => { setSelected(null); navigate(`/register/${selected.id}`) }} />}
+
+      {/* Popup ตารางกิจกรรม — รูปเต็ม + ปุ่มบันทึก */}
+      {scheduleOpen && scheduleImg && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-sm" onClick={() => setScheduleOpen(false)}>
+          <div className="bg-white w-full max-w-3xl max-h-[92vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+            {/* หัว */}
+            <div className="bg-gradient-to-r from-[#F15A24] to-amber-500 px-5 py-4 flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 text-white"><path d="M8 2v4M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/></svg>
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-bold text-white text-base leading-tight">ตารางกิจกรรมทั้งงาน</h3>
+                  {event && <p className="text-orange-100 text-xs truncate">{event.name} {event.year}</p>}
+                </div>
+              </div>
+              <button onClick={() => setScheduleOpen(false)} className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xl font-bold flex items-center justify-center shrink-0">×</button>
+            </div>
+            {/* รูป (เลื่อนดูได้) */}
+            <div className="overflow-auto flex-1 bg-slate-50 p-3 sm:p-4 flex items-start justify-center">
+              <img src={scheduleImg} alt="ตารางกิจกรรม" className="max-w-full h-auto rounded-xl shadow-sm" />
+            </div>
+            {/* ปุ่มบันทึก */}
+            <div className="px-5 py-3 border-t border-slate-100 bg-white flex gap-2 shrink-0">
+              <button onClick={() => downloadImage(scheduleImg, `ตารางกิจกรรม_${event?.name || "งาน"}.jpg`)}
+                className="flex-1 flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-[#F15A24] to-amber-500 text-white rounded-xl font-bold hover:from-[#d94e1e] hover:to-amber-600 shadow-md shadow-orange-500/25 transition active:scale-95 text-sm">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                บันทึกรูป
+              </button>
+              <button onClick={() => setScheduleOpen(false)} className="px-5 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition text-sm">ปิด</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -215,81 +256,81 @@ function CourseCard({ course, t, onDetail, onRegister }) {
   const instructors = (course.course_instructors || []).map((ci) => ci.instructors?.full_name).filter(Boolean)
 
   return (
-    <div className="relative bg-white rounded-2xl shadow-sm hover:shadow-md hover:border-orange-200 transition-all duration-300 border border-slate-100 flex flex-col overflow-hidden group">
+    <div className="relative bg-white rounded-2xl shadow-sm hover:shadow-lg transition-shadow duration-300 border border-gray-100 flex flex-col overflow-hidden group">
       {/* Image */}
-      <div className="h-48 sm:h-52 bg-slate-100 relative cursor-pointer overflow-hidden" onClick={onDetail}>
+      <div className="h-48 sm:h-52 bg-gray-100 relative cursor-pointer overflow-hidden" onClick={onDetail}>
         {course.image_url ? (
           <img src={course.image_url} alt={course.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
         ) : (
-          <div className="h-full w-full flex items-center justify-center text-slate-300 bg-gradient-to-br from-orange-50 to-slate-100">
-            <Ico.book className="w-12 h-12" />
+          <div className="h-full w-full flex items-center justify-center text-gray-300 bg-gradient-to-br from-orange-50 to-gray-100">
+            <span className="text-5xl">📚</span>
           </div>
         )}
         {type?.label && (
           <div className="absolute top-3 left-3 z-20">
-            <span className="text-[10px] font-bold px-2.5 py-1 rounded-md backdrop-blur-sm bg-white/90 text-orange-700">
+            <span className="text-[10px] font-bold px-2.5 py-1 rounded-full border backdrop-blur-sm bg-white/90 text-orange-700 border-orange-200">
               {type.label}
             </span>
           </div>
         )}
         {isClosed ? (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
-            <span className="inline-flex items-center gap-1.5 bg-slate-700 text-white text-xs font-bold px-3 py-1 rounded-full"><Ico.lock className="w-3.5 h-3.5" /> ปิดรับสมัคร</span>
+            <span className="bg-gray-700 text-white text-xs font-bold px-3 py-1 rounded-full">🔒 ปิดรับสมัคร</span>
           </div>
         ) : isFull && (
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-10">
-            <span className="bg-rose-500 text-white text-xs font-bold px-3 py-1 rounded-full">{t("home.full")}</span>
+            <span className="bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full">{t("home.full")}</span>
           </div>
         )}
       </div>
 
       {/* Content */}
       <div className="p-5 flex-1 flex flex-col">
-        <h3 className="text-base font-bold text-slate-800 mb-1 cursor-pointer hover:text-[#F15A24] transition-colors line-clamp-2 leading-snug" onClick={onDetail}>
+        <h3 className="text-base font-bold text-gray-800 mb-1 cursor-pointer hover:text-[#F15A24] transition-colors line-clamp-2 leading-snug" onClick={onDetail}>
           {course.title}
         </h3>
         {instructors.length > 0 && (
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-2">
-            <Ico.cap className="w-3.5 h-3.5 shrink-0" /><span className="truncate">{instructors.join(", ")}</span>
+          <div className="flex items-center gap-1.5 text-xs text-gray-500 mb-2">
+            <span>👨‍🏫</span><span className="truncate">{instructors.join(", ")}</span>
           </div>
         )}
-        <p className="text-slate-500 text-xs leading-relaxed mb-3 line-clamp-2 flex-1">
+        <p className="text-gray-500 text-xs leading-relaxed mb-3 line-clamp-2 flex-1">
           {course.description || "รายละเอียดวิชา…"}
         </p>
 
         {/* Seat progress */}
         <div className="mb-4">
           <div className="flex justify-between items-center text-xs mb-1.5">
-            <span className="text-slate-500">{t("home.seats")}</span>
-            <span className={`font-bold ${isFull ? "text-rose-500" : "text-emerald-600"}`}>
+            <span className="text-gray-500">{t("home.seats")}</span>
+            <span className={`font-bold ${isFull ? "text-red-500" : "text-green-600"}`}>
               {isFull ? t("home.full") : t("home.seatsLeft", { r: remaining, c: cap })}
             </span>
           </div>
-          <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-            <div className={`h-full rounded-full transition-all duration-500 ${pct >= 100 ? "bg-rose-500" : pct >= 75 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${pct}%` }} />
+          <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+            <div className={`h-full rounded-full transition-all duration-500 ${pct >= 100 ? "bg-red-500" : pct >= 75 ? "bg-orange-500" : "bg-green-500"}`} style={{ width: `${pct}%` }} />
           </div>
         </div>
 
         {/* Price & Buttons */}
-        <div className="border-t border-slate-100 pt-4">
+        <div className="border-t border-gray-100 pt-4">
           <div className="flex justify-between items-center mb-3">
-            <span className="text-xs text-slate-500">ค่าลงทะเบียน</span>
+            <span className="text-xs text-gray-500">ค่าลงทะเบียน</span>
             <span className="text-lg font-extrabold text-[#F15A24]">
               {isPaid ? `฿${course.price?.toLocaleString() || "-"}` : t("common.free")}
             </span>
           </div>
           <div className="flex gap-2">
-            <button onClick={onDetail} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-[#F15A24] border-2 border-[#F15A24] hover:bg-orange-50 transition-all">
+            <button onClick={onDetail} className={`py-2.5 rounded-xl text-sm font-bold text-[#F15A24] border-2 border-[#F15A24] hover:bg-orange-50 transition-all ${isClosed ? "flex-1" : "flex-1"}`}>
               รายละเอียด
             </button>
             {isClosed ? (
-              <button disabled className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-slate-400 bg-slate-100 border border-slate-200 cursor-not-allowed">
+              <button disabled className="flex-1 py-2.5 rounded-xl text-sm font-bold text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed">
                 ปิดรับสมัคร
               </button>
             ) : (
               <button onClick={onRegister}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-all shadow-md ${isFull ? "bg-amber-500 hover:bg-amber-600 shadow-amber-500/20" : "bg-[#F15A24] hover:bg-[#C44215] shadow-orange-500/20"}`}>
-                {isFull ? (<span className="inline-flex items-center gap-1.5"><Ico.list className="w-4 h-4" /> สมัคร (คิวสำรอง)</span>) : t("home.register")}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-all shadow-md ${isFull ? "bg-amber-500 hover:bg-amber-600" : "bg-[#F15A24] hover:bg-[#C44215]"}`}>
+                {isFull ? "📋 สมัคร (คิวสำรอง)" : t("home.register")}
               </button>
             )}
           </div>
@@ -297,6 +338,25 @@ function CourseCard({ course, t, onDetail, onRegister }) {
       </div>
     </div>
   )
+}
+
+// ดาวน์โหลดรูปข้าม origin (Supabase storage) — fetch เป็น blob แล้วเซฟ
+async function downloadImage(url, filename) {
+  try {
+    const res = await fetch(url)
+    const blob = await res.blob()
+    const objUrl = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = objUrl
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(objUrl), 1000)
+  } catch (_) {
+    // fallback: เปิดแท็บใหม่ให้กดเซฟเอง (เผื่อ network/CORS)
+    window.open(url, "_blank")
+  }
 }
 
 // แปลงวันที่ ISO → "9 มี.ค. 2569" (พ.ศ.)
@@ -339,26 +399,26 @@ function DetailModal({ course, t, onClose, onRegister }) {
   ]
 
   return (
-    <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="bg-white w-full rounded-3xl shadow-2xl sm:max-w-2xl overflow-hidden flex flex-col max-h-[90dvh] sm:max-h-[92vh]">
         {/* Hero ส้ม */}
-        <div className="bg-gradient-to-r from-[#F15A24] to-amber-500 p-6 text-white flex justify-between items-start shrink-0">
+        <div className="bg-gradient-to-br from-[#F15A24] to-[#d04810] p-6 text-white flex justify-between items-start shrink-0">
           <div className="pr-4">
-            {type?.label && <p className="text-xs text-orange-100 mb-1 font-bold tracking-widest uppercase">{type.label}</p>}
+            {type?.label && <p className="text-xs text-orange-200 mb-1 font-bold tracking-widest uppercase">{type.label}</p>}
             <h3 className="font-extrabold text-2xl sm:text-3xl leading-tight mb-3">{course.title}</h3>
             <div className="flex flex-wrap gap-2">
               {course.level && <span className="text-xs font-bold bg-white/20 backdrop-blur px-3 py-1 rounded-full">{course.level}</span>}
               {course.duration && <span className="text-xs font-bold bg-white/20 backdrop-blur px-3 py-1 rounded-full">📅 {course.duration}</span>}
             </div>
           </div>
-          <button onClick={onClose} aria-label="ปิด" className="text-white/80 hover:text-white text-2xl leading-none transition shrink-0 w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10">×</button>
+          <button onClick={onClose} className="text-white/80 hover:text-white text-2xl leading-none transition shrink-0 w-8 h-8 flex items-center justify-center">×</button>
         </div>
 
         <div className="overflow-y-auto flex-1 bg-[#fffbf8]">
           {/* รูปภาพ + carousel */}
           {images.length > 0 && (
-            <div className="relative h-56 sm:h-72 bg-slate-200">
+            <div className="relative h-56 sm:h-72 bg-gray-200">
               <img src={images[imgIdx]} className="w-full h-full object-cover" alt={course.title} />
               {images.length > 1 && (
                 <>
@@ -381,10 +441,10 @@ function DetailModal({ course, t, onClose, onRegister }) {
             {/* 4 การ์ดข้อมูล */}
             <div className="grid grid-cols-3 gap-3">
               {infoCards.map((c, i) => (
-                <div key={i} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 text-center">
+                <div key={i} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 text-center">
                   <div className="text-2xl mb-1">{c.icon}</div>
-                  <div className="text-[11px] text-slate-400">{c.label}</div>
-                  <div className="text-sm font-bold text-slate-800 mt-0.5">{c.value}</div>
+                  <div className="text-[11px] text-gray-400">{c.label}</div>
+                  <div className="text-sm font-bold text-gray-800 mt-0.5">{c.value}</div>
                 </div>
               ))}
             </div>
@@ -392,12 +452,12 @@ function DetailModal({ course, t, onClose, onRegister }) {
             {/* ผู้สอน */}
             {instructors.length > 0 && (
               <div className="bg-white p-4 rounded-2xl border border-orange-100 shadow-sm">
-                <h4 className="font-bold text-[#F15A24] text-base mb-3 flex items-center gap-2"><Ico.cap className="w-5 h-5" /> ผู้สอน</h4>
+                <h4 className="font-bold text-[#F15A24] text-base mb-3 flex items-center gap-2">👨‍🏫 ผู้สอน</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {instructors.map((inst, i) => (
                     <div key={i} className="flex items-center gap-3 p-3 bg-orange-50 rounded-xl border border-orange-100">
-                      <div className="bg-white p-2 rounded-full shadow-sm border border-orange-100 shrink-0 text-[#F15A24]"><Ico.cap className="w-4 h-4" /></div>
-                      <span className="text-slate-800 font-medium text-sm">{inst}</span>
+                      <div className="bg-white p-1.5 rounded-full text-xl shadow-sm border border-orange-100 shrink-0">🎓</div>
+                      <span className="text-gray-800 font-medium text-sm">{inst}</span>
                     </div>
                   ))}
                 </div>
@@ -408,7 +468,7 @@ function DetailModal({ course, t, onClose, onRegister }) {
             {course.description && (
               <div className="bg-white p-4 rounded-2xl border border-orange-100 shadow-sm">
                 <h4 className="font-bold text-[#F15A24] text-base mb-2 flex items-center gap-2">📝 คำอธิบายรายวิชา</h4>
-                <p className="text-slate-700 text-sm leading-7 whitespace-pre-line">{course.description}</p>
+                <p className="text-gray-700 text-sm leading-7 whitespace-pre-line">{course.description}</p>
               </div>
             )}
 
@@ -416,9 +476,9 @@ function DetailModal({ course, t, onClose, onRegister }) {
             {sections.length > 0 && (
               <div className="space-y-3">
                 {sections.map((sec, idx) => (
-                  <div key={idx} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-                    {sec.heading && <h4 className="font-bold text-slate-800 text-sm mb-1.5 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-[#F15A24]" />{sec.heading}</h4>}
-                    {sec.body && <p className="text-slate-600 text-sm leading-7 whitespace-pre-line">{sec.body}</p>}
+                  <div key={idx} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                    {sec.heading && <h4 className="font-bold text-gray-800 text-sm mb-1.5 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-[#F15A24]" />{sec.heading}</h4>}
+                    {sec.body && <p className="text-gray-600 text-sm leading-7 whitespace-pre-line">{sec.body}</p>}
                   </div>
                 ))}
               </div>
@@ -428,27 +488,27 @@ function DetailModal({ course, t, onClose, onRegister }) {
             <div className="flex flex-col items-center py-4 border-t border-dashed border-orange-200">
               {isPaid ? (
                 <>
-                  <p className="text-slate-400 text-xs mb-1">ค่าลงทะเบียน</p>
-                  <p className="text-4xl font-extrabold text-emerald-600">{course.price?.toLocaleString() || "-"} บาท</p>
+                  <p className="text-gray-400 text-xs mb-1">ค่าลงทะเบียน</p>
+                  <p className="text-4xl font-extrabold text-green-600">{course.price?.toLocaleString() || "-"} บาท</p>
                 </>
               ) : (
-                <p className="text-2xl font-extrabold text-emerald-600">✨ ไม่มีค่าลงทะเบียน</p>
+                <p className="text-2xl font-extrabold text-green-600">✨ ไม่มีค่าลงทะเบียน</p>
               )}
             </div>
           </div>
         </div>
 
         {/* ปุ่ม */}
-        <div className="p-4 border-t border-slate-100 bg-white flex gap-3 shrink-0">
-          <button onClick={onClose} className="flex-1 sm:flex-none sm:px-8 py-3 rounded-xl font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition text-sm">ปิด</button>
+        <div className="p-4 border-t border-gray-200 bg-white flex gap-3 shrink-0">
+          <button onClick={onClose} className="flex-1 sm:flex-none sm:px-8 py-3 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition text-sm">ปิด</button>
           {isClosed ? (
-            <button disabled className="flex-1 py-3 rounded-xl font-semibold text-slate-400 bg-slate-100 border border-slate-200 cursor-not-allowed text-sm flex items-center justify-center gap-2">
-              <Ico.lock className="w-4 h-4" /> ปิดรับสมัครแล้ว
+            <button disabled className="flex-1 py-3 rounded-xl font-bold text-gray-400 bg-gray-100 border border-gray-200 cursor-not-allowed text-sm">
+              🔒 ปิดรับสมัครแล้ว
             </button>
           ) : (
             <button onClick={onRegister} disabled={isFull}
-              className={`flex-1 py-3 rounded-xl font-semibold text-white transition shadow-md text-sm flex items-center justify-center gap-2 ${isFull ? "bg-slate-400 cursor-not-allowed" : "bg-[#F15A24] hover:bg-[#C44215] shadow-orange-500/20"}`}>
-              {isFull ? "ที่นั่งเต็ม" : (<>{t("home.register")} <Ico.arrow className="w-4 h-4" /></>)}
+              className={`flex-1 py-3 rounded-xl font-bold text-white transition shadow-md text-sm ${isFull ? "bg-gray-400 cursor-not-allowed" : "bg-[#F15A24] hover:bg-[#C44215]"}`}>
+              {isFull ? "ที่นั่งเต็ม" : t("home.register") + " →"}
             </button>
           )}
         </div>
