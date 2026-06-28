@@ -4,6 +4,11 @@ import { getSession, fetchMyRegistrations, fetchCourse, setPaymentDeadline } fro
 import { useLang } from "../lib/i18n.jsx"
 import { PaymentScreen } from "./RegisterPage.jsx"
 
+// ───── ไอคอน SVG inline (สไตล์ lucide) — โทนเดียวกับหน้าอื่น ─────
+const Ico = {
+  arrowLeft: (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M19 12H5M12 19l-7-7 7-7"/></svg>),
+}
+
 // หน้าชำระเงินของใบสมัครเดิม (ไม่สร้างใบใหม่) — เปิดจากปุ่ม "ชำระเงิน" ในหน้ารายการสมัคร
 export default function PayPage() {
   const { regId } = useParams()
@@ -48,16 +53,16 @@ export default function PayPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="w-10 h-10 border-4 border-[#F15A24] border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
   if (error) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center gap-4 px-4">
-        <p className="text-red-600 font-bold text-center">{error}</p>
-        <Link to="/my-registration" className="text-[#F15A24] font-bold">← กลับไปรายการสมัคร</Link>
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-4 px-4">
+        <p className="text-rose-600 font-bold text-center">{error}</p>
+        <Link to="/my-registration" className="inline-flex items-center gap-1.5 text-[#F15A24] font-bold"><Ico.arrowLeft className="w-4 h-4" /> กลับไปรายการสมัคร</Link>
       </div>
     )
   }
