@@ -143,7 +143,7 @@ export default function RegisterPage() {
         if (dup?.duplicate) {
           setSubmitting(false)
           if (dup.reason === "EMAIL_ALREADY_REGISTERED") return setError("คุณสมัครคอร์สนี้ไปแล้ว (สมัครซ้ำไม่ได้)")
-          if (dup.reason === "MEMBER_ALREADY_REGISTERED") return setError("มีสมาชิกในทีมที่เลขบัตรเคยสมัครคอร์สนี้แล้ว (สมัครซ้ำไม่ได้)")
+          if (dup.reason === "MEMBER_ALREADY_REGISTERED") return setError("มีสมาชิกในธีมที่เลขบัตรเคยสมัครคอร์สนี้แล้ว (สมัครซ้ำไม่ได้)")
           return setError("ไม่สามารถสมัครซ้ำได้")
         }
       } catch (_) { /* RPC ยังไม่มี — ข้ามการเช็คซ้ำ */ }
@@ -302,7 +302,7 @@ export default function RegisterPage() {
               <span className="w-6 h-6 bg-[#F15A24] text-white rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0">1</span>
               <div className="text-sm">
                 <span className="font-bold text-slate-800">{profile?.first_name} {profile?.last_name}</span>
-                <span className="text-slate-400 text-xs ml-2">(คุณ — หัวหน้าทีม)</span>
+                <span className="text-slate-400 text-xs ml-2">(คุณ — หัวหน้าธีม)</span>
               </div>
             </div>
 
@@ -370,7 +370,7 @@ export default function RegisterPage() {
           <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100">
             <h3 className="text-base font-bold text-slate-800 pb-3 border-b border-slate-100 mb-4 flex items-center gap-2">
               <span className="w-7 h-7 bg-[#F15A24] text-white rounded-xl flex items-center justify-center"><Ico.tag className="w-4 h-4" /></span>
-              ชื่อทีม / ชื่อธีมผลงาน <span className="text-rose-500">*</span>
+              ชื่อธีม / ชื่อผลงาน <span className="text-rose-500">*</span>
             </h3>
             <input className={inputCls} placeholder="เช่น Team Rocket / ชื่อผลงาน *" value={themeName} onChange={(e) => setThemeName(e.target.value)} />
             <p className="text-[11px] text-slate-400 mt-1.5 flex items-center gap-1"><Ico.warn className="w-3 h-3 shrink-0" /> จำเป็นต้องกรอก — ใส่ชื่อทีมหรือชื่อธีมผลงานของคุณ</p>
@@ -385,9 +385,9 @@ export default function RegisterPage() {
               {course.portfolio_label || "แนบลิงก์ผลงาน"}
             </h3>
             <textarea rows="3" className={inputCls + " resize-none"}
-              placeholder="วางลิงก์ผลงานที่นี่ * (ใส่ได้หลายลิงก์ — บรรทัดละ 1 ลิงก์)&#10;เช่น&#10;https://drive.google.com/...&#10;https://youtube.com/..."
+              placeholder="วางลิงก์ผลงานที่นี่ บรรทัดละ 1 ลิงก์ เช่น&#10;https://drive.google.com/...&#10;https://youtube.com/..."
               value={portfolioUrl} onChange={(e) => setPortfolioUrl(e.target.value)} />
-            <p className="text-xs text-slate-400 mt-2 flex items-center gap-1"><Ico.warn className="w-3 h-3 shrink-0" /> ใส่ได้หลายลิงก์ (ขึ้นบรรทัดใหม่) · ตรวจสอบให้แน่ใจว่าเปิดสิทธิ์ให้เข้าดูได้</p>
+            <p className="text-xs text-slate-400 mt-2 flex items-center gap-1"><Ico.warn className="w-3 h-3 shrink-0" /> ใส่ได้หลายลิงก์ · ตรวจสอบให้แน่ใจว่าเปิดสิทธิ์ให้เข้าดูได้</p>
           </div>
         )}
 

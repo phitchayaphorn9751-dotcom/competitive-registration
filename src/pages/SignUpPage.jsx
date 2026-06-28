@@ -38,10 +38,10 @@ export default function SignUpPage() {
 
   function strengthOf(pw) {
     if (!pw) return null
-    if (pw.length < 6) return { label: t("signup.strengthWeak"), color: "bg-red-400", width: "25%", cls: "text-red-500" }
-    if (pw.length < 8) return { label: t("signup.strengthFair"), color: "bg-yellow-400", width: "50%", cls: "text-yellow-600" }
-    if (pw.length < 12) return { label: t("signup.strengthGood"), color: "bg-blue-400", width: "75%", cls: "text-blue-500" }
-    return { label: t("signup.strengthStrong"), color: "bg-green-500", width: "100%", cls: "text-green-600" }
+    if (pw.length < 6) return { label: t("signup.strengthWeak"), color: "bg-rose-400", width: "25%", cls: "text-rose-500" }
+    if (pw.length < 8) return { label: t("signup.strengthFair"), color: "bg-amber-400", width: "50%", cls: "text-amber-600" }
+    if (pw.length < 12) return { label: t("signup.strengthGood"), color: "bg-sky-400", width: "75%", cls: "text-sky-500" }
+    return { label: t("signup.strengthStrong"), color: "bg-emerald-500", width: "100%", cls: "text-emerald-600" }
   }
   const strength = strengthOf(password)
 
@@ -67,12 +67,12 @@ export default function SignUpPage() {
     }
   }
 
-  const inputBase = "w-full px-4 py-3 rounded-xl border bg-gray-50/50 focus:bg-white outline-none transition-all text-sm text-gray-900 placeholder-gray-400"
+  const inputBase = "w-full px-4 py-3 rounded-xl border bg-slate-50/50 focus:bg-white outline-none transition-all text-sm text-slate-900 placeholder-slate-400"
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-white">
       {/* Left panel */}
-      <div className="hidden md:flex md:w-5/12 lg:w-1/2 bg-gradient-to-br from-[#F15A24] to-[#c44215] relative overflow-hidden flex-col justify-between p-12">
+      <div className="hidden md:flex md:w-5/12 lg:w-1/2 bg-gradient-to-br from-[#F15A24] to-amber-500 relative overflow-hidden flex-col justify-between p-12">
         <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
           <div className="absolute -top-40 -left-40 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
           <div className="absolute bottom-0 right-0 w-[40rem] h-[40rem] bg-black/10 rounded-full blur-3xl transform translate-x-1/3 translate-y-1/3" />
@@ -84,56 +84,56 @@ export default function SignUpPage() {
         </div>
         <div className="relative z-10 mb-20 text-white">
           <h1 className="text-4xl lg:text-5xl xl:text-6xl font-extrabold tracking-tight leading-[1.1] mb-6">
-            CAMT <span className="text-orange-200">SUMMER</span><br />COURSE 2026
+            CAMT <span className="text-orange-100">SUMMER</span><br />COURSE 2026
           </h1>
           <p className="text-lg text-orange-100/90 font-medium max-w-md leading-relaxed">{t("login.heroSub")}</p>
         </div>
-        <div className="relative z-10 text-orange-200 text-sm font-medium">
+        <div className="relative z-10 text-orange-100 text-sm font-medium">
           &copy; {new Date().getFullYear()} College of Arts, Media and Technology
         </div>
       </div>
 
       {/* Right form */}
-      <div className="flex-1 flex flex-col justify-center px-6 py-12 sm:px-12 relative bg-[#F8FAFC]">
+      <div className="flex-1 flex flex-col justify-center px-6 py-12 sm:px-12 relative bg-slate-50">
         <div className="md:hidden flex justify-between items-center mb-8">
           <Link to="/"><Logo className="h-14 w-14" /></Link>
           <LangToggle />
         </div>
 
-        <div className="w-full max-w-[420px] mx-auto bg-white p-8 sm:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100/60">
+        <div className="w-full max-w-[420px] mx-auto bg-white p-8 sm:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100/60">
           <div className="mb-8 text-center md:text-left">
-            <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">{t("signup.title")}</h2>
-            <p className="text-gray-500 mt-2 text-sm">{t("signup.subtitle")}</p>
+            <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">{t("signup.title")}</h2>
+            <p className="text-slate-500 mt-2 text-sm">{t("signup.subtitle")}</p>
           </div>
 
           {error && (
-            <div className="flex items-start gap-3 bg-red-50 border border-red-100 text-red-700 rounded-2xl px-4 py-3.5 mb-6 text-sm animate-fade-in">
-              <span className="text-base shrink-0 mt-0.5">⚠️</span>
+            <div className="flex items-start gap-3 bg-rose-50 border border-rose-100 text-rose-700 rounded-2xl px-4 py-3.5 mb-6 text-sm animate-fade-in">
+              <svg className="w-4 h-4 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
               <span className="font-medium leading-relaxed">{error}</span>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1.5">{t("login.email")}</label>
+              <label className="block text-sm font-bold text-slate-700 mb-1.5">{t("login.email")}</label>
               <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-                className={`${inputBase} border-gray-200 focus:border-[#F15A24] focus:ring-4 focus:ring-orange-50`}
+                className={`${inputBase} border-slate-200 focus:border-[#F15A24] focus:ring-4 focus:ring-orange-50`}
                 placeholder="Ex. student@example.com" />
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1.5">{t("login.password")}</label>
+              <label className="block text-sm font-bold text-slate-700 mb-1.5">{t("login.password")}</label>
               <div className="relative">
                 <input type={showPw ? "text" : "password"} required value={password} onChange={(e) => setPassword(e.target.value)}
-                  className={`${inputBase} border-gray-200 focus:border-[#F15A24] focus:ring-4 focus:ring-orange-50 pr-12`}
+                  className={`${inputBase} border-slate-200 focus:border-[#F15A24] focus:ring-4 focus:ring-orange-50 pr-12`}
                   placeholder={t("signup.pwPlaceholder")} />
-                <button type="button" onClick={() => setShowPw(!showPw)} className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-[#F15A24] p-1">
+                <button type="button" onClick={() => setShowPw(!showPw)} className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-[#F15A24] p-1">
                   <EyeIcon off={showPw} />
                 </button>
               </div>
               {strength && (
                 <div className="mt-2">
-                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                     <div className={`h-full rounded-full transition-all duration-500 ${strength.color}`} style={{ width: strength.width }} />
                   </div>
                   <div className={`text-xs mt-1.5 font-semibold ${strength.cls}`}>{t("signup.strength")}: {strength.label}</div>
@@ -142,20 +142,20 @@ export default function SignUpPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1.5">{t("signup.confirmPw")}</label>
+              <label className="block text-sm font-bold text-slate-700 mb-1.5">{t("signup.confirmPw")}</label>
               <div className="relative">
                 <input type={showConfirm ? "text" : "password"} required value={confirm} onChange={(e) => setConfirm(e.target.value)}
                   className={`${inputBase} pr-12 ${
-                    confirm && password !== confirm ? "border-red-300 bg-red-50/50 focus:border-red-500 focus:ring-4 focus:ring-red-100"
-                    : confirm && password === confirm ? "border-green-300 bg-green-50/50 focus:border-green-500 focus:ring-4 focus:ring-green-100"
-                    : "border-gray-200 focus:border-[#F15A24] focus:ring-4 focus:ring-orange-50"}`}
+                    confirm && password !== confirm ? "border-rose-300 bg-rose-50/50 focus:border-rose-500 focus:ring-4 focus:ring-rose-100"
+                    : confirm && password === confirm ? "border-emerald-300 bg-emerald-50/50 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+                    : "border-slate-200 focus:border-[#F15A24] focus:ring-4 focus:ring-orange-50"}`}
                   placeholder={t("signup.confirmPwPlaceholder")} />
-                <button type="button" onClick={() => setShowConfirm(!showConfirm)} className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-[#F15A24] p-1">
+                <button type="button" onClick={() => setShowConfirm(!showConfirm)} className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-[#F15A24] p-1">
                   <EyeIcon off={showConfirm} />
                 </button>
               </div>
               {confirm && (
-                <div className={`text-xs mt-1.5 font-semibold ${password === confirm ? "text-green-600" : "text-red-500"}`}>
+                <div className={`text-xs mt-1.5 font-semibold ${password === confirm ? "text-emerald-600" : "text-rose-500"}`}>
                   {password === confirm ? t("signup.pwMatch") : t("signup.pwNoMatch")}
                 </div>
               )}
@@ -175,7 +175,7 @@ export default function SignUpPage() {
             </button>
           </form>
 
-          <p className="mt-8 text-center text-gray-500 text-sm">
+          <p className="mt-8 text-center text-slate-500 text-sm">
             {t("signup.hasAccount")}{" "}
             <Link to="/login" className="text-[#F15A24] font-bold hover:underline">{t("signup.loginNow")}</Link>
           </p>
