@@ -70,20 +70,6 @@ function unifyStatus(r) {
   }
   return s
 }
-const PILL = {
-  slate: "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200",
-  emerald: "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100",
-  sky: "bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100",
-  amber: "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100",
-  rose: "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100",
-}
-const PILL_ACTIVE = {
-  slate: "bg-slate-600 text-white border-slate-600",
-  emerald: "bg-emerald-600 text-white border-emerald-600",
-  sky: "bg-sky-600 text-white border-sky-600",
-  amber: "bg-amber-500 text-white border-amber-500",
-  rose: "bg-rose-600 text-white border-rose-600",
-}
 
 export default function AdminApplicants() {
   const navigate = useNavigate()
@@ -205,19 +191,21 @@ export default function AdminApplicants() {
         </button>
       </div>
 
-      {/* Quick filter pills (สถานะรวม) */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        {FILTERS.map(({ key, label, color }) => {
+      {/* Quick filter pills (สถานะรวม) — สไตล์เดียวกับหน้ารายการสมัครของฉัน */}
+      <div className="-mx-4 sm:mx-0 px-4 sm:px-0 mb-4">
+        <div className="flex gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible" style={{ scrollbarWidth: "none" }}>
+        {FILTERS.map(({ key, label }) => {
           const count = key === "all" ? regs.length : counts[key] || 0
           const active = filter === key
           return (
             <button key={key} onClick={() => { setFilter(key); setPage(1) }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold transition ${active ? PILL_ACTIVE[color] : PILL[color]}`}>
+              className={`flex-shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs sm:text-[13px] font-medium whitespace-nowrap transition-all ${active ? "bg-[#F15A24] text-white shadow-sm" : "text-slate-500 hover:bg-slate-100 active:scale-95"}`}>
               {label}
-              <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-black ${active ? "bg-white/20" : "bg-black/10"}`}>{count}</span>
+              {count > 0 && <span className={`min-w-[18px] text-center rounded-full px-1.5 py-0.5 text-[10px] font-bold ${active ? "bg-white/25 text-white" : "bg-slate-100 text-slate-500"}`}>{count}</span>}
             </button>
           )
         })}
+        </div>
       </div>
 
       {/* Search + course filter */}
@@ -278,9 +266,9 @@ export default function AdminApplicants() {
               ) : pageItems.length > 0 ? pageItems.map((r) => (
                 <tr key={r.id} onClick={() => goVerify(r.id)} className="hover:bg-orange-50/60 transition cursor-pointer group">
                   <td className="px-4 py-3.5 text-xs text-slate-500 whitespace-nowrap">{fmtDate(r.created_at)}</td>
-                  <td className="px-4 py-3.5"><span className="font-medium text-slate-800 text-xs leading-snug line-clamp-2 max-w-[160px] block">{r.courses?.title || "-"}</span></td>
+                  <td className="px-4 py-3.5"><span className="font-bold text-slate-800 text-sm leading-snug line-clamp-2 max-w-[200px] block">{r.courses?.title || "-"}</span></td>
                   <td className="px-4 py-3.5">
-                    <div className="font-bold text-slate-800 text-sm">{mainName(r)}</div>
+                    <div className="font-medium text-slate-700 text-sm">{mainName(r)}</div>
                     {mainSchool(r) && <div className="text-xs text-slate-400 truncate max-w-[160px]">{mainSchool(r)}</div>}
                     {(r.participants?.length || 0) > 1 && <div className="text-[10px] text-[#F15A24] font-bold">+ ทีม {r.participants.length} คน</div>}
                   </td>
@@ -309,14 +297,19 @@ export default function AdminApplicants() {
             </div>
           ) : pageItems.length > 0 ? pageItems.map((r) => (
             <div key={r.id} onClick={() => goVerify(r.id)} className="p-4 hover:bg-orange-50/60 active:bg-orange-100 transition cursor-pointer">
+              {/* แถวบน: ชื่อวิชา (เด่น) + สถานะ */}
               <div className="flex justify-between items-start gap-2 mb-1.5">
                 <div className="flex-1 min-w-0">
-                  <div className="font-bold text-slate-800 text-sm">{mainName(r)}</div>
-                  {(r.participants?.length || 0) > 1 && <div className="text-[10px] text-[#F15A24] font-bold">+ ทีม {r.participants.length} คน</div>}
+                  <div className="font-bold text-slate-800 text-sm leading-snug line-clamp-2">{r.courses?.title || "-"}</div>
                 </div>
                 <StatusBadge status={unifyStatus(r)} />
               </div>
-              <div className="text-xs text-slate-600 font-medium mb-1 line-clamp-1 flex items-center gap-1"><Ico.book className="w-3 h-3 text-slate-400 shrink-0" /> {r.courses?.title || "-"}</div>
+              {/* ชื่อผู้สมัคร + badge ทีม */}
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-sm font-medium text-slate-700">{mainName(r)}</span>
+                {(r.participants?.length || 0) > 1 && <span className="text-[10px] text-[#F15A24] font-bold bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded-full shrink-0">ทีม {r.participants.length} คน</span>}
+              </div>
+              {/* รายละเอียดรอง: เบอร์ · โรงเรียน · วันที่ */}
               <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-400">
                 <span className="inline-flex items-center gap-1"><Ico.phone className="w-3 h-3" /> {mainPhone(r)}</span>
                 {mainSchool(r) && <span className="truncate max-w-[140px] inline-flex items-center gap-1"><Ico.school className="w-3 h-3 shrink-0" /> {mainSchool(r)}</span>}
