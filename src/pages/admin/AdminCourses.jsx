@@ -141,20 +141,25 @@ export default function AdminCourses() {
   return (
     <div>
 
-      {/* Header */}
+      {/* Header — gradient title + ไอคอนวงกลม (โทนเดียวกับ My Registration) */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800 border-l-4 border-[#F15A24] pl-3 leading-tight">จัดการรายวิชา</h1>
-          <p className="text-sm text-slate-400 pl-3 mt-0.5">{courses.length} รายวิชา</p>
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 bg-gradient-to-br from-[#F15A24] to-amber-500 rounded-xl flex items-center justify-center shadow-sm shrink-0">
+            <Ico.book className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-extrabold bg-gradient-to-r from-[#F15A24] to-amber-500 bg-clip-text text-transparent leading-tight">จัดการรายวิชา</h1>
+            <p className="text-slate-400 text-xs mt-0.5">{courses.length} รายวิชา · Course Management</p>
+          </div>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <button onClick={openAdd} className="flex items-center gap-1.5 bg-[#F15A24] text-white px-4 py-2.5 rounded-xl font-bold hover:bg-[#c44215] shadow-sm shadow-orange-500/20 transition text-sm">
+          <button onClick={openAdd} className="flex items-center gap-1.5 bg-[#F15A24] text-white px-4 py-2.5 rounded-xl font-bold hover:bg-[#c44215] shadow-md shadow-orange-500/20 transition active:scale-95 text-sm">
             <Ico.plus className="w-4 h-4" /> เพิ่มวิชาใหม่
           </button>
-          <button onClick={() => setShowDup(true)} className="flex items-center gap-1.5 bg-slate-700 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-slate-800 shadow-sm transition text-sm">
+          <button onClick={() => setShowDup(true)} className="flex items-center gap-1.5 bg-slate-700 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-slate-800 shadow-sm transition active:scale-95 text-sm">
             <Ico.copy className="w-4 h-4" /> คัดลอกจากงานเก่า
           </button>
-          <button onClick={doEmergency} className="flex items-center gap-1.5 bg-rose-600 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-rose-700 shadow-sm transition text-sm">
+          <button onClick={doEmergency} className="flex items-center gap-1.5 bg-rose-600 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-rose-700 shadow-sm transition active:scale-95 text-sm">
             <Ico.alert className="w-4 h-4" /> ปิดรับทั้งหมด
           </button>
         </div>
@@ -165,12 +170,12 @@ export default function AdminCourses() {
         <div className="relative">
           <Ico.search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ค้นหาวิชา…"
-            className="w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#F15A24] focus:ring-2 focus:ring-orange-100" />
+            className="w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#F15A24] focus:ring-2 focus:ring-orange-100 transition" />
         </div>
         <div className="flex gap-1.5">
           {[["all", "ทั้งหมด"], ["open", "เปิดรับ"], ["closed", "ปิดรับ"]].map(([k, label]) => (
             <button key={k} onClick={() => setStatusFilter(k)}
-              className={`px-3.5 py-2 rounded-lg text-xs font-medium transition ${statusFilter === k ? "bg-[#F15A24] text-white shadow-sm" : "bg-white text-slate-500 border border-slate-200 hover:bg-slate-50"}`}>
+              className={`px-3.5 py-2 rounded-lg text-xs font-medium transition active:scale-95 ${statusFilter === k ? "bg-[#F15A24] text-white shadow-sm" : "bg-white text-slate-500 border border-slate-200 hover:bg-slate-50"}`}>
               {label}
             </button>
           ))}
@@ -776,7 +781,7 @@ function ParticipantsModal({ course, onClose }) {
         .map((v) => `"${String(v).replace(/"/g, '""')}"`)
       lines.push(vals.join(","))
     })
-    const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8;" })
+    const blob = new Blob(["\ufeff" + lines.join("\n")], { type: "text/csv;charset=utf-8;" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a"); a.href = url; a.download = `ผู้สมัคร_${course.title}.csv`; a.click()
     URL.revokeObjectURL(url)
