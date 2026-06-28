@@ -64,32 +64,32 @@ export default function Navbar() {
   }, [settings.site_title])
 
   return (
-    <nav ref={menuRef} className={`sticky top-0 z-50 bg-[#f15a24] text-white transition-shadow duration-200 ${scrolled ? "shadow-lg" : "shadow-sm"}`}>
+    <nav ref={menuRef} className={`sticky top-0 z-50 bg-gradient-to-r from-[#f15a24] to-amber-500 text-white transition-shadow duration-200 ${scrolled ? "shadow-lg" : "shadow-sm"}`}>
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand */}
         <Link to="/" className="flex items-center gap-2.5 transition-opacity hover:opacity-85">
           <img src="/camt_logo.png" alt="CAMT" className="h-9 w-9 rounded-md object-contain bg-white/10"
             onError={(e) => { e.currentTarget.style.display = "none" }} />
           <div className="leading-tight">
-            <p className="text-[11px] font-light text-orange-200 tracking-wide hidden sm:block">College of Arts, Media and Technology</p>
+            <p className="text-[11px] font-light text-orange-100 tracking-wide hidden sm:block">College of Arts, Media and Technology</p>
             <p className="text-sm font-bold tracking-wider">{siteTitle}</p>
           </div>
         </Link>
 
         {/* Desktop centre: contact pill */}
-        <div className="hidden items-center gap-4 rounded-full border border-white/25 bg-white/10 px-5 py-1.5 backdrop-blur-sm lg:flex">
+        <div className="hidden items-center gap-4 rounded-full border border-white/25 bg-white/15 px-5 py-1.5 backdrop-blur-sm lg:flex">
           <a href={lineUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 transition-opacity hover:opacity-85">
             <span className="text-base">💬</span>
             <div className="flex flex-col leading-tight">
-              <span className="text-[9px] font-light text-orange-200">ติดต่อ Line</span>
-              <span className="text-xs font-bold text-yellow-300">{lineId}</span>
+              <span className="text-[9px] font-light text-orange-100">ติดต่อ Line</span>
+              <span className="text-xs font-bold text-yellow-200">{lineId}</span>
             </div>
           </a>
           <div className="h-6 w-px bg-white/25" />
           <a href={telHref} className="flex items-center gap-2 transition-opacity hover:opacity-85">
             <span className="text-base">📞</span>
             <div className="flex flex-col leading-tight">
-              <span className="text-[9px] font-light text-orange-200">โทรศัพท์</span>
+              <span className="text-[9px] font-light text-orange-100">โทรศัพท์</span>
               <span className="text-xs font-bold text-white">{phone}</span>
             </div>
           </a>
