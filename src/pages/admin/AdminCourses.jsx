@@ -219,7 +219,7 @@ export default function AdminCourses() {
       )}
 
       {/* Footer */}
-      <footer className="mt-10 pt-6 pb-24 lg:pb-6 border-t border-slate-200 text-center text-xs text-slate-400">
+      <footer className="mt-10 pt-6 border-t border-slate-200 text-center text-xs text-slate-400">
         <p>© 2026 College of Arts, Media and Technology (CAMT) | College Administration Portal</p>
         <p className="mt-1">ระบบจัดการการแข่งขันและกิจกรรมโครงการดิจิทัล</p>
       </footer>
@@ -366,7 +366,7 @@ function CourseCard({ course, onEdit, onDelete, onToggle, onView }) {
           {/* ราคา (ใหญ่ ชิดขวา) — เหนือแถบที่นั่ง */}
           <div className="flex items-baseline justify-between gap-2 mt-2">
             <span className="text-[11px] text-slate-400 font-bold">ค่าลงทะเบียน</span>
-            <span className={`text-xl font-extrabold leading-none ${isFree ? "text-emerald-600" : "text-[#F15A24]"}`}>
+            <span className="text-xl font-extrabold leading-none text-[#F15A24]">
               {isFree ? "ฟรี" : <>฿{Number(course.price).toLocaleString()}</>}
             </span>
           </div>
