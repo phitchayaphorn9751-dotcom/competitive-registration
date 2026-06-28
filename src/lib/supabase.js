@@ -582,7 +582,7 @@ export async function saveCourse(c) {
     image_url: c.image_url || (c.image_urls?.[0] || null),
     image_urls: c.image_urls || [],
     line_qr_url: c.line_qr_url || null,
-    base_id: c.base_id ? Number(c.base_id) : null,
+    base_id: c.base_id ? String(c.base_id).trim().toUpperCase() : null,
     level: c.level || null,
     start_date: c.start_date || null,
     end_date: c.end_date || null,

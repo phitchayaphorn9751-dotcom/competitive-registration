@@ -245,7 +245,6 @@ export default function CheckInPage() {
             <span className="flex items-center gap-1 text-xs bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full">
               <span className="w-2 h-2 bg-emerald-500 rounded-full inline-block" style={{ animation: "pulse2 1.5s ease-in-out infinite" }} />Live
             </span>
-            <button onClick={() => navigate("/admin/dashboard")} className="flex items-center gap-1 text-sm text-slate-500 hover:text-[#F15A24] font-medium transition"><Ico.back className="w-4 h-4" /> กลับ</button>
           </div>
         </div>
         {selCourse && dateKey && (
