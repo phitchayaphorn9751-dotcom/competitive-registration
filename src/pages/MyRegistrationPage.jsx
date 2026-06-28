@@ -236,7 +236,7 @@ export default function MyRegistrationPage() {
                         </span>
                         <h3 className="font-semibold text-slate-800 text-sm sm:text-[15px] leading-snug flex items-start gap-2 flex-wrap">
                           <span className="flex-1 min-w-0">{reg.course_title}</span>
-                          {reg.is_team_member && <span className="text-[10px] font-bold bg-purple-50 text-purple-600 border border-purple-200 px-2 py-0.5 rounded-full shrink-0">👥 เพื่อนสมัครให้</span>}
+                          {reg.is_team_member && <span className="text-[10px] font-bold bg-orange-50 text-[#F15A24] border border-orange-200 px-2 py-0.5 rounded-full shrink-0">👥 เพื่อนสมัครให้</span>}
                         </h3>
                       </div>
 
@@ -438,18 +438,18 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
 
             {/* ชื่อทีม/ธีม + สมาชิก (แต่ละคนมีบาร์โค้ดของตัวเอง) */}
             {(reg.theme_name || members.length > 0) && (
-              <div className="bg-purple-50 border border-purple-100 rounded-xl p-3 my-2">
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 my-2">
                 {reg.theme_name && (
-                  <p className="text-sm mb-2.5"><span className="text-xs font-bold text-purple-500">🎯 ชื่อทีม/ธีม:</span> <span className="font-bold text-slate-700">{reg.theme_name}</span></p>
+                  <p className="text-sm mb-2.5"><span className="text-xs font-bold text-[#F15A24]">🎯 ชื่อทีม/ธีม:</span> <span className="font-bold text-slate-700">{reg.theme_name}</span></p>
                 )}
                 {members.length > 0 && (
-                  <p className="text-xs font-bold text-purple-500 mb-2">👥 {reg.count_mode === "team" ? "สมาชิกในทีม" : "ผู้สมัคร"} ({members.length} คน)</p>
+                  <p className="text-xs font-bold text-slate-500 mb-2">👥 {reg.count_mode === "team" ? "สมาชิกในทีม" : "ผู้สมัคร"} ({members.length} คน)</p>
                 )}
                 <div className="space-y-2">
                   {members.map((m, i) => (
-                    <div key={m.id} className="bg-white rounded-xl border border-purple-100 p-2.5">
+                    <div key={m.id} className="bg-white rounded-xl border border-slate-200 p-2.5">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="w-5 h-5 rounded-full bg-purple-200 text-purple-700 text-[10px] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+                        <span className="w-5 h-5 rounded-full bg-orange-100 text-[#F15A24] text-[10px] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
                         <span className="font-bold text-slate-700 text-sm flex-1 min-w-0 truncate">{m.full_name}</span>
                         {m.participant_code && <span className="font-mono text-[10px] text-[#F15A24] bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded shrink-0">{m.participant_code}</span>}
                       </div>
@@ -473,8 +473,8 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
 
             {/* ครูที่ปรึกษา */}
             {reg.advisor_name && (
-              <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 my-2">
-                <p className="text-xs font-bold text-blue-500 mb-1">👨‍🏫 ครูที่ปรึกษา</p>
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 my-2">
+                <p className="text-xs font-bold text-[#F15A24] mb-1">👨‍🏫 ครูที่ปรึกษา</p>
                 <p className="text-sm text-slate-700 font-bold">{reg.advisor_name}</p>
                 {reg.advisor_phone && <p className="text-xs text-slate-500">📞 {reg.advisor_phone}</p>}
                 {reg.advisor_email && <p className="text-xs text-slate-500">✉️ {reg.advisor_email}</p>}
