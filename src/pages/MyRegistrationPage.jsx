@@ -560,7 +560,6 @@ function MemberBarcodeModal({ member, courseTitle, onClose }) {
   return (
     <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-[60] p-0 sm:p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <style>{`@keyframes camt-scan{0%,100%{top:0%;opacity:.85}50%{top:100%;opacity:.85}}`}</style>
       <div className="bg-white w-full sm:rounded-[28px] shadow-2xl sm:max-w-sm overflow-hidden rounded-t-[28px]">
         <div className="bg-gradient-to-r from-[#F15A24] to-amber-500 p-5 text-white text-center relative">
           <button onClick={onClose} aria-label="ปิด" className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition text-lg leading-none">×</button>
@@ -574,14 +573,16 @@ function MemberBarcodeModal({ member, courseTitle, onClose }) {
           <div className="absolute -left-3 top-0 -translate-y-1/2 w-6 h-6 bg-slate-950/60 rounded-full" />
           <div className="absolute -right-3 top-0 -translate-y-1/2 w-6 h-6 bg-slate-950/60 rounded-full" />
           <div className="border-t-2 border-dashed border-slate-200 pt-5 flex flex-col items-center">
+            {/* ชื่อรายวิชา — อยู่บนสุด */}
+            <p className="text-sm font-bold text-[#F15A24] text-center mb-4">📚 {courseTitle}</p>
+
             {/* รหัส + บาร์โค้ด เป็นจุดเดียวต่อกัน */}
             <div className="w-full bg-[#F15A24] text-white rounded-xl px-4 py-3 mb-4 text-center shadow-sm">
               <p className="text-[11px] text-orange-100 mb-0.5">รหัสนักเรียน (เช็คอิน)</p>
               <p className="font-mono text-3xl font-extrabold tracking-wider">{code}</p>
             </div>
             {barcodeUrl && (
-              <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-3 w-full flex justify-center relative overflow-hidden">
-                <div className="absolute left-0 right-0 h-1.5 bg-emerald-500/80 shadow-[0_0_8px_rgba(16,185,129,1)]" style={{ animation: "camt-scan 2s linear infinite" }} />
+              <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-3 w-full flex justify-center">
                 <img src={barcodeUrl} alt="barcode" className="h-24 w-auto max-w-full object-contain" />
               </div>
             )}
@@ -621,7 +622,6 @@ function CheckinModal({ reg, t, onClose }) {
   return (
     <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <style>{`@keyframes camt-scan{0%,100%{top:0%;opacity:.85}50%{top:100%;opacity:.85}}`}</style>
       <div className="bg-white w-full sm:rounded-[28px] shadow-2xl sm:max-w-sm overflow-hidden rounded-t-[28px]">
         {/* Header ส้ม E-Ticket */}
         <div className="bg-gradient-to-r from-[#F15A24] to-amber-500 p-6 text-white text-center relative">
@@ -639,6 +639,9 @@ function CheckinModal({ reg, t, onClose }) {
           <div className="absolute -right-3 top-0 -translate-y-1/2 w-6 h-6 bg-slate-950/60 rounded-full" />
 
           <div className="border-t-2 border-dashed border-slate-200 pt-5 flex flex-col items-center">
+            {/* ชื่อรายวิชา — อยู่บนสุด */}
+            <p className="text-sm font-bold text-[#F15A24] text-center mb-4">📚 {reg.course_title}</p>
+
             {/* รหัสนักเรียน — เด่นสุด ใช้เช็คอินได้เลย / บาร์โค้ดอยู่ใต้รหัส (จุดเดียว) */}
             {code && (
               <div className="w-full bg-[#F15A24] text-white rounded-xl px-4 py-3 mb-4 text-center shadow-sm">
@@ -647,13 +650,11 @@ function CheckinModal({ reg, t, onClose }) {
               </div>
             )}
             {qrUrl && (
-              <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-3 w-full flex justify-center relative overflow-hidden">
-                <div className="absolute left-0 right-0 h-1.5 bg-emerald-500/80 shadow-[0_0_8px_rgba(16,185,129,1)]" style={{ animation: "camt-scan 2s linear infinite" }} />
+              <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-3 w-full flex justify-center">
                 <img src={qrUrl} alt="barcode" className="h-24 w-auto max-w-full object-contain" />
               </div>
             )}
-            <p className="text-[11px] text-slate-400 text-center mb-3">สแกนบาร์โค้ด หรือแจ้งรหัสนักเรียนให้เจ้าหน้าที่</p>
-            <p className="text-sm font-bold text-[#F15A24] text-center pt-3 border-t border-slate-200 w-full">📚 {reg.course_title}</p>
+            <p className="text-[11px] text-slate-400 text-center">สแกนบาร์โค้ด หรือแจ้งรหัสนักเรียนให้เจ้าหน้าที่</p>
           </div>
         </div>
 
