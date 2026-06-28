@@ -95,10 +95,10 @@ export default function AdminLayout() {
   return (
     <div className="min-h-screen bg-slate-50 flex">
       {/* Overlay (mobile) */}
-      {sidebarOpen && <div className="fixed inset-0 bg-black/40 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />}
+      {sidebarOpen && <div className="fixed inset-0 bg-black/40 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
       {/* Sidebar */}
-      <aside className={`fixed lg:sticky lg:top-0 inset-y-0 left-0 z-40 w-64 h-screen bg-white border-r border-slate-200 flex flex-col transition-transform ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}>
+      <aside className={`fixed lg:sticky lg:top-0 inset-y-0 left-0 z-50 w-64 h-screen bg-white border-r border-slate-200 flex flex-col transition-transform ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}>
         {/* Header — gradient ส้ม-เหลือง (เข้าชุดกับหน้าอื่น) */}
         <div className="flex items-center gap-2.5 px-5 py-5 border-b border-slate-100">
           <div className="w-9 h-9 bg-gradient-to-br from-[#F15A24] to-amber-500 rounded-xl flex items-center justify-center shadow-sm shrink-0">
@@ -122,7 +122,7 @@ export default function AdminLayout() {
             )
           })}
         </nav>
-        <button onClick={handleLogout} className="m-3 shrink-0 flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-bold text-rose-500 hover:bg-rose-50 transition border-t border-slate-100 pt-3">
+        <button onClick={handleLogout} className="m-3 mb-20 lg:mb-3 shrink-0 flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-bold text-rose-500 hover:bg-rose-50 transition border-t border-slate-100 pt-3">
           <BIco.logout className="w-5 h-5 shrink-0" /> ออกจากระบบ
         </button>
       </aside>
@@ -174,7 +174,7 @@ function AdminBottomBar() {
   const navigate = useNavigate()
   const path = location.pathname
   return (
-    <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/90 backdrop-blur-md border-t border-slate-100 shadow-[0_-2px_10px_rgba(0,0,0,0.04)]">
+    <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white/90 backdrop-blur-md border-t border-slate-100 shadow-[0_-2px_10px_rgba(0,0,0,0.04)]">
       <div className="max-w-4xl mx-auto px-1 flex items-end justify-around h-16">
         {BOTTOM_NAV.map((it) => {
           const Icon = BIco[it.icon]

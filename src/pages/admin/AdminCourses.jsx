@@ -50,6 +50,18 @@ function categoryCfg(name) {
   return CATEGORY_PALETTE[h % CATEGORY_PALETTE.length]
 }
 
+// จัดกลุ่มรายวิชาตามหมวดหมู่ (รักษาลำดับการพบหมวดครั้งแรก)
+function groupByCategory(courses) {
+  const groups = {}
+  const order = []
+  courses.forEach((c) => {
+    const cat = c.course_types?.label || "ไม่ระบุหมวดหมู่"
+    if (!groups[cat]) { groups[cat] = []; order.push(cat) }
+    groups[cat].push(c)
+  })
+  return order.map((cat) => [cat, groups[cat]])
+}
+
 // จัดการรายวิชา — Tailwind ตาม doc 18 (คง logic เดิมจาก AdminPanel)
 export default function AdminCourses() {
   const { event } = useOutletContext()
@@ -202,11 +214,32 @@ export default function AdminCourses() {
         </div>
       </div>
 
-      {/* การ์ดรายวิชา — รูปซ้าย 50% + ข้อมูลขวา 50% (responsive ทั้ง desktop/mobile) */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-        {filtered.map((course) => <CourseCard key={course.id} course={course} onEdit={openEdit} onDelete={doDelete} onToggle={doToggle} onView={setViewCourse} />)}
-        {filtered.length === 0 && <div className="xl:col-span-2 bg-white rounded-2xl p-16 text-center text-sm text-slate-400 shadow-sm border border-slate-200">ไม่พบรายวิชา</div>}
-      </div>
+      {/* รายวิชา — จัดกลุ่มตามหมวดหมู่ แต่ละแถวเป็นการ์ดแนวนอน (list เต็มกว้าง) */}
+      {filtered.length === 0 ? (
+        <div className="bg-white rounded-2xl p-16 text-center text-sm text-slate-400 shadow-sm border border-slate-200">ไม่พบรายวิชา</div>
+      ) : (
+        <div className="space-y-6">
+          {groupByCategory(filtered).map(([cat, list]) => {
+            const cc = categoryCfg(cat)
+            return (
+              <div key={cat}>
+                {/* หัวข้อหมวดหมู่ */}
+                <div className="flex items-center gap-2.5 mb-3">
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${cc.bg} ${cc.text}`}>
+                    <Ico.book className="w-3.5 h-3.5" /> {cat}
+                  </span>
+                  <span className="text-xs text-slate-400 font-medium">{list.length} รายวิชา</span>
+                  <div className="flex-1 h-px bg-slate-200" />
+                </div>
+                {/* การ์ดในหมวด */}
+                <div className="space-y-3">
+                  {list.map((course) => <CourseCard key={course.id} course={course} onEdit={openEdit} onDelete={doDelete} onToggle={doToggle} onView={setViewCourse} />)}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {showModal && editCourse && (
         <CourseModal course={editCourse} types={types} onSave={doSaveCourse} onClose={() => { setShowModal(false); setEditCourse(null) }} />
@@ -335,8 +368,8 @@ function CourseCard({ course, onEdit, onDelete, onToggle, onView }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-orange-200 transition duration-300 overflow-hidden">
       <div className="flex">
-        {/* ───── ซ้าย: รูป (แนวนอน ขนาดพอดี) ───── */}
-        <div className="w-32 sm:w-44 shrink-0 bg-slate-100 relative">
+        {/* ───── ซ้าย: รูป (แนวนอน) ───── */}
+        <div className="w-32 sm:w-44 lg:w-56 shrink-0 bg-slate-100 relative">
           {course.image_url
             ? <img src={course.image_url} alt="" className="w-full h-full object-cover absolute inset-0" />
             : <div className="w-full h-full min-h-[150px] flex items-center justify-center text-slate-300"><Ico.book className="w-9 h-9" /></div>}
