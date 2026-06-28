@@ -8,6 +8,28 @@ import {
 } from "../lib/supabase.js"
 import { useLang } from "../lib/i18n.jsx"
 
+// ───── ไอคอน SVG inline (สไตล์ lucide) — โทนเดียวกับหน้าอื่น ─────
+const Ico = {
+  user:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>),
+  users:   (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>),
+  cap:     (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>),
+  tag:     (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></svg>),
+  clip:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>),
+  arrowLeft:(p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M19 12H5M12 19l-7-7 7-7"/></svg>),
+  warn:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>),
+  info:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>),
+  plus:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M5 12h14M12 5v14"/></svg>),
+  x:       (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M18 6 6 18M6 6l12 12"/></svg>),
+  card:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>),
+  clock:   (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>),
+  copy:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>),
+  receipt: (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></svg>),
+  check:   (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M20 6 9 17l-5-5"/></svg>),
+  upload:  (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>),
+  rotate:  (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>),
+  list:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>),
+}
+
 export default function RegisterPage() {
   const { courseId } = useParams()
   const navigate = useNavigate()
@@ -193,15 +215,15 @@ export default function RegisterPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="w-10 h-10 border-4 border-[#F15A24] border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
   if (error && !course) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center gap-4 px-4">
-        <p className="text-red-600 font-bold">{error}</p>
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-4 px-4">
+        <p className="text-rose-600 font-bold">{error}</p>
         <Link to="/" className="text-[#F15A24] font-bold">{t("reg.backToCourses")}</Link>
       </div>
     )
@@ -209,13 +231,13 @@ export default function RegisterPage() {
 
   // ── หน้าผลลัพธ์หลังกันที่นั่ง ──
   if (result) {
-    if (result.isWaitlist) return <ResultScreen icon="📋" color="gray" title={t("reg.waitlistTitle")} msg={t("reg.waitlistMsg")} t={t} navigate={navigate} />
+    if (result.isWaitlist) return <ResultScreen iconKey="list" color="slate" title={t("reg.waitlistTitle")} msg={t("reg.waitlistMsg")} t={t} navigate={navigate} />
     if (result.requiresPayment) return <PaymentScreen course={course} regId={result.regId} t={t} navigate={navigate} />
     // ฟรี + แนบผลงาน → รอแอดมินอนุมัติ
     if (result.hasPortfolio || result.status === "submitted")
-      return <ResultScreen icon="⏳" color="orange" title="ส่งใบสมัครแล้ว รอการอนุมัติ" msg="ใบสมัครของคุณถูกส่งให้แอดมินพิจารณาผลงานแล้ว เมื่อได้รับอนุมัติจะกันที่นั่งให้ — ติดตามสถานะได้ที่ 'ใบสมัครของฉัน'" t={t} navigate={navigate} />
+      return <ResultScreen iconKey="clock" color="orange" title="ส่งใบสมัครแล้ว รอการอนุมัติ" msg="ใบสมัครของคุณถูกส่งให้แอดมินพิจารณาผลงานแล้ว เมื่อได้รับอนุมัติจะกันที่นั่งให้ — ติดตามสถานะได้ที่ 'ใบสมัครของฉัน'" t={t} navigate={navigate} />
     // ฟรี + ไม่แนบผลงาน → ยืนยัน/กันที่นั่งเลย
-    return <ResultScreen icon="✅" color="green" title={t("reg.successFreeTitle")} msg={t("reg.successFreeMsg")} t={t} navigate={navigate} />
+    return <ResultScreen iconKey="check" color="emerald" title={t("reg.successFreeTitle")} msg={t("reg.successFreeMsg")} t={t} navigate={navigate} />
   }
 
   const isCompetition = course.course_types?.requires_approval
@@ -223,33 +245,33 @@ export default function RegisterPage() {
   const fullName = `${profile?.title || ""} ${profile?.first_name || ""} ${profile?.last_name || ""}`.trim()
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-20">
+    <div className="min-h-screen bg-slate-50 pb-24">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-5">
         <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-bold text-[#F15A24] hover:underline">
-          ← {t("reg.backToCourses")}
+          <Ico.arrowLeft className="w-4 h-4" /> {t("reg.backToCourses")}
         </Link>
       </div>
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* หัวข้อคอร์ส */}
-        <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100/60">
+        <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100/60">
           <div className="flex items-center gap-2 mb-2">
             {course.course_types?.label && (
-              <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-orange-100 text-orange-700 border border-orange-200">{course.course_types.label}</span>
+              <span className="text-[10px] font-bold px-2.5 py-1 rounded-md bg-orange-100 text-orange-700">{course.course_types.label}</span>
             )}
-            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${isPaid ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
+            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md ${isPaid ? "bg-emerald-100 text-emerald-700" : "bg-orange-100 text-[#F15A24]"}`}>
               {isPaid ? `฿${course.price?.toLocaleString()}` : t("common.free")}
             </span>
           </div>
-          <h1 className="text-2xl font-extrabold text-gray-900">{course.title}</h1>
-          <h2 className="text-lg font-bold text-gray-700 mt-4">{t("reg.title")}</h2>
+          <h1 className="text-2xl font-extrabold text-slate-900">{course.title}</h1>
+          <h2 className="text-lg font-bold text-slate-700 mt-4">{t("reg.title")}</h2>
         </div>
 
         {/* ผู้สมัคร (จาก profile) */}
-        <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
-            <h3 className="text-base font-bold text-gray-800 flex items-center gap-2">
-              <span className="w-7 h-7 bg-[#F15A24] text-white rounded-xl flex items-center justify-center text-xs">👤</span>
+        <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+            <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+              <span className="w-7 h-7 bg-[#F15A24] text-white rounded-xl flex items-center justify-center"><Ico.user className="w-4 h-4" /></span>
               {t("reg.applicant")}
             </h3>
             <Link to="/profile" className="text-xs text-[#F15A24] font-bold underline">{t("reg.editProfile")}</Link>
@@ -264,13 +286,13 @@ export default function RegisterPage() {
 
         {/* สมาชิกในทีม (ถ้า team) */}
         {course.count_mode === "team" && (
-          <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
-              <h3 className="text-base font-bold text-gray-800 flex items-center gap-2">
-                <span className="w-7 h-7 bg-[#F15A24] text-white rounded-xl flex items-center justify-center text-xs">👥</span>
+          <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                <span className="w-7 h-7 bg-[#F15A24] text-white rounded-xl flex items-center justify-center"><Ico.users className="w-4 h-4" /></span>
                 {t("reg.teamMembers")}
               </h3>
-              <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
+              <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
                 {teamCount} / {minTeam === maxTeam ? maxTeam : `${minTeam}-${maxTeam}`} คน
               </span>
             </div>
@@ -279,8 +301,8 @@ export default function RegisterPage() {
             <div className="flex items-center gap-2 mb-4 bg-orange-50 border border-orange-100 rounded-xl px-4 py-3">
               <span className="w-6 h-6 bg-[#F15A24] text-white rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0">1</span>
               <div className="text-sm">
-                <span className="font-bold text-gray-800">{profile?.first_name} {profile?.last_name}</span>
-                <span className="text-gray-400 text-xs ml-2">(คุณ — หัวหน้าทีม)</span>
+                <span className="font-bold text-slate-800">{profile?.first_name} {profile?.last_name}</span>
+                <span className="text-slate-400 text-xs ml-2">(คุณ — หัวหน้าทีม)</span>
               </div>
             </div>
 
@@ -289,10 +311,10 @@ export default function RegisterPage() {
               {extraMembers.map((m, i) => (
                 <div key={i} className="relative">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="w-6 h-6 bg-gray-200 text-gray-600 rounded-lg flex items-center justify-center text-[11px] font-bold">{i + 2}</span>
-                    <span className="text-xs font-bold text-gray-500">สมาชิกคนที่ {i + 2}</span>
+                    <span className="w-6 h-6 bg-slate-200 text-slate-600 rounded-lg flex items-center justify-center text-[11px] font-bold">{i + 2}</span>
+                    <span className="text-xs font-bold text-slate-500">สมาชิกคนที่ {i + 2}</span>
                     {teamCount > minTeam && (
-                      <button type="button" onClick={() => removeMember(i)} className="ml-auto text-xs text-red-500 hover:text-red-600 font-bold">✕ ลบ</button>
+                      <button type="button" onClick={() => removeMember(i)} className="ml-auto inline-flex items-center gap-1 text-xs text-rose-500 hover:text-rose-600 font-bold"><Ico.x className="w-3 h-3" /> ลบ</button>
                     )}
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -304,16 +326,16 @@ export default function RegisterPage() {
                         onChange={(e) => onMemberSchoolInput(i, e.target.value)}
                         onBlur={() => setTimeout(() => setSchoolDD((p) => p.idx === i ? { idx: -1, options: [] } : p), 200)} />
                       {schoolDD.idx === i && schoolDD.options.length > 0 && (
-                        <ul className="absolute z-30 w-full bg-white border border-gray-200 rounded-xl shadow-xl max-h-44 overflow-y-auto mt-1">
+                        <ul className="absolute z-30 w-full bg-white border border-slate-200 rounded-xl shadow-xl max-h-44 overflow-y-auto mt-1">
                           {schoolDD.options.map((s, si) => (
-                            <li key={si} onClick={() => pickMemberSchool(i, s)} className="px-4 py-2.5 hover:bg-orange-50 cursor-pointer text-sm border-b last:border-b-0 text-gray-700">{s}</li>
+                            <li key={si} onClick={() => pickMemberSchool(i, s)} className="px-4 py-2.5 hover:bg-orange-50 cursor-pointer text-sm border-b last:border-b-0 text-slate-700">{s}</li>
                           ))}
                         </ul>
                       )}
                     </div>
                     <input className={inputCls} placeholder="เบอร์โทร" value={m.phone} onChange={(e) => updateMember(i, "phone", e.target.value.replace(/[^0-9]/g, "").slice(0, 10))} />
                   </div>
-                  <p className="text-[11px] text-gray-400 mt-1.5">💡 ใส่ Gmail ของน้องเพื่อให้น้อง login เข้ามาดูงานนี้และ QR เช็คอินของตัวเองได้</p>
+                  <p className="text-[11px] text-slate-400 mt-1.5">💡 ใส่ Gmail ของน้องเพื่อให้น้อง login เข้ามาดูงานนี้และ QR เช็คอินของตัวเองได้</p>
                 </div>
               ))}
             </div>
@@ -322,7 +344,7 @@ export default function RegisterPage() {
             {teamCount < maxTeam && (
               <button type="button" onClick={addMember}
                 className="w-full mt-4 py-3 border-2 border-dashed border-[#F15A24]/30 text-[#F15A24] rounded-xl font-bold text-sm hover:bg-orange-50 transition flex items-center justify-center gap-2">
-                ＋ เพิ่มสมาชิก (สูงสุด {maxTeam} คน)
+                <Ico.plus className="w-4 h-4" /> เพิ่มสมาชิก (สูงสุด {maxTeam} คน)
               </button>
             )}
           </div>
@@ -330,9 +352,9 @@ export default function RegisterPage() {
 
         {/* ครูที่ปรึกษา (competition) */}
         {isCompetition && (
-          <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-100">
-            <h3 className="text-base font-bold text-gray-800 pb-3 border-b border-gray-100 mb-4 flex items-center gap-2">
-              <span className="w-7 h-7 bg-[#F15A24] text-white rounded-xl flex items-center justify-center text-xs">🧑‍🏫</span>
+          <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100">
+            <h3 className="text-base font-bold text-slate-800 pb-3 border-b border-slate-100 mb-4 flex items-center gap-2">
+              <span className="w-7 h-7 bg-[#F15A24] text-white rounded-xl flex items-center justify-center"><Ico.cap className="w-4 h-4" /></span>
               {t("reg.advisor")}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -345,43 +367,43 @@ export default function RegisterPage() {
 
         {/* ชื่อทีม/ธีม (คอร์สแบบทีม — บังคับกรอกแม้สมัครคนเดียว) */}
         {course.count_mode === "team" && (
-          <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-100">
-            <h3 className="text-base font-bold text-gray-800 pb-3 border-b border-gray-100 mb-4 flex items-center gap-2">
-              <span className="w-7 h-7 bg-[#F15A24] text-white rounded-xl flex items-center justify-center text-xs">🏷️</span>
-              ชื่อทีม / ชื่อธีมผลงาน <span className="text-red-500">*</span>
+          <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100">
+            <h3 className="text-base font-bold text-slate-800 pb-3 border-b border-slate-100 mb-4 flex items-center gap-2">
+              <span className="w-7 h-7 bg-[#F15A24] text-white rounded-xl flex items-center justify-center"><Ico.tag className="w-4 h-4" /></span>
+              ชื่อทีม / ชื่อธีมผลงาน <span className="text-rose-500">*</span>
             </h3>
             <input className={inputCls} placeholder="เช่น Team Rocket / ชื่อผลงาน *" value={themeName} onChange={(e) => setThemeName(e.target.value)} />
-            <p className="text-[11px] text-gray-400 mt-1.5">⚠️ จำเป็นต้องกรอก — ใส่ชื่อทีมหรือชื่อธีมผลงานของคุณ</p>
+            <p className="text-[11px] text-slate-400 mt-1.5 flex items-center gap-1"><Ico.warn className="w-3 h-3 shrink-0" /> จำเป็นต้องกรอก — ใส่ชื่อทีมหรือชื่อธีมผลงานของคุณ</p>
           </div>
         )}
 
         {/* แนบลิงก์ผลงาน (ถ้าวิชากำหนด) */}
         {course.require_portfolio && (
-          <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-100">
-            <h3 className="text-base font-bold text-gray-800 pb-3 border-b border-gray-100 mb-4 flex items-center gap-2">
-              <span className="w-7 h-7 bg-[#F15A24] text-white rounded-xl flex items-center justify-center text-xs">📎</span>
+          <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100">
+            <h3 className="text-base font-bold text-slate-800 pb-3 border-b border-slate-100 mb-4 flex items-center gap-2">
+              <span className="w-7 h-7 bg-[#F15A24] text-white rounded-xl flex items-center justify-center"><Ico.clip className="w-4 h-4" /></span>
               {course.portfolio_label || "แนบลิงก์ผลงาน"}
             </h3>
             <textarea rows="3" className={inputCls + " resize-none"}
               placeholder="วางลิงก์ผลงานที่นี่ * (ใส่ได้หลายลิงก์ — บรรทัดละ 1 ลิงก์)&#10;เช่น&#10;https://drive.google.com/...&#10;https://youtube.com/..."
               value={portfolioUrl} onChange={(e) => setPortfolioUrl(e.target.value)} />
-            <p className="text-xs text-gray-400 mt-2">⚠️ ใส่ได้หลายลิงก์ (ขึ้นบรรทัดใหม่) · ตรวจสอบให้แน่ใจว่าเปิดสิทธิ์ให้เข้าดูได้</p>
+            <p className="text-xs text-slate-400 mt-2 flex items-center gap-1"><Ico.warn className="w-3 h-3 shrink-0" /> ใส่ได้หลายลิงก์ (ขึ้นบรรทัดใหม่) · ตรวจสอบให้แน่ใจว่าเปิดสิทธิ์ให้เข้าดูได้</p>
           </div>
         )}
 
         {!isPaid && (
-          <div className="bg-blue-50 border border-blue-100 text-blue-700 rounded-2xl px-4 py-3 text-sm">
-            ℹ️ {t("reg.free")}
+          <div className="bg-orange-50 border border-orange-100 text-[#F15A24] rounded-2xl px-4 py-3 text-sm flex items-center gap-2">
+            <Ico.info className="w-4 h-4 shrink-0" /> {t("reg.free")}
           </div>
         )}
         {error && (
-          <div className="flex items-start gap-3 bg-red-50 border border-red-100 text-red-700 rounded-2xl px-4 py-3.5 text-sm">
-            <span className="shrink-0 mt-0.5">⚠️</span><span className="font-medium">{error}</span>
+          <div className="flex items-start gap-3 bg-rose-50 border border-rose-100 text-rose-700 rounded-2xl px-4 py-3.5 text-sm">
+            <Ico.warn className="w-4 h-4 shrink-0 mt-0.5" /><span className="font-medium">{error}</span>
           </div>
         )}
 
         <button onClick={handleConfirm} disabled={submitting}
-          className="w-full bg-[#F15A24] hover:bg-[#c44215] disabled:bg-gray-300 text-white font-bold py-4 rounded-2xl shadow-lg transition-all active:scale-95 text-sm">
+          className="w-full bg-[#F15A24] hover:bg-[#c44215] disabled:bg-slate-300 text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-500/20 transition-all active:scale-95 text-sm">
           {submitting ? t("reg.holding") : t("reg.confirm")}
         </button>
       </div>
@@ -463,18 +485,20 @@ export function PaymentScreen({ course, regId, t, navigate, deadline, isRejected
     finally { setUploading(false) }
   }
 
-  if (done) return <ResultScreen icon="✅" color="green" title={t("pay.successTitle")} msg={t("pay.successWait")} t={t} navigate={navigate} />
+  if (done) return <ResultScreen iconKey="check" color="emerald" title={t("pay.successTitle")} msg={t("pay.successWait")} t={t} navigate={navigate} />
 
   return (
-    <div className="min-h-screen bg-gray-50 py-6 px-4">
+    <div className="min-h-screen bg-slate-50 py-6 px-4">
       <div className="max-w-5xl mx-auto">
         <div className="bg-white rounded-3xl shadow-lg overflow-hidden flex flex-col lg:flex-row">
           {/* Left: info */}
-          <div className="lg:w-5/12 bg-gradient-to-br from-[#F15A24] via-[#e8501f] to-[#c9420f] text-white p-5 sm:p-8 flex flex-col justify-between relative overflow-hidden">
+          <div className="lg:w-5/12 bg-gradient-to-br from-[#F15A24] via-[#e8501f] to-amber-500 text-white p-5 sm:p-8 flex flex-col justify-between relative overflow-hidden">
             <div className="absolute -top-16 -right-16 w-48 h-48 bg-white/5 rounded-full" />
             <div className="relative">
               <p className="text-orange-200 text-xs font-bold uppercase tracking-widest mb-1">{isRejected ? "ส่งหลักฐานใหม่" : t("pay.title")}</p>
-              <h2 className="text-2xl sm:text-3xl font-extrabold mb-6">{isRejected ? "📤 อัปโหลดสลิปใหม่" : "💳 " + t("pay.title")}</h2>
+              <h2 className="text-2xl sm:text-3xl font-extrabold mb-6 flex items-center gap-2">
+                {isRejected ? <><Ico.upload className="w-7 h-7" /> อัปโหลดสลิปใหม่</> : <><Ico.card className="w-7 h-7" /> {t("pay.title")}</>}
+              </h2>
               {isRejected ? (
                 <div className="rounded-2xl p-4 mb-6 border-2 bg-black/20 border-white/20 text-center">
                   <p className="text-xs text-orange-200 mb-1 font-medium">สถานะ</p>
@@ -482,9 +506,9 @@ export function PaymentScreen({ course, regId, t, navigate, deadline, isRejected
                   <p className="text-[11px] text-orange-200 mt-1">ไม่มีการจับเวลา</p>
                 </div>
               ) : (
-                <div className={`rounded-2xl p-4 mb-6 border-2 text-center ${expired ? "bg-red-500/20 border-red-400/50" : "bg-black/20 border-white/20"}`}>
-                  <p className="text-xs text-orange-200 mb-1 font-medium">{expired ? t("pay.expired") : "⏱ " + t("pay.deadline")}</p>
-                  <p className={`text-4xl font-mono font-extrabold tracking-widest ${expired ? "text-red-300" : "text-yellow-300"}`}>{timeLeft || "..."}</p>
+                <div className={`rounded-2xl p-4 mb-6 border-2 text-center ${expired ? "bg-rose-500/20 border-rose-400/50" : "bg-black/20 border-white/20"}`}>
+                  <p className="text-xs text-orange-200 mb-1 font-medium flex items-center justify-center gap-1">{expired ? t("pay.expired") : <><Ico.clock className="w-3.5 h-3.5" /> {t("pay.deadline")}</>}</p>
+                  <p className={`text-4xl font-mono font-extrabold tracking-widest ${expired ? "text-rose-300" : "text-yellow-300"}`}>{timeLeft || "..."}</p>
                 </div>
               )}
               <div className="bg-white/10 rounded-xl p-3.5">
@@ -492,72 +516,72 @@ export function PaymentScreen({ course, regId, t, navigate, deadline, isRejected
                 <p className="text-2xl font-extrabold">{course.price?.toLocaleString()} <span className="text-lg font-normal text-orange-200">{t("pay.baht")}</span></p>
               </div>
             </div>
-            <div className="relative mt-6 bg-red-500/25 border border-red-400/40 rounded-xl p-3 text-xs">⚠️ {t("pay.warn")}</div>
+            <div className="relative mt-6 bg-rose-500/25 border border-rose-400/40 rounded-xl p-3 text-xs flex items-start gap-2"><Ico.warn className="w-4 h-4 shrink-0 mt-0.5" /> {t("pay.warn")}</div>
           </div>
 
           {/* Right: bank + upload */}
           <div className="lg:w-7/12 p-5 sm:p-8 flex flex-col">
-            <h3 className="text-base font-extrabold text-gray-800 mb-3">{t("pay.bankInfo")}</h3>
-            <div className="bg-gradient-to-br from-purple-50 to-indigo-50 border border-purple-200 rounded-2xl p-5 mb-6 space-y-3">
+            <h3 className="text-base font-extrabold text-slate-800 mb-3">{t("pay.bankInfo")}</h3>
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 mb-6 space-y-3">
               {course.bank_name && (
                 <div>
-                  <p className="text-gray-500 text-xs">ธนาคาร</p>
-                  <p className="font-bold text-gray-800">{course.bank_name}</p>
+                  <p className="text-slate-500 text-xs">ธนาคาร</p>
+                  <p className="font-bold text-slate-800">{course.bank_name}</p>
                 </div>
               )}
               <div>
-                <p className="text-gray-500 text-xs">{t("pay.accountNo")}</p>
+                <p className="text-slate-500 text-xs">{t("pay.accountNo")}</p>
                 <div className="flex items-center gap-3">
-                  <p className="font-mono text-2xl font-extrabold text-gray-800 tracking-wider">{account}</p>
+                  <p className="font-mono text-2xl font-extrabold text-slate-800 tracking-wider">{account}</p>
                   <button onClick={() => { navigator.clipboard?.writeText(account); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
-                    className="bg-white border border-purple-200 text-purple-700 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-purple-50 transition shadow-sm">
-                    {copied ? t("pay.copied") : "📋 " + t("pay.copy")}
+                    className="inline-flex items-center gap-1 bg-white border border-slate-200 text-[#F15A24] px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-orange-50 transition shadow-sm">
+                    {copied ? t("pay.copied") : <><Ico.copy className="w-3.5 h-3.5" /> {t("pay.copy")}</>}
                   </button>
                 </div>
               </div>
               {course.bank_holder && (
                 <div>
-                  <p className="text-gray-500 text-xs">ชื่อบัญชี</p>
-                  <p className="font-bold text-gray-800">{course.bank_holder}</p>
+                  <p className="text-slate-500 text-xs">ชื่อบัญชี</p>
+                  <p className="font-bold text-slate-800">{course.bank_holder}</p>
                 </div>
               )}
               {course.line_qr_url && (
-                <div className="pt-2 border-t border-purple-200">
-                  <p className="text-gray-500 text-xs mb-2">หรือสแกน QR เข้ากลุ่มไลน์</p>
-                  <img src={course.line_qr_url} alt="Line QR" className="h-28 w-auto rounded-lg border border-purple-200" />
+                <div className="pt-2 border-t border-slate-200">
+                  <p className="text-slate-500 text-xs mb-2">หรือสแกน QR เข้ากลุ่มไลน์</p>
+                  <img src={course.line_qr_url} alt="Line QR" className="h-28 w-auto rounded-lg border border-slate-200" />
                 </div>
               )}
             </div>
 
-            <h3 className="text-base font-extrabold text-gray-800 mb-3">{t("pay.uploadSlip")}</h3>
-            <label className={`block cursor-pointer border-2 border-dashed rounded-2xl transition-all ${expired ? "opacity-50 cursor-not-allowed border-gray-200 bg-gray-50" : preview ? "border-green-300 bg-green-50" : "border-gray-300 bg-gray-50 hover:border-[#F15A24] hover:bg-orange-50"}`}>
+            <h3 className="text-base font-extrabold text-slate-800 mb-3">{t("pay.uploadSlip")}</h3>
+            <label className={`block cursor-pointer border-2 border-dashed rounded-2xl transition-all ${expired ? "opacity-50 cursor-not-allowed border-slate-200 bg-slate-50" : preview ? "border-emerald-300 bg-emerald-50" : "border-slate-300 bg-slate-50 hover:border-[#F15A24] hover:bg-orange-50"}`}>
               <input type="file" accept="image/*" onChange={onFile} disabled={expired} className="hidden" />
               {preview ? (
                 <div className="p-4 flex flex-col sm:flex-row items-center gap-3 text-center sm:text-left">
-                  <img src={preview} alt="slip" className="w-20 h-20 object-cover rounded-xl border border-green-200 shrink-0" />
+                  <img src={preview} alt="slip" className="w-20 h-20 object-cover rounded-xl border border-emerald-200 shrink-0" />
                   <div>
-                    <p className="font-bold text-green-700 text-sm">✅ {t("pay.selected")}</p>
+                    <p className="font-bold text-emerald-700 text-sm flex items-center gap-1"><Ico.check className="w-4 h-4" /> {t("pay.selected")}</p>
                     <p className="text-[#F15A24] text-xs mt-1 font-medium">{t("pay.tapChange")}</p>
                   </div>
                 </div>
               ) : (
-                <div className="py-10 text-center">
-                  <p className="text-3xl mb-2">🧾</p>
-                  <p className="font-bold text-gray-600 text-sm">{t("pay.tapSelect")}</p>
-                  <p className="text-gray-400 text-xs mt-1">{t("pay.fileTypes")}</p>
+                <div className="py-10 text-center flex flex-col items-center">
+                  <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-2"><Ico.receipt className="w-6 h-6" /></div>
+                  <p className="font-bold text-slate-600 text-sm">{t("pay.tapSelect")}</p>
+                  <p className="text-slate-400 text-xs mt-1">{t("pay.fileTypes")}</p>
                 </div>
               )}
             </label>
 
-            {err && <p className="text-red-500 text-sm mt-3">{err}</p>}
+            {err && <p className="text-rose-500 text-sm mt-3">{err}</p>}
 
             <div className="flex flex-col sm:flex-row gap-3 mt-5">
-              <button onClick={() => navigate("/")} className="flex-1 py-3 border-2 border-gray-200 text-gray-600 rounded-xl font-bold text-sm hover:bg-gray-50 transition">{t("pay.backHome")}</button>
+              <button onClick={() => navigate("/")} className="flex-1 py-3 border-2 border-slate-200 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-50 transition">{t("pay.backHome")}</button>
               {expired ? (
-                <button onClick={() => navigate(`/register/${course.id}`)} className="flex-1 py-3 rounded-xl font-bold text-sm text-white bg-red-500 hover:bg-red-600 transition shadow-md">🔄 สมัครใหม่</button>
+                <button onClick={() => navigate(`/register/${course.id}`)} className="flex-1 py-3 rounded-xl font-bold text-sm text-white bg-rose-500 hover:bg-rose-600 transition shadow-md flex items-center justify-center gap-2"><Ico.rotate className="w-4 h-4" /> สมัครใหม่</button>
               ) : (
                 <button onClick={submit} disabled={!file || uploading}
-                  className={`flex-1 py-3 rounded-xl font-bold text-sm text-white shadow-md transition-all ${!file || uploading ? "bg-gray-300 cursor-not-allowed" : "bg-[#ec9213] hover:bg-[#d6810b] active:scale-[0.98]"}`}>
+                  className={`flex-1 py-3 rounded-xl font-bold text-sm text-white shadow-md transition-all ${!file || uploading ? "bg-slate-300 cursor-not-allowed" : "bg-[#ec9213] hover:bg-[#d6810b] active:scale-[0.98]"}`}>
                   {uploading ? t("pay.sending") : t("pay.submit")}
                 </button>
               )}
@@ -569,17 +593,18 @@ export function PaymentScreen({ course, regId, t, navigate, deadline, isRejected
   )
 }
 
-function ResultScreen({ icon, color, title, msg, t, navigate }) {
-  const bg = color === "green" ? "bg-green-100" : color === "orange" ? "bg-orange-100" : "bg-gray-100"
+function ResultScreen({ iconKey, color, title, msg, t, navigate }) {
+  const bg = color === "emerald" ? "bg-emerald-100 text-emerald-600" : color === "orange" ? "bg-orange-100 text-[#F15A24]" : "bg-slate-100 text-slate-500"
+  const Icon = iconKey === "check" ? Ico.check : iconKey === "clock" ? Ico.clock : Ico.list
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
       <div className="bg-white rounded-3xl shadow-xl max-w-md w-full p-8 text-center">
         <div className={`mx-auto w-20 h-20 ${bg} rounded-full flex items-center justify-center mb-5`}>
-          <span className="text-4xl">{icon}</span>
+          <Icon className="w-9 h-9" />
         </div>
-        <h3 className="text-2xl font-extrabold text-gray-800 mb-2">{title}</h3>
-        <p className="text-gray-500 text-sm mb-6">{msg}</p>
-        <button onClick={() => navigate("/")} className="w-full bg-[#F15A24] hover:bg-[#c44215] text-white py-3.5 rounded-xl font-bold shadow-md transition text-sm">
+        <h3 className="text-2xl font-extrabold text-slate-800 mb-2">{title}</h3>
+        <p className="text-slate-500 text-sm mb-6">{msg}</p>
+        <button onClick={() => navigate("/")} className="w-full bg-[#F15A24] hover:bg-[#c44215] text-white py-3.5 rounded-xl font-bold shadow-md shadow-orange-500/20 transition text-sm">
           {t("pay.backHome")}
         </button>
       </div>
@@ -589,14 +614,14 @@ function ResultScreen({ icon, color, title, msg, t, navigate }) {
 
 function InfoRow({ label, value }) {
   return (
-    <div className="bg-gray-50 rounded-xl px-4 py-3">
-      <p className="text-xs text-gray-400">{label}</p>
-      <p className="text-sm font-bold text-gray-800">{value}</p>
+    <div className="bg-slate-50 rounded-xl px-4 py-3">
+      <p className="text-xs text-slate-400">{label}</p>
+      <p className="text-sm font-bold text-slate-800">{value}</p>
     </div>
   )
 }
 
-const inputCls = "w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-800 bg-white focus:border-[#F15A24] focus:ring-2 focus:ring-orange-100 outline-none transition-all placeholder-gray-300"
+const inputCls = "w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-800 bg-white focus:border-[#F15A24] focus:ring-2 focus:ring-orange-100 outline-none transition-all placeholder-slate-300"
 
 function translateError(msg) {
   if (!msg) return "เกิดข้อผิดพลาด"
