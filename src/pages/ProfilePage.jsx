@@ -33,9 +33,19 @@ function normalizeSchool(s) {
   return s.toLowerCase().replace(/โรงเรียน|ร\.ร\.|รร\./g, "").trim()
 }
 
-// ── Tailwind class presets (ตามตัวอย่าง) ──
-const inputCls = "w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-800 bg-white focus:border-[#F15A24] focus:ring-2 focus:ring-orange-100 outline-none transition-all placeholder-gray-300"
-const readonlyCls = "w-full px-3 py-2.5 border border-gray-100 rounded-xl text-sm text-gray-700 bg-gray-50 outline-none"
+// ───── ไอคอน SVG inline (สไตล์ lucide) — โทนเดียวกับหน้าอื่น ─────
+const Ico = {
+  user:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>),
+  check:   (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M20 6 9 17l-5-5"/></svg>),
+  search:  (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>),
+  warn:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>),
+  pencil:  (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>),
+  arrowLeft:(p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M19 12H5M12 19l-7-7 7-7"/></svg>),
+}
+
+// ── Tailwind class presets (โทน slate/ส้ม) ──
+const inputCls = "w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-800 bg-white focus:border-[#F15A24] focus:ring-2 focus:ring-orange-100 outline-none transition-all placeholder-slate-300"
+const readonlyCls = "w-full px-3 py-2.5 border border-slate-100 rounded-xl text-sm text-slate-700 bg-slate-50 outline-none"
 const selectCls = inputCls
 
 export default function ProfilePage() {
@@ -154,10 +164,10 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-4 border-[#F15A24] border-t-transparent rounded-full animate-spin" />
-          <span className="text-gray-500 font-semibold text-sm">{t("common.loading")}</span>
+          <span className="text-slate-500 font-semibold text-sm">{t("common.loading")}</span>
         </div>
       </div>
     )
@@ -166,35 +176,37 @@ export default function ProfilePage() {
   const sectionCls = (n) => `bg-white rounded-3xl p-6 sm:p-8 transition-all duration-300 border ${
     activeSection === n
       ? "shadow-[0_8px_30px_rgb(0,0,0,0.06)] border-[#F15A24]/30 ring-1 ring-[#F15A24]/10"
-      : "shadow-sm border-gray-100 hover:border-gray-200 cursor-pointer opacity-70 hover:opacity-100"
+      : "shadow-sm border-slate-100 hover:border-slate-200 cursor-pointer opacity-70 hover:opacity-100"
   }`
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-20 relative overflow-hidden">
+    <div className="min-h-screen bg-slate-50 pb-24 relative overflow-hidden">
       <div className="absolute top-0 left-0 w-full h-[40vh] bg-gradient-to-b from-orange-100/40 to-transparent pointer-events-none" />
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
         {/* Header card */}
-        <div className="bg-white rounded-3xl p-8 sm:p-10 mb-8 text-center shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100/60 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#F15A24] to-[#c44215]" />
-          <div className="h-16 w-16 mx-auto mb-5 rounded-2xl bg-orange-50 flex items-center justify-center text-3xl text-[#F15A24] border border-orange-100">👤</div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">{t("profile.title")}</h2>
-          <p className="text-gray-500 text-sm mt-2 font-medium">{t("profile.subtitle")}</p>
+        <div className="bg-white rounded-3xl p-8 sm:p-10 mb-8 text-center shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100/60 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-[#F15A24] to-amber-500" />
+          <div className="h-16 w-16 mx-auto mb-5 rounded-2xl bg-gradient-to-br from-[#F15A24] to-amber-500 flex items-center justify-center text-white shadow-sm shadow-orange-500/20">
+            <Ico.user className="w-8 h-8" />
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">{t("profile.title")}</h2>
+          <p className="text-slate-500 text-sm mt-2 font-medium">{t("profile.subtitle")}</p>
 
           {/* Step dots */}
           <div className="flex items-center justify-center gap-3 sm:gap-6 mt-8">
             {[t("profile.step1"), t("profile.step2"), t("profile.step3")].map((label, i) => (
               <div key={i} className="flex items-center gap-3 sm:gap-6">
-                <div className={`flex flex-col sm:flex-row items-center gap-2 text-xs font-bold transition-all ${activeSection === i + 1 ? "text-[#F15A24]" : "text-gray-400"}`}>
+                <div className={`flex flex-col sm:flex-row items-center gap-2 text-xs font-bold transition-all ${activeSection === i + 1 ? "text-[#F15A24]" : "text-slate-400"}`}>
                   <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all ${
                     activeSection === i + 1 ? "bg-orange-50 text-[#F15A24] border-2 border-[#F15A24] shadow-sm"
-                    : activeSection > i + 1 ? "bg-green-500 text-white border-2 border-green-500"
-                    : "bg-gray-50 text-gray-400 border-2 border-gray-100"}`}>
-                    {activeSection > i + 1 ? "✓" : i + 1}
+                    : activeSection > i + 1 ? "bg-emerald-500 text-white border-2 border-emerald-500"
+                    : "bg-slate-50 text-slate-400 border-2 border-slate-100"}`}>
+                    {activeSection > i + 1 ? <Ico.check className="w-4 h-4" /> : i + 1}
                   </span>
                   <span className="mt-1 sm:mt-0">{label}</span>
                 </div>
-                {i < 2 && <div className={`hidden sm:block w-8 sm:w-12 h-[2px] rounded-full transition-colors ${activeSection > i + 1 ? "bg-[#F15A24]" : "bg-gray-100"}`} />}
+                {i < 2 && <div className={`hidden sm:block w-8 sm:w-12 h-[2px] rounded-full transition-colors ${activeSection > i + 1 ? "bg-[#F15A24]" : "bg-slate-100"}`} />}
               </div>
             ))}
           </div>
@@ -211,7 +223,7 @@ export default function ProfilePage() {
                 {[{ val: "thai", label: t("profile.thai") }, { val: "foreign", label: t("profile.foreign") }].map(({ val, label }) => (
                   <button key={val} type="button" onClick={() => set("nationality", val)}
                     className={`flex-1 flex items-center justify-center gap-2 p-2.5 rounded-xl border-2 transition-all text-sm font-bold ${
-                      f.nationality === val ? "border-[#F15A24] bg-orange-50 text-[#F15A24]" : "border-gray-200 text-gray-500 hover:border-gray-300"}`}>
+                      f.nationality === val ? "border-[#F15A24] bg-orange-50 text-[#F15A24]" : "border-slate-200 text-slate-500 hover:border-slate-300"}`}>
                     {label}
                   </button>
                 ))}
@@ -274,8 +286,8 @@ export default function ProfilePage() {
               <div className="flex justify-between items-center mb-1.5">
                 <Label>{t("profile.school")}</Label>
                 <button type="button" onClick={toggleCustomSchool}
-                  className={`text-xs font-bold px-2.5 py-1 rounded-full transition-all ${customSchool ? "bg-orange-100 text-[#F15A24] border border-orange-300" : "text-gray-400 hover:text-[#F15A24] underline"}`}>
-                  {customSchool ? "← ค้นหาจากรายการ" : "ไม่พบโรงเรียนของฉัน"}
+                  className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full transition-all ${customSchool ? "bg-orange-100 text-[#F15A24] border border-orange-300" : "text-slate-400 hover:text-[#F15A24] underline"}`}>
+                  {customSchool ? (<><Ico.arrowLeft className="w-3 h-3" /> ค้นหาจากรายการ</>) : "ไม่พบโรงเรียนของฉัน"}
                 </button>
               </div>
               {customSchool ? (
@@ -283,23 +295,23 @@ export default function ProfilePage() {
                   <input className={`${inputCls} border-amber-300 bg-amber-50`} value={f.school}
                     placeholder="กรอกชื่อโรงเรียนภาษาไทยเต็ม เช่น โรงเรียนยุพราชวิทยาลัย"
                     onChange={(e) => set("school", e.target.value)} />
-                  <p className="text-xs text-amber-600 mt-1">✏️ ข้อมูลนี้จะถูกบันทึกเป็นชื่อที่กรอกเอง (ไม่ผ่านการยืนยัน)</p>
+                  <p className="text-xs text-amber-600 mt-1 flex items-center gap-1"><Ico.pencil className="w-3 h-3" /> ข้อมูลนี้จะถูกบันทึกเป็นชื่อที่กรอกเอง (ไม่ผ่านการยืนยัน)</p>
                 </div>
               ) : (
                 <div className="relative">
                   <input className={inputCls} value={f.school} placeholder={t("profile.schoolPlaceholder")}
                     onChange={(e) => onSchoolInput(e.target.value)} onBlur={() => setTimeout(() => setShowSchoolDD(false), 200)} />
-                  {schoolVerified && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500 text-xs font-bold">✓ ยืนยันแล้ว</span>}
+                  {schoolVerified && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-500 text-xs font-bold inline-flex items-center gap-0.5"><Ico.check className="w-3.5 h-3.5" /> ยืนยันแล้ว</span>}
                   {showSchoolDD && schoolOptions.length > 0 && (
-                    <ul className="absolute z-20 w-full bg-white border border-gray-200 rounded-xl shadow-xl max-h-44 overflow-y-auto mt-1">
+                    <ul className="absolute z-20 w-full bg-white border border-slate-200 rounded-xl shadow-xl max-h-44 overflow-y-auto mt-1">
                       {schoolOptions.map((s, i) => (
-                        <li key={i} onClick={() => pickSchool(s)} className="px-4 py-2.5 hover:bg-orange-50 cursor-pointer text-sm border-b last:border-b-0 text-gray-700">{s}</li>
+                        <li key={i} onClick={() => pickSchool(s)} className="px-4 py-2.5 hover:bg-orange-50 cursor-pointer text-sm border-b last:border-b-0 text-slate-700">{s}</li>
                       ))}
                     </ul>
                   )}
                   {f.school.length > 1 && !schoolVerified && showSchoolDD && schoolOptions.length === 0 && (
                     <div className="mt-1.5 p-2.5 bg-orange-50 border border-orange-200 rounded-lg">
-                      <p className="text-xs text-orange-700 font-medium">🔍 ไม่พบในรายการ — พิมพ์เป็นภาษาไทย หรือกด
+                      <p className="text-xs text-orange-700 font-medium flex items-center gap-1"><Ico.search className="w-3 h-3 shrink-0" /> ไม่พบในรายการ — พิมพ์เป็นภาษาไทย หรือกด
                         <button type="button" onClick={toggleCustomSchool} className="underline font-bold ml-1 text-[#F15A24]">ไม่พบโรงเรียนของฉัน</button>
                       </p>
                     </div>
@@ -349,17 +361,17 @@ export default function ProfilePage() {
                 <input className={inputCls} value={f.subdistrict} placeholder={t("profile.subdistrictPlaceholder")}
                   onChange={(e) => onSubdistrictInput(e.target.value)} onBlur={() => setTimeout(() => setShowAddrDD(false), 200)} />
                 {showAddrDD && addrOptions.length > 0 && (
-                  <ul className="absolute z-20 w-full sm:w-[200%] bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto mt-1 left-0">
+                  <ul className="absolute z-20 w-full sm:w-[200%] bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto mt-1 left-0">
                     {addrOptions.map((a, i) => (
                       <li key={i} onClick={() => pickAddress(a)} className="px-4 py-3 hover:bg-orange-50 cursor-pointer text-sm border-b last:border-b-0 flex flex-col">
                         <span className="font-bold text-[#F15A24]">ต.{a.subDistrict} › อ.{a.district} › จ.{a.province}</span>
-                        <span className="text-xs text-gray-400">รหัสไปรษณีย์: {a.postalCode}</span>
+                        <span className="text-xs text-slate-400">รหัสไปรษณีย์: {a.postalCode}</span>
                       </li>
                     ))}
                   </ul>
                 )}
                 {f.subdistrict.length > 0 && !addrVerified && !showAddrDD && (
-                  <p className="text-xs text-gray-400 mt-1">กรอกอำเภอ/จังหวัด/รหัสไปรษณีย์ด้านล่างได้เลย</p>
+                  <p className="text-xs text-slate-400 mt-1">กรอกอำเภอ/จังหวัด/รหัสไปรษณีย์ด้านล่างได้เลย</p>
                 )}
               </div>
               <div>
@@ -380,13 +392,13 @@ export default function ProfilePage() {
           </div>
 
           {error && (
-            <div className="flex items-start gap-3 bg-red-50 border border-red-100 text-red-700 rounded-2xl px-4 py-3.5 text-sm">
-              <span className="shrink-0 mt-0.5">⚠️</span><span className="font-medium">{error}</span>
+            <div className="flex items-start gap-3 bg-rose-50 border border-rose-100 text-rose-700 rounded-2xl px-4 py-3.5 text-sm">
+              <Ico.warn className="w-4 h-4 shrink-0 mt-0.5" /><span className="font-medium">{error}</span>
             </div>
           )}
 
           <button onClick={handleSave} disabled={saving}
-            className="w-full bg-[#F15A24] hover:bg-[#c44215] disabled:bg-gray-300 text-white font-bold py-4 rounded-2xl shadow-lg transition-all active:scale-95 text-sm">
+            className="w-full bg-[#F15A24] hover:bg-[#c44215] disabled:bg-slate-300 text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-500/20 transition-all active:scale-95 text-sm">
             {saving ? t("profile.saving") : t("profile.saveAndContinue")}
           </button>
         </div>
@@ -396,13 +408,13 @@ export default function ProfilePage() {
 }
 
 function Label({ children }) {
-  return <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">{children}</label>
+  return <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">{children}</label>
 }
 function SectionHeader({ number, title }) {
   return (
-    <div className="flex items-center gap-3 pb-3 border-b border-gray-100 mb-4">
+    <div className="flex items-center gap-3 pb-3 border-b border-slate-100 mb-4">
       <span className="w-7 h-7 bg-[#F15A24] text-white rounded-xl flex items-center justify-center text-xs font-black shrink-0">{number}</span>
-      <h3 className="text-base font-bold text-gray-800">{title}</h3>
+      <h3 className="text-base font-bold text-slate-800">{title}</h3>
     </div>
   )
 }
