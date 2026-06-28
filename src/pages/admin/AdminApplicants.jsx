@@ -151,6 +151,10 @@ export default function AdminApplicants() {
     const p = (r.participants || [])[0]
     return p?.full_name || r.submitter_email || "-"
   }
+  // หมวดหมู่วิชา (รองรับหลายรูปแบบ schema)
+  function courseCategory(r) {
+    return r.courses?.course_types?.label || r.courses?.course_category || r.courses?.category || r.course_category || ""
+  }
   function mainSchool(r) {
     const p = (r.participants || [])[0]
     return p?.school || ""
@@ -181,13 +185,13 @@ export default function AdminApplicants() {
   return (
     <div>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-5">
+      <div className="flex flex-row justify-between items-center gap-3 mb-5">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 border-l-4 border-[#F15A24] pl-3 leading-tight">รายการสมัคร</h1>
           <p className="text-sm text-slate-400 pl-3 mt-0.5">{filtered.length} รายการ</p>
         </div>
-        <button onClick={exportCsv} className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-emerald-700 shadow-sm transition text-sm">
-          <Ico.download className="w-4 h-4" /> Export CSV
+        <button onClick={exportCsv} className="flex items-center gap-1 bg-emerald-600 text-white px-2.5 py-1.5 rounded-lg font-bold hover:bg-emerald-700 shadow-sm transition text-xs shrink-0">
+          <Ico.download className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Export</span>
         </button>
       </div>
 
@@ -247,7 +251,6 @@ export default function AdminApplicants() {
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="bg-gradient-to-r from-[#fff5f0] to-[#fff9f6] border-b border-orange-100">
-                <th className="px-4 py-3 text-xs font-bold text-[#F15A24] uppercase">วันที่สมัคร</th>
                 <th className="px-4 py-3 text-xs font-bold text-[#F15A24] uppercase">วิชา</th>
                 <th className="px-4 py-3 text-xs font-bold text-[#F15A24] uppercase">ชื่อ–สกุล</th>
                 <th className="px-4 py-3 text-xs font-bold text-[#F15A24] uppercase">เบอร์ / อีเมล</th>
@@ -257,7 +260,7 @@ export default function AdminApplicants() {
             </thead>
             <tbody className="divide-y divide-slate-50">
               {loading ? (
-                <tr><td colSpan="6" className="py-16 text-center">
+                <tr><td colSpan="5" className="py-16 text-center">
                   <div className="flex flex-col items-center gap-3 text-slate-400">
                     <div className="w-8 h-8 border-2 border-[#F15A24] border-t-transparent rounded-full animate-spin" />
                     <span className="text-sm">กำลังโหลด…</span>
@@ -265,8 +268,10 @@ export default function AdminApplicants() {
                 </td></tr>
               ) : pageItems.length > 0 ? pageItems.map((r) => (
                 <tr key={r.id} onClick={() => goVerify(r.id)} className="hover:bg-orange-50/60 transition cursor-pointer group">
-                  <td className="px-4 py-3.5 text-xs text-slate-500 whitespace-nowrap">{fmtDate(r.created_at)}</td>
-                  <td className="px-4 py-3.5"><span className="font-bold text-slate-800 text-sm leading-snug line-clamp-2 max-w-[200px] block">{r.courses?.title || "-"}</span></td>
+                  <td className="px-4 py-3.5 max-w-[220px]">
+                    <span className="font-bold text-[#F15A24] text-sm leading-snug line-clamp-2 block">{r.courses?.title || "-"}</span>
+                    {courseCategory(r) && <span className="inline-block mt-1 text-[10px] font-bold text-orange-700 bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-md">{courseCategory(r)}</span>}
+                  </td>
                   <td className="px-4 py-3.5">
                     <div className="font-medium text-slate-700 text-sm">{mainName(r)}</div>
                     {mainSchool(r) && <div className="text-xs text-slate-400 truncate max-w-[160px]">{mainSchool(r)}</div>}
@@ -276,13 +281,16 @@ export default function AdminApplicants() {
                     <div className="font-mono text-xs text-slate-600 flex items-center gap-1"><Ico.phone className="w-3 h-3 text-slate-400" /> {mainPhone(r)}</div>
                     <div className="text-xs text-slate-400 truncate max-w-[160px] mt-0.5">{r.submitter_email || "-"}</div>
                   </td>
-                  <td className="px-4 py-3.5"><StatusBadge status={unifyStatus(r)} /></td>
+                  <td className="px-4 py-3.5">
+                    <StatusBadge status={unifyStatus(r)} />
+                    <div className="text-[10px] text-slate-400 mt-1 whitespace-nowrap">{fmtDate(r.created_at)}</div>
+                  </td>
                   <td className="px-4 py-3.5 text-right">
                     <span className="text-[#F15A24] text-xs font-bold opacity-0 group-hover:opacity-100 transition inline-flex items-center gap-1">ตรวจสอบ <Ico.arrowRight className="w-3.5 h-3.5" /></span>
                   </td>
                 </tr>
               )) : (
-                <tr><td colSpan="6" className="py-16 text-center text-sm text-slate-400">ไม่พบข้อมูลที่ค้นหา</td></tr>
+                <tr><td colSpan="5" className="py-16 text-center text-sm text-slate-400">ไม่พบข้อมูลที่ค้นหา</td></tr>
               )}
             </tbody>
           </table>
@@ -297,23 +305,26 @@ export default function AdminApplicants() {
             </div>
           ) : pageItems.length > 0 ? pageItems.map((r) => (
             <div key={r.id} onClick={() => goVerify(r.id)} className="p-4 hover:bg-orange-50/60 active:bg-orange-100 transition cursor-pointer">
-              {/* แถวบน: ชื่อวิชา (เด่น) + สถานะ */}
+              {/* แถวบน: ชื่อวิชา (สีส้ม เด่น) + หมวด / สถานะ + วันที่ */}
               <div className="flex justify-between items-start gap-2 mb-1.5">
                 <div className="flex-1 min-w-0">
-                  <div className="font-bold text-slate-800 text-sm leading-snug line-clamp-2">{r.courses?.title || "-"}</div>
+                  <div className="font-bold text-[#F15A24] text-sm leading-snug line-clamp-2">{r.courses?.title || "-"}</div>
+                  {courseCategory(r) && <span className="inline-block mt-1 text-[10px] font-bold text-orange-700 bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-md">{courseCategory(r)}</span>}
                 </div>
-                <StatusBadge status={unifyStatus(r)} />
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <StatusBadge status={unifyStatus(r)} />
+                  <span className="text-[10px] text-slate-400 whitespace-nowrap">{fmtDate(r.created_at)}</span>
+                </div>
               </div>
               {/* ชื่อผู้สมัคร + badge ทีม */}
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="text-sm font-medium text-slate-700">{mainName(r)}</span>
                 {(r.participants?.length || 0) > 1 && <span className="text-[10px] text-[#F15A24] font-bold bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded-full shrink-0">ทีม {r.participants.length} คน</span>}
               </div>
-              {/* รายละเอียดรอง: เบอร์ · โรงเรียน · วันที่ */}
+              {/* รายละเอียดรอง: เบอร์ · โรงเรียน */}
               <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-400">
                 <span className="inline-flex items-center gap-1"><Ico.phone className="w-3 h-3" /> {mainPhone(r)}</span>
                 {mainSchool(r) && <span className="truncate max-w-[140px] inline-flex items-center gap-1"><Ico.school className="w-3 h-3 shrink-0" /> {mainSchool(r)}</span>}
-                <span className="text-slate-300">{fmtDate(r.created_at)}</span>
               </div>
             </div>
           )) : (

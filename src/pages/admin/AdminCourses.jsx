@@ -7,6 +7,29 @@ import {
 } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
 
+// ───── ไอคอน SVG inline (สไตล์ lucide) — โทนเดียวกับหน้าอื่น ─────
+const Ico = {
+  plus:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M5 12h14M12 5v14"/></svg>),
+  copy:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>),
+  alert:   (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>),
+  search:  (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>),
+  book:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>),
+  cap:     (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>),
+  eye:     (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>),
+  pencil:  (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>),
+  trash:   (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>),
+  users:   (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>),
+  user:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>),
+  download:(p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>),
+  image:   (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>),
+  qr:      (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3M21 21v.01M12 7v3a2 2 0 0 1-2 2H7M3 12h.01M12 3h.01M12 16v.01M16 12h1M21 12v.01M12 21v-1"/></svg>),
+  clip:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>),
+  money:   (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>),
+  gift:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/></svg>),
+  check:   (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M20 6 9 17l-5-5"/></svg>),
+  save:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7M7 3v4a1 1 0 0 0 1 1h7"/></svg>),
+}
+
 // จัดการรายวิชา — Tailwind ตาม doc 18 (คง logic เดิมจาก AdminPanel)
 export default function AdminCourses() {
   const { event } = useOutletContext()
@@ -107,7 +130,7 @@ export default function AdminCourses() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="flex flex-col items-center gap-3 text-gray-400">
+        <div className="flex flex-col items-center gap-3 text-slate-400">
           <div className="w-10 h-10 border-2 border-[#F15A24] border-t-transparent rounded-full animate-spin" />
           <span className="text-sm">กำลังโหลดรายวิชา...</span>
         </div>
@@ -121,32 +144,33 @@ export default function AdminCourses() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800 border-l-4 border-[#F15A24] pl-3 leading-tight">จัดการรายวิชา</h1>
-          <p className="text-sm text-gray-400 pl-3 mt-0.5">{courses.length} รายวิชา</p>
+          <h1 className="text-2xl font-bold text-slate-800 border-l-4 border-[#F15A24] pl-3 leading-tight">จัดการรายวิชา</h1>
+          <p className="text-sm text-slate-400 pl-3 mt-0.5">{courses.length} รายวิชา</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <button onClick={openAdd} className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-emerald-700 shadow-sm transition text-sm">
-            ➕ เพิ่มวิชาใหม่
+          <button onClick={openAdd} className="flex items-center gap-1.5 bg-[#F15A24] text-white px-4 py-2.5 rounded-xl font-bold hover:bg-[#c44215] shadow-sm shadow-orange-500/20 transition text-sm">
+            <Ico.plus className="w-4 h-4" /> เพิ่มวิชาใหม่
           </button>
-          <button onClick={() => setShowDup(true)} className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-blue-700 shadow-sm transition text-sm">
-            📋 คัดลอกจากงานเก่า
+          <button onClick={() => setShowDup(true)} className="flex items-center gap-1.5 bg-slate-700 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-slate-800 shadow-sm transition text-sm">
+            <Ico.copy className="w-4 h-4" /> คัดลอกจากงานเก่า
           </button>
-          <button onClick={doEmergency} className="flex items-center gap-2 bg-red-600 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-red-700 shadow-sm transition text-sm border-2 border-red-400">
-            🚨 ปิดรับทั้งหมด
+          <button onClick={doEmergency} className="flex items-center gap-1.5 bg-rose-600 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-rose-700 shadow-sm transition text-sm">
+            <Ico.alert className="w-4 h-4" /> ปิดรับทั้งหมด
           </button>
         </div>
       </div>
 
       {/* Search + filter (เลือกปีงานจาก header bar ด้านบน) */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="relative">
+          <Ico.search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ค้นหาวิชา…"
-            className="w-full pl-3 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#F15A24] focus:ring-2 focus:ring-orange-100" />
+            className="w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#F15A24] focus:ring-2 focus:ring-orange-100" />
         </div>
         <div className="flex gap-1.5">
           {[["all", "ทั้งหมด"], ["open", "เปิดรับ"], ["closed", "ปิดรับ"]].map(([k, label]) => (
             <button key={k} onClick={() => setStatusFilter(k)}
-              className={`px-3 py-2 rounded-xl text-xs font-bold border transition ${statusFilter === k ? "bg-[#F15A24] text-white border-[#F15A24]" : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"}`}>
+              className={`px-3.5 py-2 rounded-lg text-xs font-medium transition ${statusFilter === k ? "bg-[#F15A24] text-white shadow-sm" : "bg-white text-slate-500 border border-slate-200 hover:bg-slate-50"}`}>
               {label}
             </button>
           ))}
@@ -154,7 +178,7 @@ export default function AdminCourses() {
       </div>
 
       {/* Desktop table */}
-      <div className="hidden lg:block bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+      <div className="hidden lg:block bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="bg-gradient-to-r from-[#fff5f0] to-[#fff9f6] border-b border-orange-100">
@@ -165,9 +189,9 @@ export default function AdminCourses() {
               <th className="px-5 py-3.5 text-xs font-bold text-[#F15A24] uppercase text-center">Action</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-50">
+          <tbody className="divide-y divide-slate-50">
             {filtered.map((course) => <CourseRow key={course.id} course={course} onEdit={openEdit} onDelete={doDelete} onToggle={doToggle} onCapacity={doCapacity} onView={setViewCourse} />)}
-            {filtered.length === 0 && <tr><td colSpan="5" className="py-16 text-center text-sm text-gray-400">ไม่พบรายวิชา</td></tr>}
+            {filtered.length === 0 && <tr><td colSpan="5" className="py-16 text-center text-sm text-slate-400">ไม่พบรายวิชา</td></tr>}
           </tbody>
         </table>
       </div>
@@ -175,7 +199,7 @@ export default function AdminCourses() {
       {/* Mobile cards */}
       <div className="lg:hidden space-y-3">
         {filtered.map((course) => <CourseCardMobile key={course.id} course={course} onEdit={openEdit} onDelete={doDelete} onToggle={doToggle} onCapacity={doCapacity} onView={setViewCourse} />)}
-        {filtered.length === 0 && <div className="bg-white rounded-2xl p-12 text-center text-sm text-gray-400 shadow-sm border border-gray-200">ไม่พบรายวิชา</div>}
+        {filtered.length === 0 && <div className="bg-white rounded-2xl p-12 text-center text-sm text-slate-400 shadow-sm border border-slate-200">ไม่พบรายวิชา</div>}
       </div>
 
       {showModal && editCourse && (
@@ -228,42 +252,42 @@ function DuplicateModal({ events, currentEventId, onClose, onDone }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
       <div className="bg-white w-full sm:rounded-2xl sm:max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[85vh] rounded-t-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="bg-blue-600 px-5 py-4 flex justify-between items-center shrink-0">
+        <div className="bg-gradient-to-r from-[#F15A24] to-amber-500 px-5 py-4 flex justify-between items-center shrink-0">
           <div>
-            <h3 className="font-bold text-white text-base">📋 คัดลอกวิชาจากงานเก่า</h3>
-            <p className="text-blue-100 text-xs mt-0.5">เลือกงานต้นทาง แล้วเลือกวิชาที่จะคัดลอกมางานปัจจุบัน</p>
+            <h3 className="font-bold text-white text-base flex items-center gap-2"><Ico.copy className="w-5 h-5" /> คัดลอกวิชาจากงานเก่า</h3>
+            <p className="text-orange-100 text-xs mt-0.5">เลือกงานต้นทาง แล้วเลือกวิชาที่จะคัดลอกมางานปัจจุบัน</p>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xl font-bold flex items-center justify-center">×</button>
         </div>
 
-        <div className="p-5 shrink-0 border-b border-gray-100">
-          <label className="text-xs font-bold text-gray-500 block mb-1.5">เลือกงานต้นทาง</label>
+        <div className="p-5 shrink-0 border-b border-slate-100">
+          <label className="text-xs font-bold text-slate-500 block mb-1.5">เลือกงานต้นทาง</label>
           <select value={fromEvent} onChange={(e) => loadFrom(e.target.value)}
-            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 bg-gray-50 focus:bg-white focus:border-[#F15A24] outline-none">
+            className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 bg-slate-50 focus:bg-white focus:border-[#F15A24] outline-none">
             <option value="">— เลือกงาน —</option>
             {otherEvents.map((e) => <option key={e.id} value={e.id}>{e.name} {e.year}</option>)}
           </select>
         </div>
 
         <div className="overflow-y-auto flex-1 p-5">
-          {!fromEvent ? <div className="py-12 text-center text-gray-400 text-sm">เลือกงานต้นทางก่อน</div>
-            : loading ? <div className="py-12 text-center text-gray-400 text-sm">กำลังโหลด…</div>
-            : list.length === 0 ? <div className="py-12 text-center text-gray-400 text-sm">งานนี้ไม่มีวิชา</div>
+          {!fromEvent ? <div className="py-12 text-center text-slate-400 text-sm">เลือกงานต้นทางก่อน</div>
+            : loading ? <div className="py-12 text-center text-slate-400 text-sm">กำลังโหลด…</div>
+            : list.length === 0 ? <div className="py-12 text-center text-slate-400 text-sm">งานนี้ไม่มีวิชา</div>
             : (
               <>
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs text-gray-400">{pickedIds.length} / {list.length} วิชา</span>
+                  <span className="text-xs text-slate-400">{pickedIds.length} / {list.length} วิชา</span>
                   <button onClick={toggleAll} className="text-xs text-[#F15A24] font-bold hover:underline">{list.every((c) => picked[c.id]) ? "ไม่เลือกทั้งหมด" : "เลือกทั้งหมด"}</button>
                 </div>
                 <div className="space-y-2">
                   {list.map((c) => (
-                    <label key={c.id} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition ${picked[c.id] ? "bg-blue-50 border-blue-300" : "bg-gray-50 border-gray-100 hover:border-gray-300"}`}>
-                      <input type="checkbox" checked={!!picked[c.id]} onChange={() => toggle(c.id)} className="w-4 h-4 accent-blue-600" />
+                    <label key={c.id} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition ${picked[c.id] ? "bg-orange-50 border-orange-300" : "bg-slate-50 border-slate-100 hover:border-slate-300"}`}>
+                      <input type="checkbox" checked={!!picked[c.id]} onChange={() => toggle(c.id)} className="w-4 h-4 accent-[#F15A24]" />
                       <div className="min-w-0 flex-1">
-                        <div className="font-bold text-gray-800 text-sm truncate">{c.title}</div>
-                        <div className="text-xs text-gray-400">{c.course_types?.label || "—"} · {c.price > 0 ? `฿${c.price}` : "ไม่มีค่าลงทะเบียน"} · รับ {c.capacity}</div>
+                        <div className="font-bold text-slate-800 text-sm truncate">{c.title}</div>
+                        <div className="text-xs text-slate-400">{c.course_types?.label || "—"} · {c.price > 0 ? `฿${c.price}` : "ไม่มีค่าลงทะเบียน"} · รับ {c.capacity}</div>
                       </div>
                     </label>
                   ))}
@@ -272,9 +296,9 @@ function DuplicateModal({ events, currentEventId, onClose, onDone }) {
             )}
         </div>
 
-        <div className="p-4 border-t border-gray-100 grid grid-cols-2 gap-3 shrink-0">
-          <button onClick={onClose} className="py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition text-sm">ยกเลิก</button>
-          <button onClick={doCopy} disabled={saving || pickedIds.length === 0} className="py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition text-sm disabled:opacity-50">{saving ? "กำลังคัดลอก…" : `คัดลอก ${pickedIds.length} วิชา`}</button>
+        <div className="p-4 border-t border-slate-100 grid grid-cols-2 gap-3 shrink-0">
+          <button onClick={onClose} className="py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition text-sm">ยกเลิก</button>
+          <button onClick={doCopy} disabled={saving || pickedIds.length === 0} className="py-3 bg-[#F15A24] text-white rounded-xl font-bold hover:bg-[#c44215] transition text-sm disabled:opacity-50">{saving ? "กำลังคัดลอก…" : `คัดลอก ${pickedIds.length} วิชา`}</button>
         </div>
       </div>
     </div>
@@ -293,49 +317,51 @@ function CourseRow({ course, onEdit, onDelete, onToggle, onCapacity, onView }) {
   const instructors = (course.course_instructors || []).map((ci) => ci.instructors?.full_name).filter(Boolean)
   const typeLabel = course.course_types?.label
   return (
-    <tr className="hover:bg-gray-50/60 transition group">
+    <tr className="hover:bg-orange-50/40 transition group">
       <td className="px-5 py-4">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-xl overflow-hidden bg-gray-100 shrink-0 border border-gray-200">
+          <div className="w-14 h-14 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
             {course.image_url
               ? <img src={course.image_url} alt="" className="w-full h-full object-cover" />
-              : <div className="w-full h-full flex items-center justify-center text-gray-300 text-xl">📚</div>}
+              : <div className="w-full h-full flex items-center justify-center text-slate-300"><Ico.book className="w-6 h-6" /></div>}
           </div>
           <div className="min-w-0">
-            <div className="font-bold text-gray-800 text-sm leading-snug">{course.title}</div>
-            <div className="flex flex-wrap gap-1.5 mt-1">
-              {typeLabel && <span className="text-[10px] bg-blue-50 text-blue-600 border border-blue-100 px-1.5 py-0.5 rounded-md font-bold">{typeLabel}</span>}
-              {instructors.length > 0 && <span className="text-[10px] bg-gray-50 text-gray-500 border border-gray-100 px-1.5 py-0.5 rounded-md">👨‍🏫 {instructors.join(", ")}</span>}
-              <span className="text-[10px] bg-purple-50 text-purple-600 border border-purple-100 px-1.5 py-0.5 rounded-md">{modeLabel(course)}</span>
+            {/* ชื่อวิชา (ส้มเด่น) + ราคา */}
+            <div className="font-bold text-[#F15A24] text-sm leading-snug">{course.title}</div>
+            <div className="text-xs text-slate-500 mt-0.5 font-bold">{course.price > 0 ? `฿${Number(course.price).toLocaleString()}` : "ไม่มีค่าลงทะเบียน"}</div>
+            {/* ป้ายกำกับ: หมวด · ผู้สอน · รูปแบบ */}
+            <div className="flex flex-wrap gap-1.5 mt-1.5">
+              {typeLabel && <span className="text-[10px] bg-orange-50 text-orange-700 border border-orange-100 px-1.5 py-0.5 rounded-md font-bold">{typeLabel}</span>}
+              <span className="text-[10px] bg-slate-50 text-slate-600 border border-slate-200 px-1.5 py-0.5 rounded-md font-bold inline-flex items-center gap-1"><Ico.users className="w-3 h-3" /> {modeLabel(course)}</span>
+              {instructors.length > 0 && <span className="text-[10px] bg-slate-50 text-slate-500 border border-slate-100 px-1.5 py-0.5 rounded-md inline-flex items-center gap-1"><Ico.cap className="w-3 h-3 shrink-0" /> {instructors.join(", ")}</span>}
             </div>
-            <div className="text-xs text-gray-400 mt-1 font-bold">{course.price > 0 ? `฿${Number(course.price).toLocaleString()}` : "ไม่มีค่าลงทะเบียน"}</div>
           </div>
         </div>
       </td>
       <td className="px-5 py-4 text-center">
         <div className="flex flex-col items-center gap-1">
-          <span className={`text-sm font-bold ${isFull ? "text-red-600" : "text-gray-700"}`}>{taken} / {cap}</span>
-          <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-            <div className={`h-full rounded-full ${isFull ? "bg-red-500" : pct >= 80 ? "bg-orange-400" : "bg-green-500"}`} style={{ width: `${pct}%` }} />
+          <span className={`text-sm font-bold ${isFull ? "text-rose-600" : "text-slate-700"}`}>{taken} / {cap}</span>
+          <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+            <div className={`h-full rounded-full ${isFull ? "bg-rose-500" : pct >= 80 ? "bg-amber-400" : "bg-emerald-500"}`} style={{ width: `${pct}%` }} />
           </div>
-          <span className="text-[10px] text-gray-400">{pct}%</span>
+          <span className="text-[10px] text-slate-400">{pct}%</span>
         </div>
       </td>
       <td className="px-5 py-4 text-center">
-        <button onClick={() => onToggle(course)} className={`relative inline-flex items-center h-7 rounded-full w-12 transition-colors ${course.is_open ? "bg-green-500" : "bg-gray-300"}`}>
+        <button onClick={() => onToggle(course)} className={`relative inline-flex items-center h-7 rounded-full w-12 transition-colors ${course.is_open ? "bg-emerald-500" : "bg-slate-300"}`}>
           <span className={`inline-block w-5 h-5 transform bg-white rounded-full shadow-md transition-transform ${course.is_open ? "translate-x-6" : "translate-x-1"}`} />
         </button>
-        <div className={`text-[10px] font-bold mt-1 ${course.is_open ? "text-green-600" : "text-gray-400"}`}>{course.is_open ? "เปิดรับ" : "ปิดรับ"}</div>
+        <div className={`text-[10px] font-bold mt-1 ${course.is_open ? "text-emerald-600" : "text-slate-400"}`}>{course.is_open ? "เปิดรับ" : "ปิดรับ"}</div>
       </td>
       <td className="px-5 py-4 text-center">
         <input type="number" defaultValue={cap} onBlur={(e) => onCapacity(course, e.target.value)}
-          className="w-16 text-center border border-gray-200 rounded-lg py-1.5 text-sm font-bold focus:border-[#F15A24] focus:ring-1 focus:ring-[#F15A24] outline-none" />
+          className="w-16 text-center border border-slate-200 rounded-lg py-1.5 text-sm font-bold focus:border-[#F15A24] focus:ring-1 focus:ring-[#F15A24] outline-none" />
       </td>
       <td className="px-5 py-4 text-center">
         <div className="flex items-center justify-center gap-1.5">
-          <button onClick={() => onView(course)} className="bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-1.5 rounded-lg hover:bg-blue-100 text-xs font-bold transition">👁 ผู้สมัคร</button>
-          <button onClick={() => onEdit(course)} className="bg-yellow-50 text-yellow-700 border border-yellow-200 px-2.5 py-1.5 rounded-lg hover:bg-yellow-100 text-xs font-bold transition">✏️</button>
-          <button onClick={() => onDelete(course)} className="bg-red-50 text-red-600 border border-red-200 px-2.5 py-1.5 rounded-lg hover:bg-red-100 text-xs font-bold transition">🗑️</button>
+          <button onClick={() => onView(course)} className="inline-flex items-center gap-1 bg-slate-100 text-slate-700 border border-slate-200 px-2.5 py-1.5 rounded-lg hover:bg-slate-200 text-xs font-bold transition"><Ico.eye className="w-3.5 h-3.5" /> ผู้สมัคร</button>
+          <button onClick={() => onEdit(course)} className="bg-orange-50 text-[#F15A24] border border-orange-200 p-1.5 rounded-lg hover:bg-orange-100 transition"><Ico.pencil className="w-3.5 h-3.5" /></button>
+          <button onClick={() => onDelete(course)} className="bg-rose-50 text-rose-600 border border-rose-200 p-1.5 rounded-lg hover:bg-rose-100 transition"><Ico.trash className="w-3.5 h-3.5" /></button>
         </div>
       </td>
     </tr>
@@ -345,11 +371,11 @@ function CourseRow({ course, onEdit, onDelete, onToggle, onCapacity, onView }) {
 function modeLabel(course) {
   if (course.count_mode === "team") {
     const mn = course.min_members, mx = course.max_members
-    if (mn && mx && mn !== mx) return `👪 ทีม ${mn}-${mx} คน`
-    if (course.team_size === 2) return "👥 คู่"
-    return `👪 ทีม ${course.team_size || mx || ""} คน`
+    if (mn && mx && mn !== mx) return `ทีม ${mn}-${mx} คน`
+    if (course.team_size === 2) return "คู่"
+    return `ทีม ${course.team_size || mx || ""} คน`
   }
-  return "👤 เดี่ยว"
+  return "เดี่ยว"
 }
 
 function CourseCardMobile({ course, onEdit, onDelete, onToggle, onView }) {
@@ -357,52 +383,54 @@ function CourseCardMobile({ course, onEdit, onDelete, onToggle, onView }) {
   const instructors = (course.course_instructors || []).map((ci) => ci.instructors?.full_name).filter(Boolean)
   const unlimited = course.seat_mode === "unlimited"
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
       <div className="flex gap-3">
         {/* รูป */}
-        <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
-          {course.image_url ? <img src={course.image_url} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-gray-300 text-xl">📚</div>}
+        <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-100">
+          {course.image_url ? <img src={course.image_url} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-300"><Ico.book className="w-6 h-6" /></div>}
         </div>
         {/* ข้อมูล */}
         <div className="flex-1 min-w-0">
-          <div className="font-bold text-gray-800 text-base leading-snug">{course.title}</div>
+          {/* ชื่อวิชา (ส้มเด่น) */}
+          <div className="font-bold text-[#F15A24] text-base leading-snug">{course.title}</div>
+          {/* ป้ายกำกับ: หมวด · รูปแบบ */}
           <div className="flex flex-wrap gap-1.5 mt-1">
-            {course.course_types?.label && <span className="text-[10px] bg-blue-50 text-blue-600 border border-blue-100 px-1.5 py-0.5 rounded-md font-bold">{course.course_types.label}</span>}
-            <span className="text-[10px] bg-purple-50 text-purple-600 border border-purple-100 px-1.5 py-0.5 rounded-md font-bold">{modeLabel(course)}</span>
+            {course.course_types?.label && <span className="text-[10px] bg-orange-50 text-orange-700 border border-orange-100 px-1.5 py-0.5 rounded-md font-bold">{course.course_types.label}</span>}
+            <span className="text-[10px] bg-slate-50 text-slate-600 border border-slate-200 px-1.5 py-0.5 rounded-md font-bold inline-flex items-center gap-1"><Ico.users className="w-3 h-3" /> {modeLabel(course)}</span>
           </div>
-          {instructors.length > 0 && <div className="text-xs text-gray-500 mt-1.5 truncate">👨‍🏫 {instructors.join(", ")}</div>}
+          {instructors.length > 0 && <div className="text-xs text-slate-500 mt-1.5 truncate inline-flex items-center gap-1"><Ico.cap className="w-3 h-3 shrink-0" /> {instructors.join(", ")}</div>}
           <div className="flex items-baseline gap-2 mt-1.5">
             <span className="text-lg font-extrabold text-[#F15A24]">{course.price > 0 ? `฿${Number(course.price).toLocaleString()}` : "ไม่มีค่าลงทะเบียน"}</span>
-            <span className="text-[11px] text-gray-400">รับ {unlimited ? "ไม่จำกัด" : `${cap} ${course.count_mode === "team" ? "ทีม" : "คน"}`}</span>
+            <span className="text-[11px] text-slate-400">รับ {unlimited ? "ไม่จำกัด" : `${cap} ${course.count_mode === "team" ? "ทีม" : "คน"}`}</span>
           </div>
         </div>
         {/* toggle เปิดรับ */}
         <div className="flex flex-col items-end gap-1 shrink-0">
-          <button onClick={() => onToggle(course)} className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors ${course.is_open ? "bg-green-500" : "bg-gray-300"}`}>
+          <button onClick={() => onToggle(course)} className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors ${course.is_open ? "bg-emerald-500" : "bg-slate-300"}`}>
             <span className={`inline-block w-4 h-4 bg-white rounded-full shadow transition-transform ${course.is_open ? "translate-x-6" : "translate-x-1"}`} />
           </button>
-          <span className={`text-[10px] font-bold ${course.is_open ? "text-green-600" : "text-gray-400"}`}>{course.is_open ? "เปิดรับ" : "ปิดรับ"}</span>
+          <span className={`text-[10px] font-bold ${course.is_open ? "text-emerald-600" : "text-slate-400"}`}>{course.is_open ? "เปิดรับ" : "ปิดรับ"}</span>
         </div>
       </div>
 
       {/* แถบที่นั่ง — เต็มกว้าง */}
       <div className="mt-3">
         <div className="flex justify-between items-center text-xs mb-1">
-          <span className="text-gray-500">ที่นั่ง: <span className={`font-bold ${isFull && !unlimited ? "text-red-600" : "text-gray-700"}`}>{taken} / {unlimited ? "∞" : cap}</span></span>
-          {!unlimited && <span className={`font-bold ${isFull ? "text-red-600" : pct >= 80 ? "text-orange-500" : "text-green-600"}`}>{pct}%</span>}
+          <span className="text-slate-500">ที่นั่ง: <span className={`font-bold ${isFull && !unlimited ? "text-rose-600" : "text-slate-700"}`}>{taken} / {unlimited ? "∞" : cap}</span></span>
+          {!unlimited && <span className={`font-bold ${isFull ? "text-rose-600" : pct >= 80 ? "text-amber-500" : "text-emerald-600"}`}>{pct}%</span>}
         </div>
         {!unlimited && (
-          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-            <div className={`h-full rounded-full ${isFull ? "bg-red-500" : pct >= 80 ? "bg-orange-400" : "bg-green-500"}`} style={{ width: `${pct}%` }} />
+          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+            <div className={`h-full rounded-full ${isFull ? "bg-rose-500" : pct >= 80 ? "bg-amber-400" : "bg-emerald-500"}`} style={{ width: `${pct}%` }} />
           </div>
         )}
       </div>
 
       {/* ปุ่ม ดู/แก้ไข/ลบ — แถวล่างชิดขวา */}
-      <div className="flex justify-end gap-2 mt-3 pt-3 border-t border-gray-100">
-        <button onClick={() => onView(course)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold hover:bg-blue-100 transition">👁 ผู้สมัคร</button>
-        <button onClick={() => onEdit(course)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-yellow-50 text-yellow-700 border border-yellow-200 text-xs font-bold hover:bg-yellow-100 transition">✏️ แก้ไข</button>
-        <button onClick={() => onDelete(course)} className="w-8 h-8 rounded-lg bg-red-50 text-red-600 border border-red-200 flex items-center justify-center text-sm hover:bg-red-100 transition">🗑️</button>
+      <div className="flex justify-end gap-2 mt-3 pt-3 border-t border-slate-100">
+        <button onClick={() => onView(course)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold hover:bg-slate-200 transition"><Ico.eye className="w-3.5 h-3.5" /> ผู้สมัคร</button>
+        <button onClick={() => onEdit(course)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-50 text-[#F15A24] border border-orange-200 text-xs font-bold hover:bg-orange-100 transition"><Ico.pencil className="w-3.5 h-3.5" /> แก้ไข</button>
+        <button onClick={() => onDelete(course)} className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center hover:bg-rose-100 transition"><Ico.trash className="w-3.5 h-3.5" /></button>
       </div>
     </div>
   )
@@ -505,14 +533,14 @@ function CourseModal({ course, types, onSave, onClose }) {
     })
   }
 
-  const inputCls = "w-full px-3 py-2.5 border border-gray-200 rounded-xl outline-none focus:border-[#F15A24] focus:ring-1 focus:ring-[#F15A24] text-sm transition"
-  const labelCls = "text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1.5"
+  const inputCls = "w-full px-3 py-2.5 border border-slate-200 rounded-xl outline-none focus:border-[#F15A24] focus:ring-1 focus:ring-[#F15A24] text-sm transition"
+  const labelCls = "text-xs font-bold text-slate-500 uppercase tracking-wide block mb-1.5"
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+    <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
       <div className="bg-white w-full sm:rounded-2xl sm:max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[95dvh] sm:max-h-[90vh] rounded-t-2xl">
-        <div className={`${isEdit ? "bg-yellow-500" : "bg-[#F15A24]"} px-5 py-4 flex justify-between items-center shrink-0`}>
-          <h3 className="font-bold text-white text-base">{isEdit ? "✏️ แก้ไขรายวิชา" : "➕ เพิ่มรายวิชาใหม่"}</h3>
+        <div className="bg-gradient-to-r from-[#F15A24] to-amber-500 px-5 py-4 flex justify-between items-center shrink-0">
+          <h3 className="font-bold text-white text-base flex items-center gap-2">{isEdit ? <><Ico.pencil className="w-5 h-5" /> แก้ไขรายวิชา</> : <><Ico.plus className="w-5 h-5" /> เพิ่มรายวิชาใหม่</>}</h3>
           <button onClick={onClose} className="text-white/80 hover:text-white text-2xl leading-none">×</button>
         </div>
         <form onSubmit={submit} className="flex-1 overflow-y-auto">
@@ -524,7 +552,7 @@ function CourseModal({ course, types, onSave, onClose }) {
             <div className="grid grid-cols-3 gap-3">
               <div><label className={labelCls}>วันเริ่มเรียน</label><input type="date" className={inputCls} value={f.start_date || ""} onChange={(e) => onDateChange("start_date", e.target.value)} /></div>
               <div><label className={labelCls}>วันสิ้นสุด</label><input type="date" className={inputCls} value={f.end_date || ""} onChange={(e) => onDateChange("end_date", e.target.value)} /></div>
-              <div><label className={labelCls}>ระยะเวลา <span className="text-[10px] text-gray-400 font-normal">(คำนวณอัตโนมัติ)</span></label><input className={inputCls} placeholder="เช่น 5 วัน" value={f.duration || ""} onChange={(e) => set("duration", e.target.value)} /></div>
+              <div><label className={labelCls}>ระยะเวลา <span className="text-[10px] text-slate-400 font-normal">(คำนวณอัตโนมัติ)</span></label><input className={inputCls} placeholder="เช่น 5 วัน" value={f.duration || ""} onChange={(e) => set("duration", e.target.value)} /></div>
             </div>
 
             {/* 3. หมวดหมู่ + ผู้สอน */}
@@ -541,7 +569,7 @@ function CourseModal({ course, types, onSave, onClose }) {
 
             {/* Base ID + ระดับชั้น */}
             <div className="grid grid-cols-2 gap-3">
-              <div><label className={labelCls}>Base ID (รหัสนำหน้าเลขประจำตัว)</label><input type="text" className={inputCls} placeholder="เช่น GAME, MUSIC, CODE" value={f.base_id || ""} onChange={(e) => set("base_id", e.target.value.toUpperCase())} /><p className="text-[11px] text-gray-400 mt-1">💡 ควรตั้งให้<b>ต่างกันทุกคอร์ส</b> เพื่อแยกรหัสนักเรียน เช่น GAME-001, MUSIC-001</p></div>
+              <div><label className={labelCls}>Base ID (รหัสนำหน้าเลขประจำตัว)</label><input type="text" className={inputCls} placeholder="เช่น GAME, MUSIC, CODE" value={f.base_id || ""} onChange={(e) => set("base_id", e.target.value.toUpperCase())} /><p className="text-[11px] text-slate-400 mt-1">💡 ควรตั้งให้<b>ต่างกันทุกคอร์ส</b> เพื่อแยกรหัสนักเรียน เช่น GAME-001, MUSIC-001</p></div>
               <div>
                 <label className={labelCls}>ระดับชั้น</label>
                 <select className={inputCls} value={f.level || ""} onChange={(e) => set("level", e.target.value)}>
@@ -560,9 +588,9 @@ function CourseModal({ course, types, onSave, onClose }) {
               <div>
                 <label className={labelCls}>รูปแบบการสมัคร</label>
                 <select className={inputCls} value={f.count_choice} onChange={(e) => set("count_choice", e.target.value)}>
-                  <option value="single">👤 เดี่ยว (1 คน)</option>
-                  <option value="pair">👥 คู่ (2 คน)</option>
-                  <option value="team">👪 ทีม (ช่วงจำนวนคน)</option>
+                  <option value="single">เดี่ยว (1 คน)</option>
+                  <option value="pair">คู่ (2 คน)</option>
+                  <option value="team">ทีม (ช่วงจำนวนคน)</option>
                 </select>
               </div>
               <div>
@@ -590,21 +618,21 @@ function CourseModal({ course, types, onSave, onClose }) {
                 ) : <div />}
               </div>
             )}
-            {f.count_choice === "team" && <p className="text-[11px] text-gray-400 -mt-2">💡 เช่น ต่ำสุด 1 มากสุด 4 → 1 ทีมมี 1-4 คนก็ได้ (ยืดหยุ่น)</p>}
+            {f.count_choice === "team" && <p className="text-[11px] text-slate-400 -mt-2">💡 เช่น ต่ำสุด 1 มากสุด 4 → 1 ทีมมี 1-4 คนก็ได้ (ยืดหยุ่น)</p>}
 
             {/* การชำระเงิน */}
             <div>
               <label className={labelCls}>การรับชำระเงิน</label>
               <div className="grid grid-cols-2 gap-2">
                 <button type="button" onClick={() => set("pay_mode", "paid")}
-                  className={`p-3 rounded-xl border-2 text-left transition ${f.pay_mode === "paid" ? "border-[#F15A24] bg-orange-50/40 shadow-sm" : "border-gray-200 bg-white hover:border-gray-300"}`}>
-                  <div className="font-bold text-sm text-gray-800">💰 เสียเงิน</div>
-                  <div className="text-[11px] text-gray-500 mt-0.5 leading-tight">อัปสลิป → กันที่นั่งทันที</div>
+                  className={`p-3 rounded-xl border-2 text-left transition ${f.pay_mode === "paid" ? "border-[#F15A24] bg-orange-50/40 shadow-sm" : "border-slate-200 bg-white hover:border-slate-300"}`}>
+                  <div className="font-bold text-sm text-slate-800 flex items-center gap-1.5"><Ico.money className="w-4 h-4 text-[#F15A24]" /> เสียเงิน</div>
+                  <div className="text-[11px] text-slate-500 mt-0.5 leading-tight">อัปสลิป → กันที่นั่งทันที</div>
                 </button>
                 <button type="button" onClick={() => set("pay_mode", "free")}
-                  className={`p-3 rounded-xl border-2 text-left transition ${f.pay_mode === "free" ? "border-[#F15A24] bg-orange-50/40 shadow-sm" : "border-gray-200 bg-white hover:border-gray-300"}`}>
-                  <div className="font-bold text-sm text-gray-800">🆓 ไม่เสียเงิน</div>
-                  <div className="text-[11px] text-gray-500 mt-0.5 leading-tight">สมัคร → แอดมินอนุมัติ</div>
+                  className={`p-3 rounded-xl border-2 text-left transition ${f.pay_mode === "free" ? "border-[#F15A24] bg-orange-50/40 shadow-sm" : "border-slate-200 bg-white hover:border-slate-300"}`}>
+                  <div className="font-bold text-sm text-slate-800 flex items-center gap-1.5"><Ico.gift className="w-4 h-4 text-emerald-500" /> ไม่เสียเงิน</div>
+                  <div className="text-[11px] text-slate-500 mt-0.5 leading-tight">สมัคร → แอดมินอนุมัติ</div>
                 </button>
               </div>
               {f.pay_mode === "paid" && (
@@ -620,14 +648,14 @@ function CourseModal({ course, types, onSave, onClose }) {
             </div>
 
             {/* แนบลิงก์ผลงาน (เปิด/ปิด) + หัวข้อ */}
-            <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+            <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="font-bold text-sm text-gray-800">📎 ต้องแนบลิงก์ผลงาน</div>
-                  <div className="text-[11px] text-gray-400">เปิดถ้าให้ผู้สมัครส่งลิงก์ผลงาน (เช่น การแข่งขัน)</div>
+                  <div className="font-bold text-sm text-slate-800 flex items-center gap-1.5"><Ico.clip className="w-4 h-4" /> ต้องแนบลิงก์ผลงาน</div>
+                  <div className="text-[11px] text-slate-400">เปิดถ้าให้ผู้สมัครส่งลิงก์ผลงาน (เช่น การแข่งขัน)</div>
                 </div>
                 <button type="button" onClick={() => set("require_portfolio", !f.require_portfolio)}
-                  className={`relative inline-flex items-center h-7 rounded-full w-12 shrink-0 transition-colors ${f.require_portfolio ? "bg-[#F15A24]" : "bg-gray-300"}`}>
+                  className={`relative inline-flex items-center h-7 rounded-full w-12 shrink-0 transition-colors ${f.require_portfolio ? "bg-[#F15A24]" : "bg-slate-300"}`}>
                   <span className={`inline-block w-5 h-5 bg-white rounded-full shadow-md transition-transform ${f.require_portfolio ? "translate-x-6" : "translate-x-1"}`} />
                 </button>
               </div>
@@ -635,21 +663,21 @@ function CourseModal({ course, types, onSave, onClose }) {
                 <div className="mt-3">
                   <label className={labelCls}>หัวข้อ/คำอธิบายให้ผู้สมัคร</label>
                   <input className={inputCls} placeholder="เช่น แนบลิงก์ผลงาน (Google Drive / YouTube / Behance)" value={f.portfolio_label || ""} onChange={(e) => set("portfolio_label", e.target.value)} />
-                  <p className="text-[11px] text-gray-400 mt-1">ข้อความนี้จะแสดงให้ผู้สมัครเห็นตอนกรอกลิงก์</p>
+                  <p className="text-[11px] text-slate-400 mt-1">ข้อความนี้จะแสดงให้ผู้สมัครเห็นตอนกรอกลิงก์</p>
                 </div>
               )}
             </div>
 
             {/* 5. รูปภาพประกอบ */}
-            <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-4">
-              <label className="text-xs font-black text-blue-700 uppercase tracking-wide block mb-2">📸 รูปภาพประกอบ (อัปหลายรูปได้)</label>
+            <div className="bg-orange-50/50 border border-orange-100 rounded-xl p-4">
+              <label className="text-xs font-black text-[#F15A24] uppercase tracking-wide mb-2 flex items-center gap-1.5"><Ico.image className="w-4 h-4" /> รูปภาพประกอบ (อัปหลายรูปได้)</label>
               <input type="file" multiple accept="image/*" onChange={handleImageFiles} disabled={uploading}
-                className="block w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-orange-100 file:text-orange-700 hover:file:bg-orange-200 mb-3 disabled:opacity-50" />
+                className="block w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-orange-100 file:text-orange-700 hover:file:bg-orange-200 mb-3 disabled:opacity-50" />
               <div className="flex flex-wrap gap-2">
                 {(f.image_urls || []).map((url, idx) => (
                   <div key={idx} className="relative w-16 h-16">
-                    <img src={url} alt="" className="w-full h-full object-cover rounded-lg border border-gray-200" />
-                    <button type="button" onClick={() => removeImage(idx)} className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] shadow hover:bg-red-600">×</button>
+                    <img src={url} alt="" className="w-full h-full object-cover rounded-lg border border-slate-200" />
+                    <button type="button" onClick={() => removeImage(idx)} className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] shadow hover:bg-rose-600">×</button>
                     {idx === 0 && <span className="absolute bottom-0 inset-x-0 bg-[#F15A24] text-white text-[8px] text-center rounded-b-lg">ปก</span>}
                   </div>
                 ))}
@@ -657,11 +685,11 @@ function CourseModal({ course, types, onSave, onClose }) {
             </div>
 
             {/* 6. QR ไลน์กลุ่ม */}
-            <div className="bg-green-50/50 border border-green-100 rounded-xl p-4">
-              <label className="text-xs font-black text-green-700 uppercase tracking-wide block mb-2">📲 QR ไลน์กลุ่ม (ถ้ามี)</label>
+            <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-4">
+              <label className="text-xs font-black text-emerald-700 uppercase tracking-wide mb-2 flex items-center gap-1.5"><Ico.qr className="w-4 h-4" /> QR ไลน์กลุ่ม (ถ้ามี)</label>
               <input type="file" accept="image/*" onChange={handleQrFile} disabled={uploading}
-                className="block w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-green-100 file:text-green-700 disabled:opacity-50" />
-              {f.line_qr_url && <img src={f.line_qr_url} alt="QR" className="h-20 w-auto rounded-lg border border-green-300 mt-2" />}
+                className="block w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-100 file:text-emerald-700 disabled:opacity-50" />
+              {f.line_qr_url && <img src={f.line_qr_url} alt="QR" className="h-20 w-auto rounded-lg border border-emerald-300 mt-2" />}
             </div>
 
             {/* 7. คำอธิบายย่อ */}
@@ -672,15 +700,15 @@ function CourseModal({ course, types, onSave, onClose }) {
               <div className="flex items-center justify-between mb-2">
                 <label className={labelCls + " !mb-0"}>เนื้อหาครบถ้วน (แบ่งเป็นหัวข้อได้)</label>
                 <button type="button" onClick={addSection} className="text-xs font-bold text-[#F15A24] hover:text-orange-600 flex items-center gap-1">
-                  ＋ เพิ่มหัวข้อ
+                  <Ico.plus className="w-3.5 h-3.5" /> เพิ่มหัวข้อ
                 </button>
               </div>
               <div className="space-y-3">
                 {sections.map((sec, idx) => (
-                  <div key={idx} className="bg-gray-50 border border-gray-200 rounded-xl p-3 relative">
+                  <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl p-3 relative">
                     {sections.length > 1 && (
                       <button type="button" onClick={() => removeSection(idx)}
-                        className="absolute top-2 right-2 w-6 h-6 rounded-lg bg-red-50 text-red-500 border border-red-200 flex items-center justify-center text-xs hover:bg-red-100">×</button>
+                        className="absolute top-2 right-2 w-6 h-6 rounded-lg bg-rose-50 text-rose-500 border border-rose-200 flex items-center justify-center text-xs hover:bg-rose-100">×</button>
                     )}
                     <input className={`${inputCls} font-bold mb-2`} placeholder={`หัวข้อ ${idx + 1} (เช่น รายละเอียดวิชา / ประโยชน์ / กิจกรรม)`}
                       value={sec.heading} onChange={(e) => updateSection(idx, "heading", e.target.value)} />
@@ -689,25 +717,25 @@ function CourseModal({ course, types, onSave, onClose }) {
                   </div>
                 ))}
               </div>
-              <p className="text-[11px] text-gray-400 mt-1.5">💡 เว้นว่างได้ถ้าไม่ต้องการ · หัวข้อจะแสดงเป็นหมวดในหน้ารายละเอียดวิชา</p>
+              <p className="text-[11px] text-slate-400 mt-1.5">💡 เว้นว่างได้ถ้าไม่ต้องการ · หัวข้อจะแสดงเป็นหมวดในหน้ารายละเอียดวิชา</p>
             </div>
 
             {/* เปิด/ปิดรับ */}
-            <div className="flex items-center justify-between bg-gray-50 rounded-xl p-4 border border-gray-100">
+            <div className="flex items-center justify-between bg-slate-50 rounded-xl p-4 border border-slate-100">
               <div>
-                <div className="font-bold text-sm text-gray-800">สถานะรับสมัคร</div>
-                <div className="text-[11px] text-gray-400">เปิดให้ผู้ใช้เห็นและสมัครได้</div>
+                <div className="font-bold text-sm text-slate-800">สถานะรับสมัคร</div>
+                <div className="text-[11px] text-slate-400">เปิดให้ผู้ใช้เห็นและสมัครได้</div>
               </div>
               <button type="button" onClick={() => set("is_open", !f.is_open)}
-                className={`relative inline-flex items-center h-7 rounded-full w-12 transition-colors ${f.is_open ? "bg-green-500" : "bg-gray-300"}`}>
+                className={`relative inline-flex items-center h-7 rounded-full w-12 transition-colors ${f.is_open ? "bg-emerald-500" : "bg-slate-300"}`}>
                 <span className={`inline-block w-5 h-5 bg-white rounded-full shadow-md transition-transform ${f.is_open ? "translate-x-6" : "translate-x-1"}`} />
               </button>
             </div>
           </div>
-          <div className="px-5 pb-5 pt-2 grid grid-cols-2 gap-3 border-t border-gray-100 shrink-0">
-            <button type="button" onClick={onClose} className="py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition text-sm">ยกเลิก</button>
-            <button type="submit" disabled={uploading} className={`py-3 text-white rounded-xl font-bold shadow-sm transition text-sm disabled:opacity-50 ${isEdit ? "bg-yellow-500 hover:bg-yellow-600" : "bg-[#F15A24] hover:bg-orange-600"}`}>
-              {uploading ? "กำลังอัปโหลด…" : isEdit ? "💾 บันทึกการแก้ไข" : "✅ ยืนยันเพิ่มวิชา"}
+          <div className="px-5 pb-5 pt-2 grid grid-cols-2 gap-3 border-t border-slate-100 shrink-0">
+            <button type="button" onClick={onClose} className="py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition text-sm">ยกเลิก</button>
+            <button type="submit" disabled={uploading} className="py-3 text-white rounded-xl font-bold shadow-sm shadow-orange-500/20 transition text-sm disabled:opacity-50 bg-[#F15A24] hover:bg-[#c44215] flex items-center justify-center gap-1.5">
+              {uploading ? "กำลังอัปโหลด…" : isEdit ? <><Ico.save className="w-4 h-4" /> บันทึกการแก้ไข</> : <><Ico.check className="w-4 h-4" /> ยืนยันเพิ่มวิชา</>}
             </button>
           </div>
         </form>
@@ -755,28 +783,28 @@ function ParticipantsModal({ course, onClose }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
       <div className="bg-white w-full sm:rounded-2xl sm:max-w-3xl shadow-2xl overflow-hidden flex flex-col max-h-[95dvh] sm:max-h-[85vh] rounded-t-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="bg-gradient-to-r from-[#F15A24] to-[#e04510] px-5 py-4 flex justify-between items-center shrink-0">
+        <div className="bg-gradient-to-r from-[#F15A24] to-amber-500 px-5 py-4 flex justify-between items-center shrink-0">
           <div>
             <h3 className="font-bold text-white text-base">ผู้สมัคร — {course.title}</h3>
             <p className="text-orange-100 text-xs mt-0.5">{rows.length}{rows.length !== allRows.length ? ` / ${allRows.length}` : ""} คน</p>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={exportCsv} disabled={rows.length === 0} className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition disabled:opacity-40">⬇ Export CSV</button>
+            <button onClick={exportCsv} disabled={rows.length === 0} className="inline-flex items-center gap-1 bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition disabled:opacity-40"><Ico.download className="w-3.5 h-3.5" /> Export CSV</button>
             <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xl font-bold flex items-center justify-center">×</button>
           </div>
         </div>
 
         {/* Filter bar */}
         {allRows.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 px-5 py-3 border-b border-gray-100 bg-gray-50 shrink-0">
-            <span className="text-xs text-gray-400 font-bold">กรอง:</span>
-            <select value={fSchool} onChange={(e) => setFSchool(e.target.value)} className="text-xs font-medium border border-gray-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-[#F15A24] bg-white text-gray-700 max-w-[140px]">
+          <div className="flex flex-wrap items-center gap-2 px-5 py-3 border-b border-slate-100 bg-slate-50 shrink-0">
+            <span className="text-xs text-slate-400 font-bold">กรอง:</span>
+            <select value={fSchool} onChange={(e) => setFSchool(e.target.value)} className="text-xs font-medium border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-[#F15A24] bg-white text-slate-700 max-w-[140px]">
               <option value="">ทุกโรงเรียน</option>
               {schools.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
-            <select value={fStatus} onChange={(e) => setFStatus(e.target.value)} className="text-xs font-medium border border-gray-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-[#F15A24] bg-white text-gray-700 max-w-[140px]">
+            <select value={fStatus} onChange={(e) => setFStatus(e.target.value)} className="text-xs font-medium border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-[#F15A24] bg-white text-slate-700 max-w-[140px]">
               <option value="">ทุกสถานะ</option>
               {statuses.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
@@ -786,14 +814,14 @@ function ParticipantsModal({ course, onClose }) {
           </div>
         )}
         <div className="overflow-y-auto flex-1">
-          {err ? <div className="py-16 text-center text-gray-400">โหลดไม่สำเร็จ: {err}</div>
-            : regs === null ? <div className="py-16 text-center text-gray-400">กำลังโหลด…</div>
-            : allRows.length === 0 ? <div className="py-16 text-center text-gray-400">ยังไม่มีผู้สมัคร</div>
-            : rows.length === 0 ? <div className="py-16 text-center text-gray-400">ไม่พบผู้สมัครตามตัวกรอง</div>
+          {err ? <div className="py-16 text-center text-slate-400">โหลดไม่สำเร็จ: {err}</div>
+            : regs === null ? <div className="py-16 text-center text-slate-400">กำลังโหลด…</div>
+            : allRows.length === 0 ? <div className="py-16 text-center text-slate-400">ยังไม่มีผู้สมัคร</div>
+            : rows.length === 0 ? <div className="py-16 text-center text-slate-400">ไม่พบผู้สมัครตามตัวกรอง</div>
             : (
               <table className="w-full text-sm">
-                <thead className="bg-gray-50 sticky top-0 border-b border-gray-100">
-                  <tr className="text-[10px] text-gray-400 uppercase">
+                <thead className="bg-slate-50 sticky top-0 border-b border-slate-100">
+                  <tr className="text-[10px] text-slate-400 uppercase">
                     <th className="px-4 py-3 text-left">ชื่อ-สกุล</th>
                     <th className="px-4 py-3 text-left">โรงเรียน</th>
                     <th className="px-4 py-3 text-left">เบอร์โทร</th>
@@ -801,14 +829,14 @@ function ParticipantsModal({ course, onClose }) {
                     <th className="px-4 py-3 text-center">เช็คอิน</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-slate-50">
                   {rows.map((r, i) => (
                     <tr key={i} className="hover:bg-orange-50/40">
-                      <td className="px-4 py-3 font-medium text-gray-800">{r.name}</td>
-                      <td className="px-4 py-3 text-gray-600">{r.school}</td>
-                      <td className="px-4 py-3 font-mono text-gray-600">{r.phone}</td>
-                      <td className="px-4 py-3 text-gray-600">{r.status}</td>
-                      <td className={`px-4 py-3 text-center font-bold ${r.checkedIn ? "text-green-600" : "text-gray-300"}`}>{r.checkedIn ? "✓" : "—"}</td>
+                      <td className="px-4 py-3 font-medium text-slate-800">{r.name}</td>
+                      <td className="px-4 py-3 text-slate-600">{r.school}</td>
+                      <td className="px-4 py-3 font-mono text-slate-600">{r.phone}</td>
+                      <td className="px-4 py-3 text-slate-600">{r.status}</td>
+                      <td className={`px-4 py-3 text-center font-bold ${r.checkedIn ? "text-emerald-600" : "text-slate-300"}`}>{r.checkedIn ? "✓" : "—"}</td>
                     </tr>
                   ))}
                 </tbody>
