@@ -6,10 +6,8 @@ import { LangToggle } from "../lib/i18n.jsx"
 // ───── ไอคอน SVG inline (สไตล์ lucide) สำหรับ bottom bar ─────
 const Ico = {
   grid:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>),
-  search:  (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>),
   ticket:  (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2M13 17v2M13 11v2"/></svg>),
   user:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>),
-  plus:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M5 12h14M12 5v14"/></svg>),
 }
 
 export default function Navbar() {
@@ -175,54 +173,33 @@ export default function Navbar() {
     </nav>
 
     {/* ───── Bottom navigation bar (มือถือ ทุกหน้า เมื่อ login แล้ว) ───── */}
-    {user && <BottomBar navigate={navigate} />}
+    {user && <BottomBar navigate={navigate} profileDone={profileDone} />}
     </>
   )
 }
 
-// Bottom navigation — หน้าหลัก / ค้นหา / + / ตั๋วของฉัน / โปรไฟล์ (แสดงเฉพาะมือถือ)
-function BottomBar({ navigate }) {
+// Bottom navigation — ตรงกับเมนู header: Home / การสมัครของฉัน / โปรไฟล์ (แสดงเฉพาะมือถือ)
+function BottomBar({ navigate, profileDone }) {
   const location = useLocation()
   const path = location.pathname
   const items = [
-    { icon: "grid",   label: "หน้าหลัก",    to: "/" },
-    { icon: "search", label: "ค้นหา",       to: "/" },
-    { icon: "ticket", label: "ตั๋วของฉัน",  to: "/my-registration" },
-    { icon: "user",   label: "โปรไฟล์",     to: "/profile" },
+    { icon: "grid",   label: "Home",            to: "/" },
+    ...(profileDone ? [
+      { icon: "ticket", label: "การสมัครของฉัน", to: "/my-registration" },
+      { icon: "user",   label: "โปรไฟล์",        to: "/profile" },
+    ] : []),
   ]
   return (
     <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/90 backdrop-blur-md border-t border-gray-100 shadow-[0_-2px_10px_rgba(0,0,0,0.04)]">
-      <div className="max-w-4xl mx-auto px-2 flex items-center justify-around relative h-16">
-        {/* ซ้าย 2 ปุ่ม */}
-        {items.slice(0, 2).map((it) => {
-          const Icon = Ico[it.icon]
-          const active = path === it.to && it.icon !== "search"
-          return (
-            <button key={it.label} onClick={() => navigate(it.to)}
-              className={`flex flex-col items-center gap-0.5 flex-1 transition ${active ? "text-[#F15A24]" : "text-gray-400 hover:text-gray-600"}`}>
-              <Icon className="w-5 h-5" />
-              <span className={`text-[9px] ${active ? "font-bold" : "font-medium"}`}>{it.label}</span>
-            </button>
-          )
-        })}
-
-        {/* ปุ่ม + ตรงกลาง (ลอยขึ้น) → ไปหน้าสมัคร (Home) */}
-        <div className="relative -top-5 flex-shrink-0">
-          <button onClick={() => navigate("/")} aria-label="ลงทะเบียนเพิ่ม"
-            className="w-12 h-12 bg-[#F15A24] hover:bg-[#d6810b] text-white rounded-full flex items-center justify-center shadow-lg shadow-[#F15A24]/40 border-4 border-white transition-transform hover:scale-110 active:scale-95">
-            <Ico.plus className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* ขวา 2 ปุ่ม */}
-        {items.slice(2).map((it) => {
+      <div className="max-w-4xl mx-auto px-2 flex items-center justify-around h-16">
+        {items.map((it) => {
           const Icon = Ico[it.icon]
           const active = path === it.to
           return (
             <button key={it.label} onClick={() => navigate(it.to)}
               className={`flex flex-col items-center gap-0.5 flex-1 transition ${active ? "text-[#F15A24]" : "text-gray-400 hover:text-gray-600"}`}>
               <Icon className="w-5 h-5" />
-              <span className={`text-[9px] ${active ? "font-bold" : "font-medium"}`}>{it.label}</span>
+              <span className={`text-[10px] ${active ? "font-bold" : "font-medium"}`}>{it.label}</span>
             </button>
           )
         })}
