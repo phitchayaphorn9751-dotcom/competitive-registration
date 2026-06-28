@@ -8,6 +8,12 @@ import {
 
 const PIE_COLORS = ["#f15a24", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6"]
 const BAR_COLORS = ["#f15a24", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899"]
+
+// ───── ไอคอน SVG inline (สไตล์ lucide) — โทนเดียวกับหน้าอื่น ─────
+const Ico = {
+  chart:   (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9M13 17V5M8 17v-3"/></svg>),
+  download:(p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>),
+}
 // สีกำกับหมวด
 const CAT_COLORS = {
   "Competition": "bg-rose-50 text-rose-700 border-rose-200",
@@ -31,15 +37,15 @@ const STATUS_CFG = {
 const PAID_STATUSES = ["confirmed", "approved"]
 
 function StatusBadge({ status }) {
-  const c = STATUS_CFG[status] || { cls: "bg-gray-100 text-gray-500 border-gray-200", dot: "bg-gray-400", label: status || "-" }
+  const c = STATUS_CFG[status] || { cls: "bg-slate-100 text-slate-500 border-slate-200", dot: "bg-slate-400", label: status || "-" }
   return <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border ${c.cls}`}><span className={`w-1.5 h-1.5 rounded-full shrink-0 ${c.dot}`} />{c.label}</span>
 }
 
 function SectionCard({ title, children, action }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
-        <h3 className="font-semibold text-gray-700 text-sm">{title}</h3>{action}
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-50">
+        <h3 className="font-semibold text-slate-700 text-sm">{title}</h3>{action}
       </div>
       <div className="p-5">{children}</div>
     </div>
@@ -239,9 +245,9 @@ export default function AdminDashboard() {
     a.href = url; a.download = `${safe}_${new Date().toISOString().split("T")[0]}.csv`; a.click(); URL.revokeObjectURL(url)
   }
 
-  if (!event) return <div className="bg-white rounded-2xl p-12 text-center text-gray-400 shadow-sm border border-gray-200">ยังไม่มีงาน — สร้างงานในเมนูตั้งค่าเว็บ</div>
+  if (!event) return <div className="bg-white rounded-2xl p-12 text-center text-slate-400 shadow-sm border border-slate-200">ยังไม่มีงาน — สร้างงานในเมนูตั้งค่าเว็บ</div>
   if (loading) return (
-    <div className="flex items-center justify-center py-20 gap-3 text-gray-400">
+    <div className="flex items-center justify-center py-20 gap-3 text-slate-400">
       <div className="w-10 h-10 border-2 border-[#F15A24] border-t-transparent rounded-full animate-spin" /><span>กำลังโหลดข้อมูล…</span>
     </div>
   )
@@ -260,41 +266,46 @@ export default function AdminDashboard() {
   ]
 
   return (
-    <div className="space-y-4 pb-20">
+    <div className="space-y-4 pb-24 lg:pb-6">
       {/* Header + filter */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <h1 className="text-lg sm:text-xl font-bold text-gray-800 leading-tight">📊 Dashboard</h1>
-            <p className="text-xs text-gray-400 mt-0.5">{event.name} {event.year} — ภาพรวม & วิเคราะห์</p>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 bg-gradient-to-br from-[#F15A24] to-amber-500 rounded-xl flex items-center justify-center shadow-sm shrink-0">
+              <Ico.chart className="w-5 h-5 text-white" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-xl font-extrabold bg-gradient-to-r from-[#F15A24] to-amber-500 bg-clip-text text-transparent leading-tight">Dashboard</h1>
+              <p className="text-xs text-slate-400 mt-0.5 truncate">{event.name} {event.year} — ภาพรวม & วิเคราะห์</p>
+            </div>
           </div>
           <button onClick={() => exportXlsx(filtered, `Dashboard_${timeLabels[timeFilter]}`)}
-            className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-xl text-xs font-bold shadow-sm transition active:scale-95 whitespace-nowrap shrink-0">
-            ⬇ <span className="hidden sm:inline">Export</span>
+            className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 px-3 py-2 rounded-xl text-xs font-bold shadow-sm transition active:scale-95 whitespace-nowrap shrink-0">
+            <Ico.download className="w-4 h-4 text-[#F15A24]" /> <span className="hidden sm:inline">Export</span>
           </button>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex bg-gray-100 p-1 rounded-xl gap-0.5">
+          <div className="flex bg-slate-100 p-1 rounded-xl gap-0.5">
             {Object.entries(timeLabels).map(([k, v]) => (
               <button key={k} onClick={() => setTimeFilter(k)}
-                className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition ${timeFilter === k ? "bg-white text-[#f15a24] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>{v}</button>
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition ${timeFilter === k ? "bg-white text-[#f15a24] shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>{v}</button>
             ))}
           </div>
           <input type="date" value={customDate} onChange={(e) => { setCustomDate(e.target.value); setTimeFilter("CUSTOM") }}
-            className={`flex-1 min-w-0 sm:flex-none px-3 py-1.5 rounded-xl text-xs border outline-none focus:ring-2 focus:ring-[#f15a24] transition ${timeFilter === "CUSTOM" ? "border-[#f15a24] bg-orange-50 text-[#f15a24] font-bold" : "border-gray-200 text-gray-600"}`} />
+            className={`flex-1 min-w-0 sm:flex-none px-3 py-1.5 rounded-xl text-xs border outline-none focus:ring-2 focus:ring-[#f15a24] transition ${timeFilter === "CUSTOM" ? "border-[#f15a24] bg-orange-50 text-[#f15a24] font-bold" : "border-slate-200 text-slate-600"}`} />
         </div>
 
         {/* ตัวกรองหมวด — กรองทั้ง Dashboard */}
         {allCategories.length > 1 && (
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-bold text-gray-400">หมวด:</span>
+            <span className="text-[11px] font-bold text-slate-400">หมวด:</span>
             <button onClick={() => setCatFilter("ALL")}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${catFilter === "ALL" ? "bg-gray-700 text-white border-gray-700" : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"}`}>
+              className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${catFilter === "ALL" ? "bg-slate-700 text-white border-slate-700" : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"}`}>
               ทั้งหมด
             </button>
             {allCategories.map((cat) => (
               <button key={cat} onClick={() => setCatFilter(cat)}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${catFilter === cat ? "bg-[#f15a24] text-white border-[#f15a24]" : (CAT_COLORS[cat] || "bg-white text-gray-500 border-gray-200") + " hover:opacity-80"}`}>
+                className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${catFilter === cat ? "bg-[#f15a24] text-white border-[#f15a24]" : (CAT_COLORS[cat] || "bg-white text-slate-500 border-slate-200") + " hover:opacity-80"}`}>
                 {cat}
               </button>
             ))}
@@ -318,21 +329,21 @@ export default function AdminDashboard() {
       </div>
 
       {/* Status badges */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3 flex flex-wrap items-center gap-2">
-        <span className="text-xs font-semibold text-gray-400 mr-1 hidden sm:inline">สถานะอื่นๆ</span>
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3 flex flex-wrap items-center gap-2">
+        <span className="text-xs font-semibold text-slate-400 mr-1 hidden sm:inline">สถานะอื่นๆ</span>
         {statusBadges.map((b) => (
           <button key={b.label} onClick={() => drillDown(b.label, b.filter)}
-            className={`flex items-center gap-1.5 border px-3 py-1.5 rounded-full text-xs font-bold transition hover:shadow-sm active:scale-95 ${STATUS_CFG[b.status]?.cls || "bg-gray-100 text-gray-500 border-gray-200"}`}>
+            className={`flex items-center gap-1.5 border px-3 py-1.5 rounded-full text-xs font-bold transition hover:shadow-sm active:scale-95 ${STATUS_CFG[b.status]?.cls || "bg-slate-100 text-slate-500 border-slate-200"}`}>
             {b.label}<span className="bg-black/10 rounded-full px-1.5 py-0.5 text-[10px] font-black leading-none">{b.value}</span>
           </button>
         ))}
-        <p className="text-[11px] text-gray-300 ml-auto hidden sm:block">คลิกการ์ดหรือ badge เพื่อดูรายชื่อ</p>
+        <p className="text-[11px] text-slate-300 ml-auto hidden sm:block">คลิกการ์ดหรือ badge เพื่อดูรายชื่อ</p>
       </div>
 
       {/* Trend + Pie */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2">
-          <SectionCard title="📈 แนวโน้มการสมัคร" action={<span className="text-xs text-gray-400">{trendData.length} วัน</span>}>
+          <SectionCard title="📈 แนวโน้มการสมัคร" action={<span className="text-xs text-slate-400">{trendData.length} วัน</span>}>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={trendData}>
@@ -388,16 +399,16 @@ export default function AdminDashboard() {
               return (
                 <div key={i} onClick={() => drillDown(`โรงเรียน: ${s.name}`, (r) => r.school === s.name)}
                   className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-orange-50/60 cursor-pointer transition">
-                  <span className="text-xs font-bold text-gray-300 w-5 text-center shrink-0">{i + 1}</span>
+                  <span className="text-xs font-bold text-slate-300 w-5 text-center shrink-0">{i + 1}</span>
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs font-medium text-gray-700 truncate mb-1">{s.name}</div>
-                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-[#f15a24] to-orange-300" style={{ width: `${pct}%` }} /></div>
+                    <div className="text-xs font-medium text-slate-700 truncate mb-1">{s.name}</div>
+                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-[#f15a24] to-orange-300" style={{ width: `${pct}%` }} /></div>
                   </div>
-                  <span className="text-xs font-bold text-gray-500 shrink-0">{s.value} คน</span>
+                  <span className="text-xs font-bold text-slate-500 shrink-0">{s.value} คน</span>
                 </div>
               )
             })}
-            {schoolRanking.length === 0 && <p className="text-center text-gray-300 text-sm py-8">ยังไม่มีข้อมูล</p>}
+            {schoolRanking.length === 0 && <p className="text-center text-slate-300 text-sm py-8">ยังไม่มีข้อมูล</p>}
           </div>
         </SectionCard>
       </div>
@@ -426,8 +437,8 @@ export default function AdminDashboard() {
       <SectionCard title="🏆 อันดับวิชายอดฮิต" action={<span className="text-xs font-bold text-[#f15a24] bg-orange-50 px-2.5 py-1 rounded-full border border-orange-100">คลิกวิชาเพื่อดูรายละเอียด</span>}>
         <div className="overflow-y-auto max-h-80 -mx-5 px-5">
           <table className="w-full text-xs">
-            <thead className="sticky top-0 bg-white border-b border-gray-50">
-              <tr className="text-[10px] text-gray-400 uppercase">
+            <thead className="sticky top-0 bg-white border-b border-slate-50">
+              <tr className="text-[10px] text-slate-400 uppercase">
                 <th className="py-2 text-center w-7">#</th><th className="py-2 text-left">วิชา</th>
                 <th className="py-2 text-left">หมวด</th>
                 <th className="py-2 text-right pr-2">สมัคร</th><th className="py-2 text-right">รายได้</th>
@@ -437,14 +448,14 @@ export default function AdminDashboard() {
               {courseChartData.map((c, i) => (
                 <tr key={i} onClick={() => openCourseDetail(c.courseId, c.fullName)}
                   className="border-b last:border-0 hover:bg-orange-50/50 cursor-pointer transition">
-                  <td className="py-3 text-center font-bold text-gray-300">{i + 1}</td>
-                  <td className="py-3 font-medium text-gray-700 max-w-[140px]"><span className="line-clamp-2 leading-snug">{c.fullName}</span></td>
-                  <td className="py-3"><span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold border ${CAT_COLORS[c.category] || "bg-gray-50 text-gray-600 border-gray-200"}`}>{c.category}</span></td>
-                  <td className="py-3 text-right font-bold text-gray-600 pr-2 whitespace-nowrap">{c.Applicants} คน</td>
+                  <td className="py-3 text-center font-bold text-slate-300">{i + 1}</td>
+                  <td className="py-3 font-medium text-slate-700 max-w-[140px]"><span className="line-clamp-2 leading-snug">{c.fullName}</span></td>
+                  <td className="py-3"><span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold border ${CAT_COLORS[c.category] || "bg-slate-50 text-slate-600 border-slate-200"}`}>{c.category}</span></td>
+                  <td className="py-3 text-right font-bold text-slate-600 pr-2 whitespace-nowrap">{c.Applicants} คน</td>
                   <td className="py-3 text-right font-bold text-[#f15a24] whitespace-nowrap">฿{c.TotalRevenue.toLocaleString()}</td>
                 </tr>
               ))}
-              {courseChartData.length === 0 && <tr><td colSpan="5" className="py-8 text-center text-gray-300">ยังไม่มีข้อมูล</td></tr>}
+              {courseChartData.length === 0 && <tr><td colSpan="5" className="py-8 text-center text-slate-300">ยังไม่มีข้อมูล</td></tr>}
             </tbody>
           </table>
         </div>
@@ -461,56 +472,56 @@ export default function AdminDashboard() {
               </div>
               <button onClick={() => setDrill(null)} className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xl font-bold flex items-center justify-center">×</button>
             </div>
-            <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 shrink-0 grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div className="px-4 py-3 bg-slate-50 border-b border-slate-100 shrink-0 grid grid-cols-1 sm:grid-cols-3 gap-2">
               <input type="text" placeholder="🔍 ค้นหาชื่อ, เบอร์…" value={drillSearch} onChange={(e) => setDrillSearch(e.target.value)}
-                className="px-3 py-2 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#f15a24] text-xs bg-white" />
-              <select value={drillCourse} onChange={(e) => setDrillCourse(e.target.value)} className="px-3 py-2 border border-gray-200 rounded-xl bg-white text-xs outline-none focus:ring-2 focus:ring-[#f15a24]">
+                className="px-3 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-[#f15a24] text-xs bg-white" />
+              <select value={drillCourse} onChange={(e) => setDrillCourse(e.target.value)} className="px-3 py-2 border border-slate-200 rounded-xl bg-white text-xs outline-none focus:ring-2 focus:ring-[#f15a24]">
                 <option value="All">📚 ทุกวิชา</option>
                 {[...new Set(drill.list.map((i) => i.course_name))].sort().map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
-              <select value={drillStatus} onChange={(e) => setDrillStatus(e.target.value)} className="px-3 py-2 border border-gray-200 rounded-xl bg-white text-xs outline-none focus:ring-2 focus:ring-[#f15a24]">
+              <select value={drillStatus} onChange={(e) => setDrillStatus(e.target.value)} className="px-3 py-2 border border-slate-200 rounded-xl bg-white text-xs outline-none focus:ring-2 focus:ring-[#f15a24]">
                 <option value="All">ทุกสถานะ</option>
                 {Object.entries(STATUS_CFG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
               </select>
             </div>
             <div className="overflow-y-auto flex-1">
               <table className="w-full text-xs hidden sm:table">
-                <thead className="bg-gray-50 text-gray-400 text-[10px] uppercase sticky top-0 border-b border-gray-100">
+                <thead className="bg-slate-50 text-slate-400 text-[10px] uppercase sticky top-0 border-b border-slate-100">
                   <tr><th className="px-4 py-3 text-center w-10">#</th><th className="px-4 py-3">ชื่อ-สกุล</th><th className="px-4 py-3">ระดับชั้น</th><th className="px-4 py-3">วิชา</th><th className="px-4 py-3">จังหวัด</th><th className="px-4 py-3">สถานะ</th><th className="px-4 py-3 text-right">เบอร์</th></tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-slate-50">
                   {drillList.map((r, i) => (
                     <tr key={i} onClick={() => openUser(r)} className="hover:bg-orange-50/50 transition cursor-pointer">
-                      <td className="px-4 py-3 text-center text-gray-300 font-bold">{i + 1}</td>
-                      <td className="px-4 py-3 font-medium text-gray-800">{r.full_name} {r.nickname && <span className="text-gray-400 font-normal">({r.nickname})</span>}</td>
+                      <td className="px-4 py-3 text-center text-slate-300 font-bold">{i + 1}</td>
+                      <td className="px-4 py-3 font-medium text-slate-800">{r.full_name} {r.nickname && <span className="text-slate-400 font-normal">({r.nickname})</span>}</td>
                       <td className="px-4 py-3"><span className="bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-md font-bold text-[10px]">{r.grade_level}</span></td>
-                      <td className="px-4 py-3 text-gray-600 max-w-[140px]"><span className="line-clamp-1">{r.course_name}</span></td>
-                      <td className="px-4 py-3 text-gray-500">{r.province}</td>
+                      <td className="px-4 py-3 text-slate-600 max-w-[140px]"><span className="line-clamp-1">{r.course_name}</span></td>
+                      <td className="px-4 py-3 text-slate-500">{r.province}</td>
                       <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
-                      <td className="px-4 py-3 text-right font-mono text-gray-600">{r.phone}</td>
+                      <td className="px-4 py-3 text-right font-mono text-slate-600">{r.phone}</td>
                     </tr>
                   ))}
-                  {drillList.length === 0 && <tr><td colSpan="7" className="py-16 text-center text-sm text-gray-300">ไม่พบข้อมูล</td></tr>}
+                  {drillList.length === 0 && <tr><td colSpan="7" className="py-16 text-center text-sm text-slate-300">ไม่พบข้อมูล</td></tr>}
                 </tbody>
               </table>
-              <div className="sm:hidden divide-y divide-gray-100">
+              <div className="sm:hidden divide-y divide-slate-100">
                 {drillList.map((r, i) => (
                   <div key={i} onClick={() => openUser(r)} className="p-4 cursor-pointer hover:bg-orange-50/50">
                     <div className="flex justify-between items-start gap-2 mb-1">
-                      <div className="font-bold text-gray-800 text-sm">{r.full_name}</div><StatusBadge status={r.status} />
+                      <div className="font-bold text-slate-800 text-sm">{r.full_name}</div><StatusBadge status={r.status} />
                     </div>
-                    <div className="text-xs text-gray-500 line-clamp-1 mb-1">{r.course_name}</div>
-                    <div className="flex flex-wrap gap-x-3 text-xs text-gray-400"><span>{r.grade_level}</span><span>{r.province}</span><span className="font-mono">{r.phone}</span></div>
+                    <div className="text-xs text-slate-500 line-clamp-1 mb-1">{r.course_name}</div>
+                    <div className="flex flex-wrap gap-x-3 text-xs text-slate-400"><span>{r.grade_level}</span><span>{r.province}</span><span className="font-mono">{r.phone}</span></div>
                   </div>
                 ))}
-                {drillList.length === 0 && <div className="py-16 text-center text-sm text-gray-300">ไม่พบข้อมูล</div>}
+                {drillList.length === 0 && <div className="py-16 text-center text-sm text-slate-300">ไม่พบข้อมูล</div>}
               </div>
             </div>
-            <div className="px-5 py-3 border-t border-gray-100 bg-gray-50/80 flex justify-between items-center shrink-0">
-              <span className="text-xs text-gray-400">แสดง {drillList.length} / {drill.list.length}</span>
+            <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/80 flex justify-between items-center shrink-0">
+              <span className="text-xs text-slate-400">แสดง {drillList.length} / {drill.list.length}</span>
               <div className="flex gap-2">
-                <button onClick={() => exportXlsx(drillList, drill.title)} className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-bold transition">⬇ Export</button>
-                <button onClick={() => setDrill(null)} className="px-5 py-2 bg-gray-800 hover:bg-black text-white rounded-xl text-sm font-bold transition">ปิด</button>
+                <button onClick={() => exportXlsx(drillList, drill.title)} className="flex items-center gap-1.5 px-4 py-2 bg-orange-50 hover:bg-orange-100 border border-orange-200 text-[#F15A24] rounded-xl text-sm font-bold transition"><Ico.download className="w-4 h-4" /> Export</button>
+                <button onClick={() => setDrill(null)} className="px-5 py-2 bg-slate-800 hover:bg-black text-white rounded-xl text-sm font-bold transition">ปิด</button>
               </div>
             </div>
           </div>
@@ -533,28 +544,28 @@ export default function AdminDashboard() {
               <div className="grid grid-cols-2 gap-3">
                 {[["เลขประจำตัว", selectedUser.participant_code], ["ระดับชั้น", selectedUser.grade_level], ["โรงเรียน", selectedUser.school], ["จังหวัด", selectedUser.province], ["เบอร์โทร", selectedUser.phone], ["อีเมล", selectedUser.submitter_email], ["ผู้ปกครอง", selectedUser.parent_name], ["เบอร์ผู้ปกครอง", selectedUser.parent_phone]].map(([label, val]) => (
                   <div key={label}>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{label}</p>
-                    <p className="text-sm font-medium text-gray-800 mt-0.5 break-words">{val || "-"}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{label}</p>
+                    <p className="text-sm font-medium text-slate-800 mt-0.5 break-words">{val || "-"}</p>
                   </div>
                 ))}
               </div>
-              <hr className="border-gray-100" />
+              <hr className="border-slate-100" />
               {/* ประวัติการสมัครทุกวิชา */}
               <div>
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">💳 ประวัติการสมัคร ({selectedUser.transactions?.length || 0})</p>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">💳 ประวัติการสมัคร ({selectedUser.transactions?.length || 0})</p>
                 {(selectedUser.transactions || []).map((tx, i) => (
-                  <div key={i} className="bg-gray-50 rounded-xl p-3 mb-2 border border-gray-100 flex justify-between items-center">
+                  <div key={i} className="bg-slate-50 rounded-xl p-3 mb-2 border border-slate-100 flex justify-between items-center">
                     <div className="min-w-0">
-                      <p className="text-sm font-bold text-gray-700 truncate">{tx.course_name}</p>
-                      <p className="text-[10px] text-gray-400">{tx.created.toLocaleDateString("th-TH")} {Number(tx.price) > 0 ? `· ฿${Number(tx.price).toLocaleString()}` : "· ฟรี"}</p>
+                      <p className="text-sm font-bold text-slate-700 truncate">{tx.course_name}</p>
+                      <p className="text-[10px] text-slate-400">{tx.created.toLocaleDateString("th-TH")} {Number(tx.price) > 0 ? `· ฿${Number(tx.price).toLocaleString()}` : "· ฟรี"}</p>
                     </div>
                     <StatusBadge status={tx.status} />
                   </div>
                 ))}
               </div>
             </div>
-            <div className="px-5 py-3 border-t border-gray-100 bg-gray-50 shrink-0 flex justify-end">
-              <button onClick={() => setSelectedUser(null)} className="px-5 py-2 bg-gray-800 hover:bg-black text-white rounded-xl text-sm font-bold transition">ปิด</button>
+            <div className="px-5 py-3 border-t border-slate-100 bg-slate-50 shrink-0 flex justify-end">
+              <button onClick={() => setSelectedUser(null)} className="px-5 py-2 bg-slate-800 hover:bg-black text-white rounded-xl text-sm font-bold transition">ปิด</button>
             </div>
           </div>
         </div>
@@ -571,15 +582,15 @@ export default function AdminDashboard() {
               </div>
               <button onClick={() => setCourseDetail(null)} className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xl font-bold flex items-center justify-center shrink-0">×</button>
             </div>
-            <div className="grid grid-cols-3 divide-x divide-gray-100 border-b border-gray-100 shrink-0">
-              <div className="px-4 py-3 text-center"><p className="text-[10px] text-gray-400 mb-0.5">ผู้สมัคร</p><p className="text-lg font-extrabold text-emerald-600">{courseDetail.regs.length} <span className="text-xs font-normal">คน</span></p></div>
-              <div className="px-4 py-3 text-center"><p className="text-[10px] text-gray-400 mb-0.5">รายได้รวม</p><p className="text-lg font-extrabold text-[#f15a24]">฿{courseDetail.revenue.toLocaleString()}</p></div>
-              <div className="px-4 py-3 text-center"><p className="text-[10px] text-gray-400 mb-0.5">โรงเรียน</p><p className="text-lg font-extrabold text-violet-600">{courseDetail.schools.length} <span className="text-xs font-normal">แห่ง</span></p></div>
+            <div className="grid grid-cols-3 divide-x divide-slate-100 border-b border-slate-100 shrink-0">
+              <div className="px-4 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">ผู้สมัคร</p><p className="text-lg font-extrabold text-emerald-600">{courseDetail.regs.length} <span className="text-xs font-normal">คน</span></p></div>
+              <div className="px-4 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">รายได้รวม</p><p className="text-lg font-extrabold text-[#f15a24]">฿{courseDetail.revenue.toLocaleString()}</p></div>
+              <div className="px-4 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">โรงเรียน</p><p className="text-lg font-extrabold text-violet-600">{courseDetail.schools.length} <span className="text-xs font-normal">แห่ง</span></p></div>
             </div>
             <div className="overflow-y-auto flex-1 p-5 space-y-5">
               {/* ระดับชั้น */}
               <div>
-                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2">🎓 สัดส่วนระดับชั้น</p>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">🎓 สัดส่วนระดับชั้น</p>
                 <div className="flex flex-wrap gap-2">
                   {courseDetail.grades.map((g, i) => (
                     <span key={i} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-orange-100 bg-orange-50 text-xs font-bold text-[#f15a24]">
@@ -590,19 +601,19 @@ export default function AdminDashboard() {
               </div>
               {/* โรงเรียน */}
               <div>
-                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2">🏫 โรงเรียนที่สมัคร ({courseDetail.schools.length})</p>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">🏫 โรงเรียนที่สมัคร ({courseDetail.schools.length})</p>
                 <div className="space-y-2">
                   {courseDetail.schools.map((s, i) => {
                     const pct = Math.round((s.count / (courseDetail.schools[0]?.count || 1)) * 100)
                     return (
-                      <div key={i} className="bg-gray-50 rounded-xl p-3 border border-transparent">
+                      <div key={i} className="bg-slate-50 rounded-xl p-3 border border-transparent">
                         <div className="flex items-center gap-2 mb-1.5">
                           <span className="text-[10px] font-black text-white bg-[#f15a24] w-5 h-5 rounded-full flex items-center justify-center shrink-0">{i + 1}</span>
-                          <span className="text-xs font-semibold text-gray-700 flex-1 min-w-0 truncate">{s.name}</span>
-                          <span className="text-sm font-extrabold text-gray-700 shrink-0">{s.count} <span className="text-[10px] font-normal text-gray-400">คน</span></span>
+                          <span className="text-xs font-semibold text-slate-700 flex-1 min-w-0 truncate">{s.name}</span>
+                          <span className="text-sm font-extrabold text-slate-700 shrink-0">{s.count} <span className="text-[10px] font-normal text-slate-400">คน</span></span>
                         </div>
                         <div className="ml-7">
-                          <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden mb-1.5"><div className="h-full rounded-full bg-gradient-to-r from-[#f15a24] to-orange-300" style={{ width: `${pct}%` }} /></div>
+                          <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden mb-1.5"><div className="h-full rounded-full bg-gradient-to-r from-[#f15a24] to-orange-300" style={{ width: `${pct}%` }} /></div>
                           {s.grades?.length > 0 && (
                             <div className="flex flex-wrap gap-1">
                               {s.grades.map((g, gi) => (
@@ -614,17 +625,23 @@ export default function AdminDashboard() {
                       </div>
                     )
                   })}
-                  {courseDetail.schools.length === 0 && <p className="text-center text-gray-300 text-sm py-6">ยังไม่มีผู้สมัครที่ยืนยันแล้ว</p>}
+                  {courseDetail.schools.length === 0 && <p className="text-center text-slate-300 text-sm py-6">ยังไม่มีผู้สมัครที่ยืนยันแล้ว</p>}
                 </div>
               </div>
             </div>
-            <div className="px-5 py-3 border-t border-gray-100 bg-gray-50/80 flex justify-between items-center shrink-0">
-              <button onClick={() => exportXlsx(courseDetail.regs, `วิชา_${courseDetail.courseName}`)} className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-sm font-bold transition">⬇ Export Excel</button>
-              <button onClick={() => setCourseDetail(null)} className="px-5 py-2 bg-gray-800 hover:bg-black text-white rounded-xl text-sm font-bold transition">ปิด</button>
+            <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/80 flex justify-between items-center shrink-0">
+              <button onClick={() => exportXlsx(courseDetail.regs, `วิชา_${courseDetail.courseName}`)} className="flex items-center gap-1.5 px-4 py-2 bg-orange-50 hover:bg-orange-100 border border-orange-200 text-[#F15A24] rounded-xl text-sm font-bold transition"><Ico.download className="w-4 h-4" /> Export Excel</button>
+              <button onClick={() => setCourseDetail(null)} className="px-5 py-2 bg-slate-800 hover:bg-black text-white rounded-xl text-sm font-bold transition">ปิด</button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Footer */}
+      <footer className="mt-6 pt-6 border-t border-slate-200 text-center text-xs text-slate-400">
+        <p>© 2026 College of Arts, Media and Technology (CAMT) | College Administration Portal</p>
+        <p className="mt-1">ระบบจัดการการแข่งขันและกิจกรรมโครงการดิจิทัล</p>
+      </footer>
     </div>
   )
 }

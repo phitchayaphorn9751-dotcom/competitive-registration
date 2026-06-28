@@ -5,6 +5,7 @@ import { useDialog } from "../../lib/dialog.jsx"
 
 // ───── ไอคอน SVG inline (สไตล์ lucide) — โทนเดียวกับหน้าอื่น ─────
 const Ico = {
+  users:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>),
   download: (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>),
   search:   (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>),
   book:     (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>),
@@ -184,14 +185,19 @@ export default function AdminApplicants() {
 
   return (
     <div>
-      {/* Header */}
+      {/* Header — gradient + ไอคอนวงกลม (โทนเดียวกับหน้าอื่น) */}
       <div className="flex flex-row justify-between items-center gap-3 mb-5">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800 border-l-4 border-[#F15A24] pl-3 leading-tight">รายการสมัคร</h1>
-          <p className="text-sm text-slate-400 pl-3 mt-0.5">{filtered.length} รายการ</p>
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 bg-gradient-to-br from-[#F15A24] to-amber-500 rounded-xl flex items-center justify-center shadow-sm shrink-0">
+            <Ico.users className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-extrabold bg-gradient-to-r from-[#F15A24] to-amber-500 bg-clip-text text-transparent leading-tight">รายการสมัคร</h1>
+            <p className="text-slate-400 text-xs mt-0.5">{filtered.length} รายการ · Applicants</p>
+          </div>
         </div>
-        <button onClick={exportCsv} className="flex items-center gap-1 bg-emerald-600 text-white px-2.5 py-1.5 rounded-lg font-bold hover:bg-emerald-700 shadow-sm transition text-xs shrink-0">
-          <Ico.download className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Export</span>
+        <button onClick={exportCsv} className="flex items-center gap-1.5 bg-slate-100 text-slate-700 border border-slate-200 px-3 py-2 rounded-xl font-bold hover:bg-slate-200 shadow-sm transition active:scale-95 text-xs shrink-0">
+          <Ico.download className="w-3.5 h-3.5 text-[#F15A24]" /> <span className="hidden sm:inline">Export</span>
         </button>
       </div>
 
@@ -353,6 +359,12 @@ export default function AdminApplicants() {
           </div>
         )}
       </div>
+
+      {/* Footer */}
+      <footer className="mt-10 pt-6 pb-24 lg:pb-6 border-t border-slate-200 text-center text-xs text-slate-400">
+        <p>© 2026 College of Arts, Media and Technology (CAMT) | College Administration Portal</p>
+        <p className="mt-1">ระบบจัดการการแข่งขันและกิจกรรมโครงการดิจิทัล</p>
+      </footer>
     </div>
   )
 }
