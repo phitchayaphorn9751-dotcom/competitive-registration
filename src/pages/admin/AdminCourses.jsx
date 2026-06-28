@@ -30,6 +30,26 @@ const Ico = {
   save:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7M7 3v4a1 1 0 0 0 1 1h7"/></svg>),
 }
 
+// สีหมวดหมู่ — กระจายสีตามชื่อหมวด (หมวดเดียวกันได้สีเดิมเสมอ) — อ้างอิงจาก My Registration
+const CATEGORY_PALETTE = [
+  { bg: "bg-orange-100", text: "text-orange-700" },
+  { bg: "bg-blue-100",   text: "text-blue-700" },
+  { bg: "bg-emerald-100", text: "text-emerald-700" },
+  { bg: "bg-purple-100", text: "text-purple-700" },
+  { bg: "bg-pink-100",   text: "text-pink-700" },
+  { bg: "bg-cyan-100",   text: "text-cyan-700" },
+  { bg: "bg-amber-100",  text: "text-amber-700" },
+  { bg: "bg-indigo-100", text: "text-indigo-700" },
+  { bg: "bg-teal-100",   text: "text-teal-700" },
+  { bg: "bg-rose-100",   text: "text-rose-700" },
+]
+function categoryCfg(name) {
+  if (!name) return CATEGORY_PALETTE[0]
+  let h = 0
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0
+  return CATEGORY_PALETTE[h % CATEGORY_PALETTE.length]
+}
+
 // จัดการรายวิชา — Tailwind ตาม doc 18 (คง logic เดิมจาก AdminPanel)
 export default function AdminCourses() {
   const { event } = useOutletContext()
@@ -321,6 +341,7 @@ function CourseRow({ course, onEdit, onDelete, onToggle, onCapacity, onView }) {
   const { taken, cap, pct, isFull } = seatInfo(course)
   const instructors = (course.course_instructors || []).map((ci) => ci.instructors?.full_name).filter(Boolean)
   const typeLabel = course.course_types?.label
+  const cc = categoryCfg(typeLabel)
   return (
     <tr className="hover:bg-orange-50/40 transition group">
       <td className="px-5 py-4">
@@ -333,10 +354,10 @@ function CourseRow({ course, onEdit, onDelete, onToggle, onCapacity, onView }) {
           <div className="min-w-0">
             {/* ชื่อวิชา (ส้มเด่น) + ราคา */}
             <div className="font-bold text-[#F15A24] text-sm leading-snug">{course.title}</div>
-            <div className="text-xs text-slate-500 mt-0.5 font-bold">{course.price > 0 ? `฿${Number(course.price).toLocaleString()}` : "ไม่มีค่าลงทะเบียน"}</div>
-            {/* ป้ายกำกับ: หมวด · ผู้สอน · รูปแบบ */}
+            <div className="text-xs text-slate-500 mt-0.5 font-bold">{course.price > 0 ? `฿${Number(course.price).toLocaleString()}` : "ฟรี"}</div>
+            {/* ป้ายกำกับ: หมวด (สีตาม palette) · ผู้สอน · รูปแบบ */}
             <div className="flex flex-wrap gap-1.5 mt-1.5">
-              {typeLabel && <span className="text-[10px] bg-orange-50 text-orange-700 border border-orange-100 px-1.5 py-0.5 rounded-md font-bold">{typeLabel}</span>}
+              {typeLabel && <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold ${cc.bg} ${cc.text}`}>{typeLabel}</span>}
               <span className="text-[10px] bg-slate-50 text-slate-600 border border-slate-200 px-1.5 py-0.5 rounded-md font-bold inline-flex items-center gap-1"><Ico.users className="w-3 h-3" /> {modeLabel(course)}</span>
               {instructors.length > 0 && <span className="text-[10px] bg-slate-50 text-slate-500 border border-slate-100 px-1.5 py-0.5 rounded-md inline-flex items-center gap-1"><Ico.cap className="w-3 h-3 shrink-0" /> {instructors.join(", ")}</span>}
             </div>
@@ -387,52 +408,60 @@ function CourseCardMobile({ course, onEdit, onDelete, onToggle, onView }) {
   const { taken, cap, pct, isFull } = seatInfo(course)
   const instructors = (course.course_instructors || []).map((ci) => ci.instructors?.full_name).filter(Boolean)
   const unlimited = course.seat_mode === "unlimited"
+  const cc = categoryCfg(course.course_types?.label)
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
-      <div className="flex gap-3">
-        {/* รูป */}
-        <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-100">
-          {course.image_url ? <img src={course.image_url} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-300"><Ico.book className="w-6 h-6" /></div>}
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="flex">
+        {/* ───── ซ้าย 1/3: รูป (เต็มความสูง) ───── */}
+        <div className="w-1/3 shrink-0 bg-slate-100 relative">
+          {course.image_url
+            ? <img src={course.image_url} alt="" className="w-full h-full object-cover absolute inset-0" />
+            : <div className="w-full h-full min-h-[140px] flex items-center justify-center text-slate-300"><Ico.book className="w-9 h-9" /></div>}
         </div>
-        {/* ข้อมูล */}
-        <div className="flex-1 min-w-0">
-          {/* ชื่อวิชา (ส้มเด่น) */}
-          <div className="font-bold text-[#F15A24] text-base leading-snug">{course.title}</div>
-          {/* ป้ายกำกับ: หมวด · รูปแบบ */}
-          <div className="flex flex-wrap gap-1.5 mt-1">
-            {course.course_types?.label && <span className="text-[10px] bg-orange-50 text-orange-700 border border-orange-100 px-1.5 py-0.5 rounded-md font-bold">{course.course_types.label}</span>}
+
+        {/* ───── ขวา 2/3: ข้อความ ───── */}
+        <div className="w-2/3 p-4 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <div className="font-bold text-[#F15A24] text-base leading-snug flex-1 min-w-0">{course.title}</div>
+            {/* toggle เปิดรับ */}
+            <div className="flex flex-col items-end gap-1 shrink-0">
+              <button onClick={() => onToggle(course)} className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors ${course.is_open ? "bg-emerald-500" : "bg-slate-300"}`}>
+                <span className={`inline-block w-4 h-4 bg-white rounded-full shadow transition-transform ${course.is_open ? "translate-x-6" : "translate-x-1"}`} />
+              </button>
+              <span className={`text-[10px] font-bold ${course.is_open ? "text-emerald-600" : "text-slate-400"}`}>{course.is_open ? "เปิดรับ" : "ปิดรับ"}</span>
+            </div>
+          </div>
+
+          {/* ป้ายกำกับ: หมวด (สีตาม palette) · รูปแบบ */}
+          <div className="flex flex-wrap gap-1.5 mt-1.5">
+            {course.course_types?.label && <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold ${cc.bg} ${cc.text}`}>{course.course_types.label}</span>}
             <span className="text-[10px] bg-slate-50 text-slate-600 border border-slate-200 px-1.5 py-0.5 rounded-md font-bold inline-flex items-center gap-1"><Ico.users className="w-3 h-3" /> {modeLabel(course)}</span>
           </div>
           {instructors.length > 0 && <div className="text-xs text-slate-500 mt-1.5 truncate inline-flex items-center gap-1"><Ico.cap className="w-3 h-3 shrink-0" /> {instructors.join(", ")}</div>}
+
+          {/* ราคา / ฟรี */}
           <div className="flex items-baseline gap-2 mt-1.5">
-            <span className="text-lg font-extrabold text-[#F15A24]">{course.price > 0 ? `฿${Number(course.price).toLocaleString()}` : "ไม่มีค่าลงทะเบียน"}</span>
+            <span className="text-lg font-extrabold text-[#F15A24]">{course.price > 0 ? `฿${Number(course.price).toLocaleString()}` : "ฟรี"}</span>
             <span className="text-[11px] text-slate-400">รับ {unlimited ? "ไม่จำกัด" : `${cap} ${course.count_mode === "team" ? "ทีม" : "คน"}`}</span>
           </div>
-        </div>
-        {/* toggle เปิดรับ */}
-        <div className="flex flex-col items-end gap-1 shrink-0">
-          <button onClick={() => onToggle(course)} className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors ${course.is_open ? "bg-emerald-500" : "bg-slate-300"}`}>
-            <span className={`inline-block w-4 h-4 bg-white rounded-full shadow transition-transform ${course.is_open ? "translate-x-6" : "translate-x-1"}`} />
-          </button>
-          <span className={`text-[10px] font-bold ${course.is_open ? "text-emerald-600" : "text-slate-400"}`}>{course.is_open ? "เปิดรับ" : "ปิดรับ"}</span>
-        </div>
-      </div>
 
-      {/* แถบที่นั่ง — เต็มกว้าง */}
-      <div className="mt-3">
-        <div className="flex justify-between items-center text-xs mb-1">
-          <span className="text-slate-500">ที่นั่ง: <span className={`font-bold ${isFull && !unlimited ? "text-rose-600" : "text-slate-700"}`}>{taken} / {unlimited ? "∞" : cap}</span></span>
-          {!unlimited && <span className={`font-bold ${isFull ? "text-rose-600" : pct >= 80 ? "text-amber-500" : "text-emerald-600"}`}>{pct}%</span>}
-        </div>
-        {!unlimited && (
-          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-            <div className={`h-full rounded-full ${isFull ? "bg-rose-500" : pct >= 80 ? "bg-amber-400" : "bg-emerald-500"}`} style={{ width: `${pct}%` }} />
+          {/* แถบที่นั่ง */}
+          <div className="mt-2.5">
+            <div className="flex justify-between items-center text-xs mb-1">
+              <span className="text-slate-500">ที่นั่ง: <span className={`font-bold ${isFull && !unlimited ? "text-rose-600" : "text-slate-700"}`}>{taken} / {unlimited ? "∞" : cap}</span></span>
+              {!unlimited && <span className={`font-bold ${isFull ? "text-rose-600" : pct >= 80 ? "text-amber-500" : "text-emerald-600"}`}>{pct}%</span>}
+            </div>
+            {!unlimited && (
+              <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                <div className={`h-full rounded-full ${isFull ? "bg-rose-500" : pct >= 80 ? "bg-amber-400" : "bg-emerald-500"}`} style={{ width: `${pct}%` }} />
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {/* ปุ่ม ดู/แก้ไข/ลบ — แถวล่างชิดขวา */}
-      <div className="flex justify-end gap-2 mt-3 pt-3 border-t border-slate-100">
+      <div className="flex justify-end gap-2 px-4 py-3 border-t border-slate-100">
         <button onClick={() => onView(course)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold hover:bg-slate-200 transition"><Ico.eye className="w-3.5 h-3.5" /> ผู้สมัคร</button>
         <button onClick={() => onEdit(course)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-50 text-[#F15A24] border border-orange-200 text-xs font-bold hover:bg-orange-100 transition"><Ico.pencil className="w-3.5 h-3.5" /> แก้ไข</button>
         <button onClick={() => onDelete(course)} className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center hover:bg-rose-100 transition"><Ico.trash className="w-3.5 h-3.5" /></button>
