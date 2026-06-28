@@ -219,7 +219,7 @@ export default function AdminCourses() {
       )}
 
       {/* Footer */}
-      <footer className="mt-10 pt-6 border-t border-slate-200 text-center text-xs text-slate-400">
+      <footer className="mt-10 pt-6 pb-24 lg:pb-6 border-t border-slate-200 text-center text-xs text-slate-400">
         <p>© 2026 College of Arts, Media and Technology (CAMT) | College Administration Portal</p>
         <p className="mt-1">ระบบจัดการการแข่งขันและกิจกรรมโครงการดิจิทัล</p>
       </footer>
@@ -363,22 +363,25 @@ function CourseCard({ course, onEdit, onDelete, onToggle, onView }) {
           <h3 className="text-sm sm:text-base font-extrabold text-[#F15A24] leading-snug mt-1.5">{course.title}</h3>
           {instructors.length > 0 && <p className="text-xs text-slate-500 truncate inline-flex items-center gap-1 mt-1"><Ico.cap className="w-3 h-3 shrink-0" /> {instructors.join(", ")}</p>}
 
-          {/* ราคา (ใหญ่ ขวา) + ที่นั่ง */}
-          <div className="flex items-end justify-between gap-2 mt-2">
-            <div className="flex-1 min-w-0">
-              <div className="flex justify-between items-end text-xs mb-1">
-                <span className="text-slate-500">รับ: <span className={`font-bold ${isFull && !unlimited ? "text-rose-600" : "text-slate-700"}`}>{taken} / {unlimited ? "ไม่จำกัด" : `${cap} ${unit}`}</span></span>
-                {!unlimited && <span className={`font-bold ${isFull ? "text-rose-500" : "text-[#F15A24]"}`}>{pct}%</span>}
-              </div>
-              {!unlimited && (
-                <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                  <div className={`h-full rounded-full transition-all ${isFull ? "bg-gradient-to-r from-rose-500 to-red-600" : "bg-gradient-to-r from-amber-400 to-[#F15A24]"}`} style={{ width: `${pct}%` }} />
-                </div>
-              )}
-            </div>
-            <span className={`text-xl font-extrabold leading-none shrink-0 ${isFree ? "text-emerald-600" : "text-[#F15A24]"}`}>
+          {/* ราคา (ใหญ่ ชิดขวา) — เหนือแถบที่นั่ง */}
+          <div className="flex items-baseline justify-between gap-2 mt-2">
+            <span className="text-[11px] text-slate-400 font-bold">ค่าลงทะเบียน</span>
+            <span className={`text-xl font-extrabold leading-none ${isFree ? "text-emerald-600" : "text-[#F15A24]"}`}>
               {isFree ? "ฟรี" : <>฿{Number(course.price).toLocaleString()}</>}
             </span>
+          </div>
+
+          {/* แถบที่นั่ง */}
+          <div className="mt-2">
+            <div className="flex justify-between items-end text-xs mb-1">
+              <span className="text-slate-500">รับ: <span className={`font-bold ${isFull && !unlimited ? "text-rose-600" : "text-slate-700"}`}>{taken} / {unlimited ? "ไม่จำกัด" : `${cap} ${unit}`}</span></span>
+              {!unlimited && <span className={`font-bold ${isFull ? "text-rose-500" : "text-[#F15A24]"}`}>{pct}%</span>}
+            </div>
+            {!unlimited && (
+              <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                <div className={`h-full rounded-full transition-all ${isFull ? "bg-gradient-to-r from-rose-500 to-red-600" : "bg-gradient-to-r from-amber-400 to-[#F15A24]"}`} style={{ width: `${pct}%` }} />
+              </div>
+            )}
           </div>
 
           {/* ปุ่ม 3 ปุ่ม */}

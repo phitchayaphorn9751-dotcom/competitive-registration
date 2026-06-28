@@ -10,6 +10,9 @@ const BIco = {
   book:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>),
   scan:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" x2="17" y1="12" y2="12"/></svg>),
   gear:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>),
+  clipboard: (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M9 14l2 2 4-4"/></svg>),
+  cap:     (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>),
+  logout:  (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>),
 }
 
 // เมนูใน bottom bar (มือถือ) — เช็คอินตรงกลางเป็นปุ่มเด่น
@@ -23,13 +26,13 @@ const BOTTOM_NAV = [
 ]
 
 const NAV = [
-  { to: "/admin/dashboard", label: "Dashboard", icon: "▦" },
-  { to: "/admin/applicants", label: "รายการสมัคร", icon: "👥" },
-  { to: "/admin/courses", label: "จัดการรายวิชา", icon: "📚" },
-  { to: "/admin/checkin", label: "จุดสแกน (Check-In)", icon: "▣" },
-  { to: "/admin/attendance", label: "สรุปการมาเรียน", icon: "▤" },
-  { to: "/admin/students", label: "จัดการนักเรียน", icon: "🎓" },
-  { to: "/admin/settings", label: "ตั้งค่าเว็บ", icon: "⚙" },
+  { to: "/admin/dashboard", label: "Dashboard", icon: "grid" },
+  { to: "/admin/applicants", label: "รายการสมัคร", icon: "users" },
+  { to: "/admin/courses", label: "จัดการรายวิชา", icon: "book" },
+  { to: "/admin/checkin", label: "จุดสแกน (Check-In)", icon: "scan" },
+  { to: "/admin/attendance", label: "สรุปการมาเรียน", icon: "clipboard" },
+  { to: "/admin/students", label: "จัดการนักเรียน", icon: "cap" },
+  { to: "/admin/settings", label: "ตั้งค่าเว็บ", icon: "gear" },
 ]
 
 export default function AdminLayout() {
@@ -77,7 +80,7 @@ export default function AdminLayout() {
 
   if (!ready) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="w-10 h-10 border-2 border-[#F15A24] border-t-transparent rounded-full animate-spin" />
       </div>
     )
@@ -87,41 +90,47 @@ export default function AdminLayout() {
   const current = NAV.find((n) => location.pathname.startsWith(n.to))
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-slate-50 flex">
       {/* Overlay (mobile) */}
       {sidebarOpen && <div className="fixed inset-0 bg-black/40 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
       {/* Sidebar */}
-      <aside className={`fixed lg:sticky lg:top-0 inset-y-0 left-0 z-40 w-64 h-screen bg-white border-r border-gray-200 flex flex-col transition-transform ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}>
-        <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-100">
-          <div className="w-10 h-10 rounded-xl bg-[#F15A24] flex items-center justify-center text-white text-xl shrink-0">🎓</div>
+      <aside className={`fixed lg:sticky lg:top-0 inset-y-0 left-0 z-40 w-64 h-screen bg-white border-r border-slate-200 flex flex-col transition-transform ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}>
+        {/* Header — gradient ส้ม-เหลือง (เข้าชุดกับหน้าอื่น) */}
+        <div className="flex items-center gap-2.5 px-5 py-5 border-b border-slate-100">
+          <div className="w-9 h-9 bg-gradient-to-br from-[#F15A24] to-amber-500 rounded-xl flex items-center justify-center shadow-sm shrink-0">
+            <BIco.cap className="w-5 h-5 text-white" />
+          </div>
           <div className="min-w-0">
-            <div className="font-black text-gray-800 text-sm tracking-wide">ADMIN PANEL</div>
-            <div className="text-[11px] text-gray-400 truncate">{event ? `${event.name} ${event.year}` : "—"}</div>
+            <div className="font-extrabold text-sm bg-gradient-to-r from-[#F15A24] to-amber-500 bg-clip-text text-transparent tracking-wide">ADMIN PANEL</div>
+            <div className="text-[11px] text-slate-400 truncate">{event ? `${event.name} ${event.year}` : "—"}</div>
           </div>
         </div>
-        <div className="px-5 pt-4 pb-2 text-[10px] font-bold text-gray-300 uppercase tracking-widest">เมนูหลัก</div>
+        <div className="px-5 pt-4 pb-2 text-[10px] font-bold text-slate-300 uppercase tracking-widest">เมนูหลัก</div>
         <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
-          {visibleNav.map((item) => (
-            <NavLink key={item.to} to={item.to} onClick={() => setSidebarOpen(false)}
-              className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${isActive ? "bg-[#F15A24] text-white shadow-sm" : "text-gray-600 hover:bg-orange-50"}`}>
-              <span className="text-base w-5 text-center">{item.icon}</span>
-              <span>{item.label}</span>
-            </NavLink>
-          ))}
+          {visibleNav.map((item) => {
+            const Icon = BIco[item.icon]
+            return (
+              <NavLink key={item.to} to={item.to} onClick={() => setSidebarOpen(false)}
+                className={({ isActive }) => `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${isActive ? "bg-[#F15A24] text-white shadow-sm shadow-orange-500/20" : "text-slate-600 hover:bg-orange-50"}`}>
+                {Icon && <Icon className="w-5 h-5 shrink-0" />}
+                <span>{item.label}</span>
+              </NavLink>
+            )
+          })}
         </nav>
-        <button onClick={handleLogout} className="m-3 shrink-0 flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold text-red-500 hover:bg-red-50 transition border-t border-gray-100 pt-3">
-          ⎋ ออกจากระบบ
+        <button onClick={handleLogout} className="m-3 shrink-0 flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-bold text-rose-500 hover:bg-rose-50 transition border-t border-slate-100 pt-3">
+          <BIco.logout className="w-5 h-5 shrink-0" /> ออกจากระบบ
         </button>
       </aside>
 
       {/* Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="sticky top-0 z-20 bg-white/80 backdrop-blur border-b border-gray-100 px-4 sm:px-6 py-3 flex items-center gap-3">
-          <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-2xl text-gray-600 leading-none">☰</button>
+        <header className="sticky top-0 z-20 bg-white/80 backdrop-blur border-b border-slate-100 px-4 sm:px-6 py-3 flex items-center gap-3">
+          <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-2xl text-slate-600 leading-none">☰</button>
           <div className="flex items-center gap-2 text-sm">
-            <span className="font-bold text-gray-700">Admin</span>
-            <span className="text-gray-300">/</span>
+            <span className="font-bold text-slate-700">Admin</span>
+            <span className="text-slate-300">/</span>
             <span className="text-[#F15A24] font-medium">{current?.label || ""}</span>
           </div>
           <div className="ml-auto flex items-center gap-2">
@@ -130,7 +139,7 @@ export default function AdminLayout() {
                 <select value={event?.id || ""} onChange={(e) => setEvent(events.find((x) => x.id === e.target.value))}
                   className="appearance-none text-sm font-bold text-[#F15A24] bg-white border border-[#F15A24] rounded-xl pl-8 pr-8 py-2 outline-none cursor-pointer max-w-[180px] sm:max-w-[220px] truncate hover:bg-orange-50 transition">
                   {events.map((ev) => (
-                    <option key={ev.id} value={ev.id} className="text-gray-700">
+                    <option key={ev.id} value={ev.id} className="text-slate-700">
                       {ev.name} {ev.year}{ev.status === "open" ? " 🟢" : ev.status === "closed" ? " 🔒" : " 📝"}
                     </option>
                   ))}
@@ -162,7 +171,7 @@ function AdminBottomBar() {
   const navigate = useNavigate()
   const path = location.pathname
   return (
-    <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/90 backdrop-blur-md border-t border-gray-100 shadow-[0_-2px_10px_rgba(0,0,0,0.04)]">
+    <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/90 backdrop-blur-md border-t border-slate-100 shadow-[0_-2px_10px_rgba(0,0,0,0.04)]">
       <div className="max-w-4xl mx-auto px-1 flex items-end justify-around h-16">
         {BOTTOM_NAV.map((it) => {
           const Icon = BIco[it.icon]
@@ -175,13 +184,13 @@ function AdminBottomBar() {
                 <span className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg shadow-orange-500/30 border-4 border-white transition active:scale-95 ${active ? "bg-[#d14e1e]" : "bg-[#F15A24]"}`}>
                   <Icon className="w-6 h-6 text-white" />
                 </span>
-                <span className={`text-[10px] mt-0.5 ${active ? "text-[#F15A24] font-bold" : "text-gray-400 font-medium"}`}>{it.label}</span>
+                <span className={`text-[10px] mt-0.5 ${active ? "text-[#F15A24] font-bold" : "text-slate-400 font-medium"}`}>{it.label}</span>
               </button>
             )
           }
           return (
             <button key={it.to} onClick={() => navigate(it.to)}
-              className={`flex flex-col items-center gap-0.5 flex-1 pb-1 transition ${active ? "text-[#F15A24]" : "text-gray-400 hover:text-gray-600"}`}>
+              className={`flex flex-col items-center gap-0.5 flex-1 pb-1 transition ${active ? "text-[#F15A24]" : "text-slate-400 hover:text-slate-600"}`}>
               <Icon className="w-5 h-5" />
               <span className={`text-[10px] ${active ? "font-bold" : "font-medium"}`}>{it.label}</span>
             </button>
