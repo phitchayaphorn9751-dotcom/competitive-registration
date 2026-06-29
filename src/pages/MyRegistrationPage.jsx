@@ -167,7 +167,7 @@ export default function MyRegistrationPage() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={t("myreg.searchPlaceholder") || "ค้นหาชื่อวิชา, หมวดหมู่..."}
+              placeholder={"ค้นหาชื่อการสมัคร"}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-10 pr-10 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#F15A24]/40 focus:border-[#F15A24] focus:bg-white transition"
             />
             {search && (
@@ -217,7 +217,7 @@ export default function MyRegistrationPage() {
             <p className="text-xs text-slate-400 mt-1">{q ? `ลองเปลี่ยนคำค้นหา "${search}"` : "ลองเปลี่ยนตัวกรอง"}</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             {filtered.map((reg) => {
               const d = displayStatus(reg)
               const cfg = STATUS_CFG[d] || STATUS_CFG.held
