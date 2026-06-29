@@ -139,7 +139,7 @@ export default function AdminCourses() {
   }
 
   return (
-    <div>
+    <div className="pb-24 md:pb-8">
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5">
@@ -328,66 +328,57 @@ function CourseCardWide({ course, onEdit, onDelete, onToggle, onCapacity, onView
   return (
     <div className="group bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md hover:border-orange-200 transition-all duration-300 flex flex-col">
       <div className="p-4 sm:p-5 flex flex-col flex-1">
-        {/* แถวบน: (ซ้าย) รูปเล็ก + ป้าย/ชื่อวิชา/ผู้สอน  ·  (ขวา) สถานะเปิด-ปิด */}
-        <div className="flex items-start justify-between gap-3 mb-2">
-          <div className="flex items-start gap-3 flex-1 min-w-0">
-            {/* รูปเล็ก */}
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-100">
-              {course.image_url
-                ? <img src={course.image_url} alt="" className="w-full h-full object-cover" />
-                : <div className="w-full h-full flex items-center justify-center text-slate-300"><Ico.book className="w-6 h-6" /></div>}
-            </div>
-            {/* ป้าย + ชื่อวิชา + ผู้สอน */}
-            <div className="flex-1 min-w-0 space-y-1">
-              <div className="flex flex-wrap items-center gap-1.5">
-                {typeLabel && <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-md ${cc.bg} ${cc.text}`}>{typeLabel}</span>}
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500"><Ico.users className="w-3 h-3" /> {modeLabel(course)}</span>
-              </div>
-              <h3 className="font-bold text-[#F15A24] text-sm sm:text-[15px] leading-snug">{course.title}</h3>
-              {instructors.length > 0 && <div className="text-[11px] text-slate-500 inline-flex items-center gap-1 truncate"><Ico.cap className="w-3 h-3 shrink-0" /> {instructors.join(", ")}</div>}
-            </div>
+        {/* แถวบน: (ซ้าย) รูป + ป้าย/ชื่อวิชา  ·  (ขวา) toggle เหนือราคา */}
+        <div className="flex items-start gap-3">
+          {/* รูปเล็กซ้าย */}
+          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-100">
+            {course.image_url
+              ? <img src={course.image_url} alt="" className="w-full h-full object-cover" />
+              : <div className="w-full h-full flex items-center justify-center text-slate-300"><Ico.book className="w-7 h-7" /></div>}
           </div>
-          {/* สถานะ (dot + pill) — มุมขวาบน */}
-          <div className="shrink-0">
-            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-lg whitespace-nowrap ${course.is_open ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-500"}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${course.is_open ? "bg-emerald-500" : "bg-slate-400"}`} />
-              {course.is_open ? "เปิดรับ" : "ปิดรับ"}
-            </span>
-          </div>
-        </div>
 
-        {/* แถวกลาง: (ซ้าย) ที่นั่ง + toggle  /  (ขวา) ราคา */}
-        <div className="flex flex-wrap items-center justify-between gap-2 mt-3 pt-2.5 border-t border-slate-50">
-          <div className="flex items-center gap-3">
-            {/* toggle เปิด/ปิดรับ */}
-            <button onClick={() => onToggle(course)} aria-label="สลับสถานะรับสมัคร"
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition duration-300 shrink-0 ${course.is_open ? "bg-emerald-500" : "bg-slate-300"}`}>
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition duration-300 ${course.is_open ? "translate-x-6" : "translate-x-1"}`} />
-            </button>
-            <span className="text-[11px] text-slate-500">
-              ที่นั่ง: <span className={`font-bold ${isFull && !unlimited ? "text-rose-600" : "text-slate-700"}`}>{taken} / {unlimited ? "∞" : cap}</span>
-            </span>
+          {/* กลาง: ป้ายหมวด+รูปแบบ → ชื่อวิชา → ผู้สอน */}
+          <div className="flex-1 min-w-0 space-y-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {typeLabel && <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-md ${cc.bg} ${cc.text}`}>{typeLabel}</span>}
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500 bg-slate-50 border border-slate-200/60 rounded-md px-2 py-0.5"><Ico.users className="w-3 h-3" /> {modeLabel(course)}</span>
+            </div>
+            <h3 className="font-bold text-[#F15A24] text-sm sm:text-[15px] leading-snug">{course.title}</h3>
+            {instructors.length > 0 && <div className="text-[11px] text-slate-500 inline-flex items-center gap-1 truncate"><Ico.cap className="w-3 h-3 shrink-0" /> {instructors.join(", ")}</div>}
           </div>
-          <div className="text-right">
-            <span className="text-[9px] text-slate-400 block -mb-0.5">ค่าลงทะเบียน</span>
-            {course.price > 0
-              ? <span className="text-base sm:text-lg font-extrabold text-[#F15A24] leading-none whitespace-nowrap">{Number(course.price).toLocaleString()}<span className="text-[10px] font-bold text-slate-400 ml-1">บาท</span></span>
-              : <span className="text-sm font-extrabold text-emerald-600 whitespace-nowrap">ฟรี</span>}
+
+          {/* ขวา: toggle เปิด/ปิดรับ (บน) → ราคา (ล่าง) */}
+          <div className="flex flex-col items-end gap-2 shrink-0">
+            <div className="flex flex-col items-end gap-1">
+              <button onClick={() => onToggle(course)} aria-label="สลับสถานะรับสมัคร"
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition duration-300 ${course.is_open ? "bg-emerald-500" : "bg-slate-300"}`}>
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition duration-300 ${course.is_open ? "translate-x-6" : "translate-x-1"}`} />
+              </button>
+              <span className={`text-[10px] font-bold ${course.is_open ? "text-emerald-600" : "text-slate-400"}`}>{course.is_open ? "เปิดรับ" : "ปิดรับ"}</span>
+            </div>
+            <div className="text-right">
+              <span className="text-[9px] text-slate-400 block -mb-0.5">ค่าลงทะเบียน</span>
+              {course.price > 0
+                ? <span className="text-base sm:text-xl font-extrabold text-[#F15A24] leading-none whitespace-nowrap">{Number(course.price).toLocaleString()}<span className="text-[10px] font-bold text-slate-400 ml-1">บาท</span></span>
+                : <span className="text-sm font-extrabold text-emerald-600 whitespace-nowrap">ฟรี</span>}
+            </div>
           </div>
         </div>
 
         {/* แถบ progress ที่นั่ง — เต็มกว้าง */}
-        {!unlimited && (
-          <div className="mt-2.5">
-            <div className="flex justify-between items-center text-[11px] mb-1">
-              <span className="text-slate-400">ยอดลงทะเบียน</span>
-              <span className={`font-bold ${isFull ? "text-rose-500" : pct >= 80 ? "text-amber-500" : "text-[#F15A24]"}`}>{pct}%</span>
-            </div>
+        <div className="mt-3 pt-3 border-t border-slate-50">
+          <div className="flex justify-between items-center text-[11px] mb-1">
+            <span className="text-slate-500">ที่นั่ง: <span className={`font-bold ${isFull && !unlimited ? "text-rose-600" : "text-slate-700"}`}>{taken} / {unlimited ? "∞" : cap}</span></span>
+            {!unlimited && <span className={`font-bold ${isFull ? "text-rose-500" : pct >= 80 ? "text-amber-500" : "text-[#F15A24]"}`}>{pct}%</span>}
+          </div>
+          {!unlimited ? (
             <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
               <div className={`h-full rounded-full transition-all duration-500 ${isFull ? "bg-gradient-to-r from-rose-500 to-rose-600" : pct >= 80 ? "bg-amber-400" : "bg-gradient-to-r from-[#fb923c] to-[#F15A24]"}`} style={{ width: `${pct}%` }} />
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="text-[11px] text-slate-400">รับสมัครไม่จำกัดจำนวน</div>
+          )}
+        </div>
 
         {/* ปรับจำนวนที่รับ (คง logic updateCapacity) */}
         {!unlimited && (
