@@ -6,10 +6,7 @@ import {
   uploadCourseAsset, duplicateCourses,
 } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
-
-// ───── ไอคอน SVG inline (สไตล์ lucide) — โทนเดียวกับหน้าอื่น ─────
-import { Ico } from "../lib/icons.jsx"        // ← หน้าใน src/pages/
-import { Ico } from "../../lib/icons.jsx"     // ← หน้าใน src/pages/admin/
+import { Ico } from "../../lib/icons.jsx"
 
 // จัดการรายวิชา — Tailwind ตาม doc 18 (คง logic เดิมจาก AdminPanel)
 export default function AdminCourses() {
@@ -122,11 +119,16 @@ export default function AdminCourses() {
   return (
     <div className="pb-24 md:pb-8">
 
-      {/* Header */}
+      {/* Header — gradient + ไอคอนวงกลม (โทนเดียวกับหน้ารายการสมัคร) */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800 border-l-4 border-[#F15A24] pl-3 leading-tight">จัดการรายวิชา</h1>
-          <p className="text-sm text-slate-400 pl-3 mt-0.5">{courses.length} รายวิชา</p>
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 bg-gradient-to-br from-[#F15A24] to-amber-500 rounded-xl flex items-center justify-center shadow-sm shrink-0">
+            <Ico.book className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-extrabold bg-gradient-to-r from-[#F15A24] to-amber-500 bg-clip-text text-transparent leading-tight">จัดการรายวิชา</h1>
+            <p className="text-slate-400 text-xs mt-0.5">{courses.length} รายวิชา</p>
+          </div>
         </div>
         <div className="flex gap-2 flex-wrap">
           <button onClick={openAdd} className="flex items-center gap-1.5 bg-[#F15A24] text-white px-4 py-2.5 rounded-xl font-bold hover:bg-[#c44215] shadow-sm shadow-orange-500/20 transition text-sm">
@@ -142,16 +144,16 @@ export default function AdminCourses() {
       </div>
 
       {/* Search + filter (เลือกปีงานจาก header bar ด้านบน) */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="relative">
           <Ico.search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ค้นหาวิชา…"
-            className="w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#F15A24] focus:ring-2 focus:ring-orange-100" />
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-10 pr-3 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#F15A24]/40 focus:border-[#F15A24] focus:bg-white transition" />
         </div>
         <div className="flex gap-1.5">
           {[["all", "ทั้งหมด"], ["open", "เปิดรับ"], ["closed", "ปิดรับ"]].map(([k, label]) => (
             <button key={k} onClick={() => setStatusFilter(k)}
-              className={`px-3.5 py-2 rounded-lg text-xs font-medium transition ${statusFilter === k ? "bg-[#F15A24] text-white shadow-sm" : "bg-white text-slate-500 border border-slate-200 hover:bg-slate-50"}`}>
+              className={`px-3.5 py-2 rounded-lg text-xs font-medium transition ${statusFilter === k ? "bg-[#F15A24] text-white shadow-sm" : "text-slate-500 hover:bg-slate-100"}`}>
               {label}
             </button>
           ))}
@@ -161,13 +163,13 @@ export default function AdminCourses() {
       {/* Course cards — รูปซ้าย 1/3 + ข้อมูลขวา 2/3 (เดสก์ท็อป) */}
       <div className="hidden md:grid grid-cols-1 gap-4">
         {filtered.map((course) => <CourseCardWide key={course.id} course={course} onEdit={openEdit} onDelete={doDelete} onToggle={doToggle} onCapacity={doCapacity} onView={setViewCourse} />)}
-        {filtered.length === 0 && <div className="bg-white rounded-2xl p-16 text-center text-sm text-slate-400 shadow-sm border border-slate-200">ไม่พบรายวิชา</div>}
+        {filtered.length === 0 && <div className="bg-white rounded-2xl p-16 text-center text-sm text-slate-400 shadow-sm border border-slate-100">ไม่พบรายวิชา</div>}
       </div>
 
       {/* Mobile cards */}
       <div className="md:hidden space-y-3">
         {filtered.map((course) => <CourseCardMobile key={course.id} course={course} onEdit={openEdit} onDelete={doDelete} onToggle={doToggle} onCapacity={doCapacity} onView={setViewCourse} />)}
-        {filtered.length === 0 && <div className="bg-white rounded-2xl p-12 text-center text-sm text-slate-400 shadow-sm border border-slate-200">ไม่พบรายวิชา</div>}
+        {filtered.length === 0 && <div className="bg-white rounded-2xl p-12 text-center text-sm text-slate-400 shadow-sm border border-slate-100">ไม่พบรายวิชา</div>}
       </div>
 
       {showModal && editCourse && (
@@ -283,9 +285,9 @@ function seatInfo(course) {
 // สีหมวดหมู่ — กระจายสีตามชื่อหมวด (หมวดเดียวกันได้สีเดิมเสมอ) สไตล์เดียวกับหน้ารายการสมัคร
 const CATEGORY_PALETTE = [
   { bg: "bg-orange-100", text: "text-orange-700" },
-  { bg: "bg-blue-100",   text: "text-blue-700" },
+  { bg: "bg-sky-100",    text: "text-sky-700" },
   { bg: "bg-emerald-100", text: "text-emerald-700" },
-  { bg: "bg-purple-100", text: "text-purple-700" },
+  { bg: "bg-violet-100", text: "text-violet-700" },
   { bg: "bg-pink-100",   text: "text-pink-700" },
   { bg: "bg-cyan-100",   text: "text-cyan-700" },
   { bg: "bg-amber-100",  text: "text-amber-700" },
@@ -396,7 +398,7 @@ function CourseCardMobile({ course, onEdit, onDelete, onToggle, onView }) {
   const instructors = (course.course_instructors || []).map((ci) => ci.instructors?.full_name).filter(Boolean)
   const unlimited = course.seat_mode === "unlimited"
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
       <div className="flex gap-3">
         {/* รูป */}
         <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-100">
@@ -789,7 +791,7 @@ function ParticipantsModal({ course, onClose }) {
         .map((v) => `"${String(v).replace(/"/g, '""')}"`)
       lines.push(vals.join(","))
     })
-    const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8;" })
+    const blob = new Blob(["\ufeff" + lines.join("\n")], { type: "text/csv;charset=utf-8;" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a"); a.href = url; a.download = `ผู้สมัคร_${course.title}.csv`; a.click()
     URL.revokeObjectURL(url)
