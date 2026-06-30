@@ -722,11 +722,12 @@ export async function setCourseInstructors(courseId, names) {
   if (error) throw error
 }
 
-// รายชื่อผู้สมัครในคอร์ส (สำหรับดู + export CSV)
+// รายชื่อผู้สมัครในคอร์ส (สำหรับดู + export CSV + หน้านำเข้าผู้สมัคร)
+// ⚠️ ต้องดึง participant_code + email + national_id ด้วย (หน้านำเข้าใช้แสดงรหัส)
 export async function fetchCourseParticipants(courseId) {
   const { data, error } = await supabase
     .from("registrations")
-    .select("id, status, submitter_email, created_at, advisors(full_name,phone), participants(id,full_name,school,grade_level,phone,checkins(id))")
+    .select("id, status, submitter_email, seats_held, created_at, advisors(full_name,phone), participants(id,full_name,school,grade_level,phone,email,national_id,participant_code,checkins(id,scanned_at))")
     .eq("course_id", courseId)
     .order("created_at", { ascending: true })
   if (error) throw error
@@ -858,25 +859,7 @@ export async function searchThaiAddress(query) {
   return data.filter((a) => a.subDistrict.includes(q)).slice(0, 10)
 }
 
-// import ผู้สมัครจากระบบนอก (เช็คอินอย่างเดียว — ไม่กินที่นั่ง)
-export async function importExternalParticipant(courseId, row) {
-  const { data, error } = await supabase.rpc("import_external_participant", {
-    p_course_id: courseId,
-    p_full_name: row.full_name,
-    p_school: row.school || null,
-    p_grade: row.grade_level || null,
-    p_phone: row.phone || null,
-    p_email: row.email || null,
-    p_national_id: row.national_id || null,
-  })
-  if (error) throw error
-  return data
-}
-
-═══════════════════════════════════════════════════════════════════
-เพิ่มใน src/lib/supabase.js
-(ถ้ามี importExternalParticipant อยู่แล้ว ให้เพิ่มเฉพาะ 2 ฟังก์ชันลบด้านล่าง)
-═══════════════════════════════════════════════════════════════════
+// ===== นำเข้าผู้สมัครจากระบบนอก =====
 
 // import ผู้สมัครจากระบบนอก (เช็คอินอย่างเดียว — ไม่กินที่นั่ง)
 export async function importExternalParticipant(courseId, row) {
