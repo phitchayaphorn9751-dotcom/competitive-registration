@@ -124,10 +124,10 @@ export default function AdminStudents() {
 
       {/* Controls */}
       {filtered.length > 0 && (
-        <div className="flex justify-between items-center mb-3 px-1">
-          <p className="text-xs text-slate-400">หน้า <span className="font-bold text-slate-600">{page}</span> / {totalPages || 1} · {firstIdx + 1}–{Math.min(firstIdx + perPage, filtered.length)} จาก {filtered.length}</p>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400">แสดงทีละ</span>
+        <div className="flex justify-between items-center gap-3 mb-3 px-1">
+          <p className="text-xs text-slate-400 min-w-0 truncate">หน้า <span className="font-bold text-slate-600">{page}</span> / {totalPages || 1} · {firstIdx + 1}–{Math.min(firstIdx + perPage, filtered.length)} จาก {filtered.length}</p>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-xs text-slate-400 whitespace-nowrap">แสดงทีละ</span>
             <select value={perPage} onChange={(e) => setPerPage(Number(e.target.value))} className="border border-slate-200 px-2 py-1 rounded-lg text-xs outline-none bg-white">
               {[10, 20, 50, 100, 9999].map((n) => <option key={n} value={n}>{n === 9999 ? "ทั้งหมด" : n}</option>)}
             </select>
@@ -135,43 +135,46 @@ export default function AdminStudents() {
         </div>
       )}
 
-      {/* รายการ — การ์ดแบบหน้ารายการสมัคร (เหมือนกันทั้ง desktop & mobile) */}
+      {/* รายการ */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        {/* Desktop table */}
+        {/* Desktop table — แยกคอลัมน์ชัดเจน */}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-sm">
-            <thead><tr className="bg-gradient-to-r from-[#fff5f0] to-[#fff9f6] border-b border-orange-100">
-              <th className="px-4 py-3 text-xs font-bold text-[#F15A24] uppercase w-10">#</th>
-              <th className="px-4 py-3 text-xs font-bold text-[#F15A24] uppercase">ชื่อ – อีเมล – เบอร์</th>
-              <th className="px-4 py-3 text-xs font-bold text-[#F15A24] uppercase">โรงเรียน · ระดับชั้น</th>
-              <th className="px-4 py-3 text-xs font-bold text-[#F15A24] uppercase text-right">Action</th>
-            </tr></thead>
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide w-12">#</th>
+                <th className="px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">ชื่อ - นามสกุล</th>
+                <th className="px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">อีเมล</th>
+                <th className="px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">เบอร์โทร</th>
+                <th className="px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">โรงเรียน</th>
+                <th className="px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide">ระดับชั้น</th>
+                <th className="px-4 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wide text-right">Action</th>
+              </tr>
+            </thead>
             <tbody className="divide-y divide-slate-100">
               {items.length > 0 ? items.map((u, idx) => (
                 <tr key={u.id} onClick={() => openStudent(u)} className="cursor-pointer hover:bg-orange-50/50 transition group">
-                  <td className="px-4 py-4 text-xs text-slate-400 font-mono align-middle">{firstIdx + idx + 1}</td>
-                  <td className="px-4 py-4 align-middle">
-                    <div className="flex items-center gap-3">
-                      {/* avatar วงกลม (เหมือนการ์ด) */}
-                      <div className="w-9 h-9 rounded-full bg-orange-100 text-[#F15A24] font-bold text-sm flex items-center justify-center shrink-0">{u.first_name?.[0] || "?"}</div>
-                      <div className="min-w-0">
-                        <div className="font-bold text-slate-800 text-sm leading-snug">{u.first_name} {u.last_name}{u.nickname && <span className="font-normal text-slate-400 ml-1 text-xs">({u.nickname})</span>}</div>
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
-                          <span className="text-xs text-sky-500 font-mono inline-flex items-center gap-1 truncate max-w-[200px]"><Ico.mail className="w-3 h-3 shrink-0" /> {u.email || "-"}</span>
-                          {u.phone && <span className="text-xs text-slate-400 inline-flex items-center gap-1"><Ico.phone className="w-3 h-3" /> {u.phone}</span>}
-                        </div>
-                      </div>
-                    </div>
+                  <td className="px-4 py-3.5 text-xs text-slate-400 font-mono align-middle">{firstIdx + idx + 1}</td>
+                  <td className="px-4 py-3.5 align-middle">
+                    <div className="font-bold text-slate-800 text-sm leading-snug">{u.first_name} {u.last_name}{u.nickname && <span className="font-normal text-slate-400 ml-1 text-xs">({u.nickname})</span>}</div>
                   </td>
-                  <td className="px-4 py-4 max-w-[220px] align-middle">
-                    <div className="text-xs text-slate-600 line-clamp-2 inline-flex items-start gap-1.5"><Ico.school className="w-3.5 h-3.5 shrink-0 mt-0.5 text-slate-400" /> {u.school || "-"}</div>
-                    {u.grade_level && <div className="mt-1.5"><span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#F15A24] bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-md"><Ico.cap className="w-3 h-3" /> {u.grade_level}</span></div>}
+                  <td className="px-4 py-3.5 align-middle">
+                    <span className="text-xs text-slate-600 font-mono">{u.email || "-"}</span>
                   </td>
-                  <td className="px-4 py-4 text-right align-middle">
+                  <td className="px-4 py-3.5 align-middle">
+                    <span className="text-xs text-slate-600 font-mono">{u.phone || "-"}</span>
+                  </td>
+                  <td className="px-4 py-3.5 align-middle max-w-[200px]">
+                    <span className="text-xs text-slate-600 line-clamp-2">{u.school || "-"}</span>
+                  </td>
+                  <td className="px-4 py-3.5 align-middle">
+                    <span className="text-xs text-slate-600">{u.grade_level || "-"}</span>
+                  </td>
+                  <td className="px-4 py-3.5 text-right align-middle">
                     <span className="text-[#F15A24] text-xs font-bold opacity-0 group-hover:opacity-100 transition inline-flex items-center gap-1">ดูข้อมูล <Ico.arrowRight className="w-3.5 h-3.5" /></span>
                   </td>
                 </tr>
-              )) : <tr><td colSpan="4" className="py-16 text-center text-sm text-slate-400">ไม่พบข้อมูล</td></tr>}
+              )) : <tr><td colSpan="7" className="py-16 text-center text-sm text-slate-400">ไม่พบข้อมูล</td></tr>}
             </tbody>
           </table>
         </div>
@@ -180,17 +183,15 @@ export default function AdminStudents() {
         <div className="md:hidden divide-y divide-slate-100">
           {items.length > 0 ? items.map((u) => (
             <div key={u.id} onClick={() => openStudent(u)} className="p-4 cursor-pointer hover:bg-orange-50/60 active:bg-orange-100 transition">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-orange-100 text-[#F15A24] font-bold text-sm flex items-center justify-center shrink-0">{u.first_name?.[0] || "?"}</div>
-                <div className="min-w-0 flex-1">
-                  <div className="font-bold text-slate-800 text-sm leading-snug">{u.first_name} {u.last_name}{u.nickname && <span className="font-normal text-slate-400 ml-1 text-xs">({u.nickname})</span>}</div>
-                  <div className="text-xs text-sky-500 font-mono truncate inline-flex items-center gap-1"><Ico.mail className="w-3 h-3 shrink-0" /> {u.email || "-"}</div>
-                </div>
+              <div className="font-bold text-slate-800 text-sm leading-snug">{u.first_name} {u.last_name}{u.nickname && <span className="font-normal text-slate-400 ml-1 text-xs">({u.nickname})</span>}</div>
+              {/* อีเมล + เบอร์ บรรทัดเดียวกัน */}
+              <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-500 mt-1.5">
+                {u.email && <span className="font-mono inline-flex items-center gap-1 truncate max-w-[220px]"><Ico.mail className="w-3 h-3 shrink-0" /> {u.email}</span>}
+                {u.phone && <span className="font-mono inline-flex items-center gap-1"><Ico.phone className="w-3 h-3" /> {u.phone}</span>}
               </div>
-              {/* รายละเอียดรอง: เบอร์ · โรงเรียน · ระดับชั้น */}
-              <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-400 mt-2 pl-12">
-                {u.phone && <span className="inline-flex items-center gap-1"><Ico.phone className="w-3 h-3" /> {u.phone}</span>}
-                {u.school && <span className="truncate max-w-[180px] inline-flex items-center gap-1"><Ico.school className="w-3 h-3 shrink-0" /> {u.school}</span>}
+              {/* โรงเรียน · ระดับชั้น */}
+              <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-400 mt-1">
+                {u.school && <span className="truncate max-w-[200px] inline-flex items-center gap-1"><Ico.school className="w-3 h-3 shrink-0" /> {u.school}</span>}
                 {u.grade_level && <span className="inline-flex items-center gap-1"><Ico.cap className="w-3 h-3" /> {u.grade_level}</span>}
               </div>
             </div>
@@ -221,7 +222,7 @@ export default function AdminStudents() {
                 <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-[#F15A24] font-bold text-lg">{selected.first_name?.[0] || "?"}</div>
                 <div>
                   <h3 className="font-bold text-slate-800 text-base leading-tight">{selected.first_name} {selected.last_name}{selected.nickname && <span className="text-slate-400 font-normal text-sm ml-1">({selected.nickname})</span>}</h3>
-                  <p className="text-xs text-sky-500 font-mono">{selected.email || "-"}</p>
+                  <p className="text-xs text-slate-500 font-mono">{selected.email || "-"}</p>
                 </div>
               </div>
               <button onClick={() => setSelected(null)} className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition text-lg leading-none">×</button>
