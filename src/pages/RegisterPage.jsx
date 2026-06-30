@@ -8,6 +8,7 @@ import {
   fetchAllSchools, searchSchools,
 } from "../lib/supabase.js"
 import { useLang } from "../lib/i18n.jsx"
+import { catColor } from "../lib/categoryColors.js"
 
 // ───── ไอคอน SVG inline (สไตล์ lucide) — โทนเดียวกับหน้าอื่น ─────
 const Ico = {
@@ -354,7 +355,7 @@ export default function RegisterPage() {
         <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100/60">
           <div className="flex items-center gap-2 mb-2">
             {course.course_types?.label && (
-              <span className="text-[10px] font-bold px-2.5 py-1 rounded-md bg-orange-100 text-orange-700">{course.course_types.label}</span>
+              <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md ${catColor(course.course_types).bg} ${catColor(course.course_types).text}`}>{course.course_types.label}</span>
             )}
             <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md ${isPaid ? "bg-emerald-100 text-emerald-700" : "bg-orange-100 text-[#F15A24]"}`}>
               {isPaid ? `฿${course.price?.toLocaleString()}` : t("common.free")}

@@ -7,6 +7,7 @@ import {
   uploadCourseAsset,
 } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
+import { CATEGORY_COLORS, catColor } from "../../lib/categoryColors.js"
 import AdminEvents from "./AdminEvents.jsx"
 import AdminUsers from "./AdminUsers.jsx"
 
@@ -25,6 +26,7 @@ const Ico = {
   image:   (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>),
   calendarDays: (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M8 2v4M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/></svg>),
   trash2:  (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>),
+  check:   (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M20 6 9 17l-5-5"/></svg>),
 }
 
 const inputCls = "w-full px-3 py-2.5 border border-slate-200 rounded-xl outline-none focus:border-[#F15A24] focus:ring-1 focus:ring-[#F15A24] text-sm transition"
@@ -75,7 +77,7 @@ export default function AdminSettings() {
       await updateSettings({ line_id: form.line_id, phone: form.phone })
       // ค่าตามงาน: ชื่อเว็บ/ข้อความแจ้งเตือน
       if (event?.id) await updateEventSettings(event.id, { site_title: form.site_title, hero_subtitle: form.hero_subtitle, home_notice: form.home_notice, schedule_image_url: form.schedule_image_url || "" })
-      toast("✅ บันทึกข้อมูลสำเร็จ", "success")
+      toast("บันทึกข้อมูลสำเร็จ", "success")
     }
     catch (e) { toast("บันทึกไม่สำเร็จ: " + e.message, "error") } finally { setSaving(false) }
   }
@@ -83,14 +85,15 @@ export default function AdminSettings() {
   async function saveType(ct) {
     if (!ct.label?.trim()) return toast("กรอกชื่อประเภทก่อน", "error")
     if (!ct.code?.trim()) return toast("กรอกรหัส (code) ก่อน", "error")
-    try { await saveCourseType(ct, event?.id); toast("✅ บันทึกประเภทวิชาแล้ว", "success"); setTypeModal(null); setTypes(await fetchCourseTypes(event?.id)) }
+    if (!ct.color) return toast("กรุณาเลือกสีประจำหมวด", "error")
+    try { await saveCourseType(ct, event?.id); toast("บันทึกประเภทวิชาแล้ว", "success"); setTypeModal(null); setTypes(await fetchCourseTypes(event?.id)) }
     catch (e) { toast("บันทึกไม่สำเร็จ: " + e.message, "error") }
   }
   async function removeType(ct) {
     const ok = await confirm({ title: "ลบประเภทวิชา?", message: `ลบประเภท "${ct.label}"\n(ลบได้เฉพาะที่ยังไม่มีวิชาใช้อยู่)`, confirmText: "ลบ", tone: "danger" })
     if (!ok) return
     try { await deleteCourseType(ct.id); toast("ลบประเภทแล้ว", "success"); setTypes(await fetchCourseTypes(event?.id)) }
-    catch (e) { toast(e.message === "TYPE_IN_USE" ? "❌ ลบไม่ได้ — มีวิชาใช้ประเภทนี้อยู่" : "ลบไม่สำเร็จ: " + e.message, "error") }
+    catch (e) { toast(e.message === "TYPE_IN_USE" ? "ลบไม่ได้ — มีวิชาใช้ประเภทนี้อยู่" : "ลบไม่สำเร็จ: " + e.message, "error") }
   }
 
   async function handleScheduleUpload(e) {
@@ -149,7 +152,7 @@ export default function AdminSettings() {
 
       {/* ── การ์ด 2: ชื่อเว็บ + ข้อความ (แยกตามงาน) ── */}
       <SectionCard icon={Ico.megaphone} title="ข้อมูลหน้าเว็บ (เฉพาะงานนี้)"
-        subtitle={event ? `🗓️ ${event.name} ${event.year} — ชื่อเว็บ + ข้อความ แยกของแต่ละงาน` : "เลือกงานก่อน"}>
+        subtitle={event ? `${event.name} ${event.year} — ชื่อเว็บ + ข้อความ แยกของแต่ละงาน` : "เลือกงานก่อน"}>
         <Field label="ชื่อเว็บ (แสดงบนโลโก้)" value={form.site_title} onChange={(v) => set("site_title", v)} placeholder="CAMT SUMMER COURSE" />
         <Field label="ข้อความใต้ชื่อ (Hero — แสดงใต้ชื่องานหน้าแรก)" value={form.hero_subtitle} onChange={(v) => set("hero_subtitle", v)} placeholder="เปิดโลกเทคโนโลยี สร้างสรรค์นวัตกรรมสู่อนาคต" />
         <div>
@@ -157,13 +160,13 @@ export default function AdminSettings() {
           <textarea className={`${inputCls} resize-none leading-relaxed`} rows="4" value={form.home_notice}
             onChange={(e) => set("home_notice", e.target.value)}
             placeholder="เช่น แจ้งเรื่องการบันทึกภาพ และวิดีโอ: ตลอดกิจกรรมค่ายจะมีการบันทึกภาพนิ่งและวิดีโอ…" />
-          <p className="text-[11px] text-slate-400 mt-1">💡 ขึ้นบรรทัดใหม่ได้ · เว้นว่าง = ไม่แสดงแบนเนอร์</p>
+          <p className="text-[11px] text-slate-400 mt-1">ขึ้นบรรทัดใหม่ได้ · เว้นว่าง = ไม่แสดงแบนเนอร์</p>
         </div>
       </SectionCard>
 
       {/* ── การ์ด: รูปตารางกิจกรรม (เฉพาะงานนี้) ── */}
       <SectionCard icon={Ico.calendarDays} title="ตารางกิจกรรมทั้งงาน (รูปภาพ)"
-        subtitle={event ? `🗓️ ${event.name} ${event.year} — แสดงเป็นกรอบบนหน้าแรก กดดูรูปเต็ม + บันทึกได้` : "เลือกงานก่อน"}>
+        subtitle={event ? `${event.name} ${event.year} — แสดงเป็นกรอบบนหน้าแรก กดดูรูปเต็ม + บันทึกได้` : "เลือกงานก่อน"}>
         <div className="space-y-3">
           <label className={labelCls}>อัปโหลดรูปตาราง (ทำกราฟิกจากข้างนอกแล้วแปะ)</label>
           {form.schedule_image_url ? (
@@ -182,27 +185,33 @@ export default function AdminSettings() {
               <input type="file" accept="image/*" onChange={handleScheduleUpload} disabled={uploadingSchedule} className="hidden" />
             </label>
           )}
-          <p className="text-[11px] text-slate-400">💡 เว้นว่าง = ไม่แสดงกรอบตารางบนหน้าแรก · เปลี่ยนรูปใหม่ได้ทุกปี</p>
+          <p className="text-[11px] text-slate-400">เว้นว่าง = ไม่แสดงกรอบตารางบนหน้าแรก · เปลี่ยนรูปใหม่ได้ทุกปี</p>
         </div>
       </SectionCard>
 
       {/* ── การ์ด 3: ประเภทวิชา ── */}
-      <SectionCard icon={Ico.tag} title="ประเภทวิชา (หมวดหมู่)" subtitle="หมวดหมู่สำหรับจัดกลุ่มรายวิชา"
-        action={<button onClick={() => setTypeModal({ code: "", label: "", requires_payment: false, requires_approval: false })}
+      <SectionCard icon={Ico.tag} title="ประเภทวิชา (หมวดหมู่)" subtitle="หมวดหมู่ + สีประจำหมวด — ใช้สีเดียวกันทุกหน้า"
+        action={<button onClick={() => setTypeModal({ code: "", label: "", requires_payment: false, requires_approval: false, color: "" })}
           className="flex items-center gap-1 bg-gradient-to-r from-[#F15A24] to-amber-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:from-[#d94e1e] hover:to-amber-600 transition active:scale-95"><Ico.plus className="w-3.5 h-3.5" /> เพิ่ม</button>}>
         <div className="space-y-2">
           {types.length === 0 && <p className="text-sm text-slate-400 text-center py-4">ยังไม่มีประเภทวิชา</p>}
-          {types.map((ct) => (
-            <div key={ct.id} className="flex items-center justify-between gap-3 bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-100">
-              <div className="min-w-0">
-                <div className="font-bold text-slate-800 text-sm">{ct.label} <span className="text-[11px] text-slate-400 font-mono">({ct.code})</span></div>
+          {types.map((ct) => {
+            const cc = catColor(ct)
+            return (
+              <div key={ct.id} className="flex items-center justify-between gap-3 bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-100">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  {/* ป้ายสีตัวอย่าง */}
+                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md ${cc.bg} ${cc.text} shrink-0`}>{ct.label}</span>
+                  <span className="text-[11px] text-slate-400 font-mono truncate">({ct.code})</span>
+                  {!ct.color && <span className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded shrink-0">ยังไม่ตั้งสี</span>}
+                </div>
+                <div className="flex gap-1.5 shrink-0">
+                  <button onClick={() => setTypeModal(ct)} className="bg-orange-50 text-[#F15A24] border border-orange-200 p-1.5 rounded-lg hover:bg-orange-100 transition"><Ico.pencil className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => removeType(ct)} className="bg-rose-50 text-rose-600 border border-rose-200 p-1.5 rounded-lg hover:bg-rose-100 transition"><Ico.trash className="w-3.5 h-3.5" /></button>
+                </div>
               </div>
-              <div className="flex gap-1.5 shrink-0">
-                <button onClick={() => setTypeModal(ct)} className="bg-orange-50 text-[#F15A24] border border-orange-200 p-1.5 rounded-lg hover:bg-orange-100 transition"><Ico.pencil className="w-3.5 h-3.5" /></button>
-                <button onClick={() => removeType(ct)} className="bg-rose-50 text-rose-600 border border-rose-200 p-1.5 rounded-lg hover:bg-rose-100 transition"><Ico.trash className="w-3.5 h-3.5" /></button>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </SectionCard>
 
@@ -248,15 +257,15 @@ function Field({ label, value, onChange, placeholder }) {
 }
 
 function TypeModal({ ct, onSave, onClose }) {
-  const [f, setF] = useState({ ...ct })
+  const [f, setF] = useState({ ...ct, color: ct.color || "" })
   const set = (k, v) => setF({ ...f, [k]: v })
   const isEdit = !!ct.id
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
       <div className="bg-white w-full sm:rounded-2xl sm:max-w-md shadow-2xl overflow-hidden rounded-t-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className={`${isEdit ? "bg-yellow-500" : "bg-[#F15A24]"} px-5 py-4 flex justify-between items-center`}>
-          <h3 className="font-bold text-white text-base">{isEdit ? "✏️ แก้ไขประเภทวิชา" : "➕ เพิ่มประเภทวิชา"}</h3>
+        <div className="bg-gradient-to-r from-[#F15A24] to-amber-500 px-5 py-4 flex justify-between items-center">
+          <h3 className="font-bold text-white text-base flex items-center gap-2">{isEdit ? <><Ico.pencil className="w-5 h-5" /> แก้ไขประเภทวิชา</> : <><Ico.plus className="w-5 h-5" /> เพิ่มประเภทวิชา</>}</h3>
           <button onClick={onClose} className="text-white/80 hover:text-white text-2xl leading-none">×</button>
         </div>
         <div className="p-5 space-y-4">
@@ -269,12 +278,35 @@ function TypeModal({ ct, onSave, onClose }) {
             <input className={inputCls} value={f.code} onChange={(e) => set("code", e.target.value.toLowerCase().replace(/\s/g, "_"))} placeholder="workshop" disabled={isEdit} />
             {isEdit && <p className="text-[11px] text-slate-400 mt-1">แก้ code ไม่ได้หลังสร้าง (กันกระทบข้อมูลเดิม)</p>}
           </div>
-          <p className="text-[11px] text-slate-400 px-1">💡 ราคา/ค่าสมัครกำหนดตอนสร้างวิชาแต่ละวิชา (ไม่ผูกกับประเภท)</p>
+
+          {/* จานสีประจำหมวด — บังคับเลือก */}
+          <div>
+            <label className={labelCls}>สีประจำหมวด <span className="text-rose-500">*</span></label>
+            <div className="grid grid-cols-5 gap-2">
+              {CATEGORY_COLORS.map((c) => (
+                <button key={c.key} type="button" onClick={() => set("color", c.key)}
+                  className={`relative h-10 rounded-xl ${c.bg} border-2 transition flex items-center justify-center ${f.color === c.key ? "border-slate-800 ring-2 ring-offset-1 " + c.ring : "border-transparent hover:border-slate-300"}`}
+                  title={c.label} aria-label={c.label}>
+                  <span className={`w-4 h-4 rounded-full ${c.dot}`} />
+                  {f.color === c.key && <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-slate-800 text-white flex items-center justify-center shadow"><Ico.check className="w-3 h-3" /></span>}
+                </button>
+              ))}
+            </div>
+            {/* ตัวอย่างป้าย */}
+            {f.color && (
+              <div className="mt-2.5 flex items-center gap-2 text-[11px] text-slate-400">
+                ตัวอย่าง:
+                <span className={`font-bold px-2 py-0.5 rounded-md ${catColor(f).bg} ${catColor(f).text}`}>{f.label || "ชื่อหมวด"}</span>
+              </div>
+            )}
+          </div>
+
+          <p className="text-[11px] text-slate-400 px-1 inline-flex items-start gap-1"><Ico.tag className="w-3 h-3 shrink-0 mt-0.5 text-amber-400" /> สีนี้จะใช้แสดงป้ายหมวดเหมือนกันทุกหน้า (หน้าแรก, จัดการวิชา, ผู้สมัคร)</p>
         </div>
         <div className="px-5 pb-5 grid grid-cols-2 gap-3">
           <button onClick={onClose} className="py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition text-sm">ยกเลิก</button>
-          <button onClick={() => onSave(f)} className={`py-3 text-white rounded-xl font-bold shadow-sm transition text-sm ${isEdit ? "bg-yellow-500 hover:bg-yellow-600" : "bg-[#F15A24] hover:bg-orange-600"}`}>
-            {isEdit ? "💾 บันทึก" : "✅ เพิ่มประเภท"}
+          <button onClick={() => onSave(f)} className="py-3 text-white rounded-xl font-bold shadow-sm transition text-sm bg-[#F15A24] hover:bg-[#c44215] flex items-center justify-center gap-1.5">
+            {isEdit ? <><Ico.save className="w-4 h-4" /> บันทึก</> : <><Ico.check className="w-4 h-4" /> เพิ่มประเภท</>}
           </button>
         </div>
       </div>

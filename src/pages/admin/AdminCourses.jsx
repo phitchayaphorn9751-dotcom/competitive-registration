@@ -7,6 +7,7 @@ import {
 } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
 import { Ico } from "../../lib/icons.jsx"
+import { catColor } from "../../lib/categoryColors.js"
 
 // จัดการรายวิชา — Tailwind ตาม doc 18 (คง logic เดิมจาก AdminPanel)
 export default function AdminCourses() {
@@ -283,31 +284,13 @@ function seatInfo(course) {
   return { taken, cap, pct, isFull: pct >= 100 }
 }
 
-// สีหมวดหมู่ — กระจายสีตามชื่อหมวด (หมวดเดียวกันได้สีเดิมเสมอ) สไตล์เดียวกับหน้ารายการสมัคร
-const CATEGORY_PALETTE = [
-  { bg: "bg-orange-100", text: "text-orange-700" },
-  { bg: "bg-sky-100",    text: "text-sky-700" },
-  { bg: "bg-emerald-100", text: "text-emerald-700" },
-  { bg: "bg-violet-100", text: "text-violet-700" },
-  { bg: "bg-pink-100",   text: "text-pink-700" },
-  { bg: "bg-cyan-100",   text: "text-cyan-700" },
-  { bg: "bg-amber-100",  text: "text-amber-700" },
-  { bg: "bg-indigo-100", text: "text-indigo-700" },
-  { bg: "bg-teal-100",   text: "text-teal-700" },
-  { bg: "bg-rose-100",   text: "text-rose-700" },
-]
-function categoryCfg(name) {
-  if (!name) return CATEGORY_PALETTE[0]
-  let h = 0
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0
-  return CATEGORY_PALETTE[h % CATEGORY_PALETTE.length]
-}
+// สีหมวดหมู่ใช้จาก lib กลาง (categoryColors.js) — admin ตั้งสีที่หน้า settings
 
 function CourseCardWide({ course, onEdit, onDelete, onToggle, onView }) {
   const { taken, cap, pct, isFull } = seatInfo(course)
   const instructors = (course.course_instructors || []).map((ci) => ci.instructors?.full_name).filter(Boolean)
   const typeLabel = course.course_types?.label
-  const cc = categoryCfg(typeLabel)
+  const cc = catColor(course.course_types)
   const unlimited = course.seat_mode === "unlimited"
   return (
     <div className="group bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md hover:border-orange-200 transition-all duration-300 flex flex-col">
@@ -394,7 +377,7 @@ function CourseCardMobile({ course, onEdit, onDelete, onToggle, onView }) {
   const { taken, cap, pct, isFull } = seatInfo(course)
   const instructors = (course.course_instructors || []).map((ci) => ci.instructors?.full_name).filter(Boolean)
   const typeLabel = course.course_types?.label
-  const cc = categoryCfg(typeLabel)
+  const cc = catColor(course.course_types)
   const unlimited = course.seat_mode === "unlimited"
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
@@ -405,7 +388,7 @@ function CourseCardMobile({ course, onEdit, onDelete, onToggle, onView }) {
         </div>
         {/* ข้อมูล */}
         <div className="flex-1 min-w-0">
-          {/* ป้ายกำกับ: หมวด · รูปแบบ (ใช้ categoryCfg เหมือน desktop) */}
+          {/* ป้ายกำกับ: หมวด · รูปแบบ (ใช้ catColor เหมือน desktop) */}
           <div className="flex flex-wrap items-center gap-1.5 mb-1">
             {typeLabel && <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-md ${cc.bg} ${cc.text}`}>{typeLabel}</span>}
             <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500 bg-slate-50 border border-slate-200/60 rounded-md px-2 py-0.5"><Ico.users className="w-3 h-3" /> {modeLabel(course)}</span>

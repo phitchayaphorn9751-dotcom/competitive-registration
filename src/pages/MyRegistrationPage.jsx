@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { getSession, isAdminUser, fetchMyRegistrations, fetchCourse, fetchRegistrationMembers, subscribeMyRegistrations } from "../lib/supabase.js"
+import { catColor } from "../lib/categoryColors.js"
 import { useLang } from "../lib/i18n.jsx"
+import { Ico } from "../lib/icons.jsx"
 
 // map สถานะ → สี/dot (ดีไซน์ CAMT: badge rounded-lg + dot สี)
 const STATUS_CFG = {
@@ -15,28 +17,7 @@ const STATUS_CFG = {
   expired:         { key: "myreg.st.expired",         bg: "bg-slate-50",   text: "text-slate-400",   dot: "bg-slate-300" },
 }
 
-// สีหมวดหมู่ — กระจายสีตามชื่อหมวด (หมวดเดียวกันได้สีเดิมเสมอ) สไตล์ tag จาก HTML
-const CATEGORY_PALETTE = [
-  { bg: "bg-orange-100", text: "text-orange-700" },
-  { bg: "bg-blue-100",   text: "text-blue-700" },
-  { bg: "bg-emerald-100", text: "text-emerald-700" },
-  { bg: "bg-purple-100", text: "text-purple-700" },
-  { bg: "bg-pink-100",   text: "text-pink-700" },
-  { bg: "bg-cyan-100",   text: "text-cyan-700" },
-  { bg: "bg-amber-100",  text: "text-amber-700" },
-  { bg: "bg-indigo-100", text: "text-indigo-700" },
-  { bg: "bg-teal-100",   text: "text-teal-700" },
-  { bg: "bg-rose-100",   text: "text-rose-700" },
-]
-function categoryCfg(name) {
-  if (!name) return CATEGORY_PALETTE[0]
-  let h = 0
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0
-  return CATEGORY_PALETTE[h % CATEGORY_PALETTE.length]
-}
-
-// ───── ไอคอน SVG inline (สไตล์ lucide) ─────
-import { Ico } from "../lib/icons.jsx"        // ← หน้าใน src/pages/
+// สีหมวดหมู่ใช้จาก lib กลาง (categoryColors.js)
 
 // แปลงสถานะดิบ (รวม payment) → key เดียวสำหรับแสดงผล
 function displayStatus(r) {
@@ -244,7 +225,7 @@ export default function MyRegistrationPage() {
                     {/* แถวกลาง: หมวดหมู่ + ทีม (ซ้าย) / ราคา (ขวา) */}
                     <div className="flex flex-wrap items-center justify-between gap-2 mt-3 pt-2.5 border-t border-slate-50">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        {reg.course_type && (() => { const cc = categoryCfg(reg.course_type); return (
+                        {reg.course_type && (() => { const cc = catColor(reg.course_type_color || reg.course_type); return (
                           <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-md ${cc.bg} ${cc.text}`}>{reg.course_type}</span>
                         ) })()}
                         {reg.theme_name && (

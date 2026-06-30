@@ -28,7 +28,7 @@ export async function fetchCourses(eventId) {
   let q = supabase
     .from("courses")
     .select(
-      "id, title, description, content, count_mode, team_size, min_members, max_members, capacity, seats_taken, price, bank_account, image_url, image_urls, level, start_date, end_date, duration, line_qr_url, form_schema, is_open, external_url, course_types:type_id(code,label,requires_payment,requires_approval), course_instructors(instructors(full_name)), course_days(day_date,start_at,end_at)"
+      "id, title, description, content, count_mode, team_size, min_members, max_members, capacity, seats_taken, price, bank_account, image_url, image_urls, level, start_date, end_date, duration, line_qr_url, form_schema, is_open, external_url, course_types:type_id(code,label,requires_payment,requires_approval,color), course_instructors(instructors(full_name)), course_days(day_date,start_at,end_at)"
     )
     .order("created_at", { ascending: true })
   if (eventId) q = q.eq("event_id", eventId)
@@ -41,7 +41,7 @@ export async function fetchCourse(courseId) {
   const { data, error } = await supabase
     .from("courses")
     .select(
-      "id, event_id, title, description, content, count_mode, team_size, min_members, max_members, capacity, seat_mode, require_portfolio, portfolio_label, seats_taken, price, bank_account, bank_name, bank_holder, line_qr_url, image_url, image_urls, level, start_date, end_date, duration, form_schema, is_open, external_url, course_types:type_id(code,label,requires_payment,requires_approval)"
+      "id, event_id, title, description, content, count_mode, team_size, min_members, max_members, capacity, seat_mode, require_portfolio, portfolio_label, seats_taken, price, bank_account, bank_name, bank_holder, line_qr_url, image_url, image_urls, level, start_date, end_date, duration, form_schema, is_open, external_url, course_types:type_id(code,label,requires_payment,requires_approval,color)"
     )
     .eq("id", courseId)
     .single()
@@ -413,7 +413,7 @@ export async function fetchRegistration(registrationId) {
   const { data, error } = await supabase
     .from("registrations")
     .select(
-      "*, courses(title, price, event_id, require_portfolio, portfolio_label, course_types:type_id(label,requires_payment)), advisors(id,full_name,phone,email), participants(id,full_name,school,grade_level,phone,email,national_id,participant_code,qr_token,checkins(id,scanned_at)), payments(id,amount,slip_url,status,created_at)"
+      "*, courses(title, price, event_id, require_portfolio, portfolio_label, course_types:type_id(label,requires_payment,color)), advisors(id,full_name,phone,email), participants(id,full_name,school,grade_level,phone,email,national_id,participant_code,qr_token,checkins(id,scanned_at)), payments(id,amount,slip_url,status,created_at)"
     )
     .eq("id", registrationId)
     .single()
@@ -486,7 +486,7 @@ export async function deleteEvent(eventId) {
 export async function fetchCourseTypes(eventId) {
   let q = supabase
     .from("course_types")
-    .select("id, code, label, requires_payment, requires_approval, event_id")
+    .select("id, code, label, requires_payment, requires_approval, color, event_id")
     .order("label")
   const { data, error } = await q
   if (error) throw error
@@ -501,6 +501,7 @@ export async function saveCourseType(ct, eventId) {
     code: ct.code, label: ct.label,
     requires_payment: !!ct.requires_payment,
     requires_approval: !!ct.requires_approval,
+    color: ct.color || null,
   }
   if (ct.id) {
     const { error } = await supabase.from("course_types").update(payload).eq("id", ct.id)
@@ -526,7 +527,7 @@ export async function deleteCourseType(id) {
 export async function fetchCoursesAdmin(eventId) {
   let q = supabase
     .from("courses")
-    .select("id, event_id, type_id, title, description, content, count_mode, team_size, min_members, max_members, capacity, seat_mode, require_portfolio, portfolio_label, seats_taken, price, bank_account, bank_name, bank_holder, image_url, image_urls, line_qr_url, base_id, level, start_date, end_date, duration, form_schema, is_open, external_url, course_types:type_id(label), course_instructors(instructors(full_name)), course_days(day_date)")
+    .select("id, event_id, type_id, title, description, content, count_mode, team_size, min_members, max_members, capacity, seat_mode, require_portfolio, portfolio_label, seats_taken, price, bank_account, bank_name, bank_holder, image_url, image_urls, line_qr_url, base_id, level, start_date, end_date, duration, form_schema, is_open, external_url, course_types:type_id(label,color), course_instructors(instructors(full_name)), course_days(day_date)")
     .order("created_at", { ascending: true })
   if (eventId) q = q.eq("event_id", eventId)
   const { data, error } = await q

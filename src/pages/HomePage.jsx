@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { fetchOpenEvent, fetchCourses, fetchSettings, fetchEventSettings } from "../lib/supabase.js"
 import { useLang, LangToggle } from "../lib/i18n.jsx"
+import { catColor } from "../lib/categoryColors.js"
 
 // ───── ไอคอน SVG inline (สไตล์ lucide) — โทนเดียวกับหน้ารายการสมัครของฉัน ─────
 const Ico = {
@@ -228,7 +229,7 @@ function CourseCard({ course, t, onDetail, onRegister }) {
         )}
         {type?.label && (
           <div className="absolute top-3 left-3 z-20">
-            <span className="text-[10px] font-bold px-2.5 py-1 rounded-md backdrop-blur-sm bg-white/90 text-orange-700">
+            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-md backdrop-blur-sm bg-white/90 ${catColor(type).text}`}>
               {type.label}
             </span>
           </div>
