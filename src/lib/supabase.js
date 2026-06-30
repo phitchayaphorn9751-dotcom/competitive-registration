@@ -872,3 +872,41 @@ export async function importExternalParticipant(courseId, row) {
   if (error) throw error
   return data
 }
+
+═══════════════════════════════════════════════════════════════════
+เพิ่มใน src/lib/supabase.js
+(ถ้ามี importExternalParticipant อยู่แล้ว ให้เพิ่มเฉพาะ 2 ฟังก์ชันลบด้านล่าง)
+═══════════════════════════════════════════════════════════════════
+
+// import ผู้สมัครจากระบบนอก (เช็คอินอย่างเดียว — ไม่กินที่นั่ง)
+export async function importExternalParticipant(courseId, row) {
+  const { data, error } = await supabase.rpc("import_external_participant", {
+    p_course_id: courseId,
+    p_full_name: row.full_name,
+    p_school: row.school || null,
+    p_grade: row.grade_level || null,
+    p_phone: row.phone || null,
+    p_email: row.email || null,
+    p_national_id: row.national_id || null,
+  })
+  if (error) throw error
+  return data
+}
+
+// ลบผู้สมัครที่นำเข้า — รายคน
+export async function deleteImportedParticipant(participantId) {
+  const { data, error } = await supabase.rpc("delete_imported_participant", {
+    p_participant_id: participantId,
+  })
+  if (error) throw error
+  return data
+}
+
+// ลบผู้สมัครที่นำเข้า — ทั้งคอร์ส (คืนจำนวนที่ลบ)
+export async function deleteImportedByCourse(courseId) {
+  const { data, error } = await supabase.rpc("delete_imported_by_course", {
+    p_course_id: courseId,
+  })
+  if (error) throw error
+  return data
+}
