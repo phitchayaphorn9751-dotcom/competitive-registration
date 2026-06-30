@@ -264,7 +264,7 @@ function CourseCard({ course, t, onDetail, onRegister }) {
           <div className="flex justify-between items-center text-xs mb-1.5">
             <span className="text-slate-500">{t("home.seats")}</span>
             <span className={`font-bold ${isFull ? "text-rose-500" : "text-emerald-600"}`}>
-              {isFull ? t("home.full") : t("home.seatsLeft", { r: remaining, c: cap })}
+              {isFull ? t("home.full") : `${taken}/${cap}`}
             </span>
           </div>
           <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
