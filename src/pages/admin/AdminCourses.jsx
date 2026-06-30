@@ -608,7 +608,7 @@ function CourseModal({ course, types, onSave, onClose }) {
                 </select>
               </div>
             </div>
-            {/* ช่องย่อย: จำนวนทีม / จำนวนที่รับ */}
+            {/* ช่องย่อย: จำนวนคนต่อทีม / จำนวนที่รับ (คน) */}
             {(f.count_choice === "team" || f.seat_mode === "limited") && (
               <div className="grid grid-cols-2 gap-3 -mt-2">
                 {f.count_choice === "team" ? (
@@ -619,8 +619,9 @@ function CourseModal({ course, types, onSave, onClose }) {
                 ) : <div />}
                 {f.seat_mode === "limited" ? (
                   <div>
-                    <label className={labelCls}>{f.count_choice === "single" ? "รับกี่คน" : "รับกี่ทีม"}</label>
+                    <label className={labelCls}>รับกี่คน (รวมทุกคน)</label>
                     <input type="number" min={0} className={inputCls} value={f.capacity} onChange={(e) => set("capacity", e.target.value)} />
+                    {f.count_choice !== "single" && <p className="text-[10px] text-slate-400 mt-1">นับเป็นจำนวนคน — เช่น 60 = รับ 60 คน (ทีม 3 คนกินที่ 3, ทีม 2 คนกินที่ 2)</p>}
                   </div>
                 ) : <div />}
               </div>
