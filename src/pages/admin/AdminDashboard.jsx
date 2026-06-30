@@ -1,37 +1,27 @@
 import { useState, useEffect, useMemo } from "react"
 import { useOutletContext } from "react-router-dom"
 import { fetchDashboardRegistrations } from "../../lib/supabase.js"
+import { Ico } from "../../lib/icons.jsx"
+import { catColor } from "../../lib/categoryColors.js"
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, CartesianGrid, AreaChart, Area,
 } from "recharts"
 
-const PIE_COLORS = ["#f15a24", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6"]
-const BAR_COLORS = ["#f15a24", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899"]
+// จานสีกราฟ — โทนธีม CAMT (ส้ม นำ + สีรอง)
+const PIE_COLORS = ["#F15A24", "#0ea5e9", "#10b981", "#f59e0b", "#8b5cf6"]
+const BAR_COLORS = ["#F15A24", "#0ea5e9", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899"]
 
-// ───── ไอคอน SVG inline (สไตล์ lucide) — โทนเดียวกับหน้าอื่น ─────
-const Ico = {
-  chart:   (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9M13 17V5M8 17v-3"/></svg>),
-  download:(p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>),
-}
-// สีกำกับหมวด
-const CAT_COLORS = {
-  "Competition": "bg-rose-50 text-rose-700 border-rose-200",
-  "การแข่งขัน": "bg-rose-50 text-rose-700 border-rose-200",
-  "Workshop": "bg-blue-50 text-blue-700 border-blue-200",
-  "เวิร์กชอป": "bg-blue-50 text-blue-700 border-blue-200",
-}
-
-// สถานะระบบเรา
+// สถานะระบบเรา — โทนธีม (sky/emerald/amber/violet/rose)
 const STATUS_CFG = {
   confirmed: { cls: "bg-emerald-50 text-emerald-700 border-emerald-200", dot: "bg-emerald-500", label: "ยืนยันแล้ว" },
   approved: { cls: "bg-emerald-50 text-emerald-700 border-emerald-200", dot: "bg-emerald-500", label: "อนุมัติแล้ว" },
-  slip_uploaded: { cls: "bg-blue-50 text-blue-700 border-blue-200", dot: "bg-blue-400", label: "รอตรวจสลิป" },
-  submitted: { cls: "bg-blue-50 text-blue-700 border-blue-200", dot: "bg-blue-400", label: "รอพิจารณา" },
-  pending_payment: { cls: "bg-yellow-50 text-yellow-700 border-yellow-200", dot: "bg-yellow-400", label: "รอชำระเงิน" },
+  slip_uploaded: { cls: "bg-sky-50 text-sky-700 border-sky-200", dot: "bg-sky-400", label: "รอตรวจสลิป" },
+  submitted: { cls: "bg-sky-50 text-sky-700 border-sky-200", dot: "bg-sky-400", label: "รอพิจารณา" },
+  pending_payment: { cls: "bg-amber-50 text-amber-700 border-amber-200", dot: "bg-amber-400", label: "รอชำระเงิน" },
   waitlist: { cls: "bg-violet-50 text-violet-700 border-violet-200", dot: "bg-violet-500", label: "คิวสำรอง" },
-  rejected: { cls: "bg-red-50 text-red-700 border-red-200", dot: "bg-red-500", label: "ไม่ผ่าน" },
-  expired: { cls: "bg-red-50 text-red-400 border-red-100", dot: "bg-red-300", label: "หมดเวลา" },
+  rejected: { cls: "bg-rose-50 text-rose-700 border-rose-200", dot: "bg-rose-500", label: "ไม่ผ่าน" },
+  expired: { cls: "bg-rose-50 text-rose-400 border-rose-100", dot: "bg-rose-300", label: "หมดเวลา" },
   held: { cls: "bg-orange-50 text-orange-700 border-orange-200", dot: "bg-orange-400", label: "กันที่นั่ง" },
 }
 const PAID_STATUSES = ["confirmed", "approved"]
@@ -41,11 +31,17 @@ function StatusBadge({ status }) {
   return <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border ${c.cls}`}><span className={`w-1.5 h-1.5 rounded-full shrink-0 ${c.dot}`} />{c.label}</span>
 }
 
-function SectionCard({ title, children, action }) {
+// ป้ายหมวด — ใช้สีกลางจาก categoryColors (hash ตามชื่อ ให้ตรงหน้าอื่น)
+function catBadgeCls(name) {
+  const cc = catColor(name)
+  return `${cc.bg} ${cc.text} border-transparent`
+}
+
+function SectionCard({ title, icon: Icon, children, action }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-50">
-        <h3 className="font-semibold text-slate-700 text-sm">{title}</h3>{action}
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+        <h3 className="font-bold text-slate-700 text-sm flex items-center gap-2">{Icon && <Icon className="w-4 h-4 text-[#F15A24]" />}{title}</h3>{action}
       </div>
       <div className="p-5">{children}</div>
     </div>
@@ -254,11 +250,17 @@ export default function AdminDashboard() {
 
   const timeLabels = { TODAY: "วันนี้", WEEK: "สัปดาห์นี้", MONTH: "เดือนนี้", ALL: "ทั้งหมด" }
   const kpiCards = [
-    { title: "ผู้สมัครทั้งหมด", value: stats.totalUsers.toLocaleString(), unit: "คน", color: "#3b82f6", bg: "#eff6ff", icon: "👥", onClick: () => drillDown("ผู้สมัครทั้งหมด", () => true) },
-    { title: "รายได้รวม", value: stats.totalIncome.toLocaleString(), unit: "฿", color: "#10b981", bg: "#ecfdf5", icon: "💰", onClick: () => drillDown("ชำระแล้ว", isPaid) },
-    { title: "Conversion", value: stats.totalUsers > 0 ? ((stats.uniquePaid / stats.totalUsers) * 100).toFixed(1) : 0, unit: "%", color: "#8b5cf6", bg: "#f5f3ff", icon: "📈", onClick: () => drillDown("ชำระแล้ว", isPaid) },
-    { title: "รอตรวจสลิป", value: stats.pendingSlips.toLocaleString(), unit: "รายการ", color: "#f15a24", bg: "#fff7f5", icon: "⏳", onClick: () => drillDown("รอตรวจสลิป", (r) => r.status === "slip_uploaded") },
+    { title: "ผู้สมัครทั้งหมด", value: stats.totalUsers.toLocaleString(), unit: "คน", color: "sky", icon: "users", onClick: () => drillDown("ผู้สมัครทั้งหมด", () => true) },
+    { title: "รายได้รวม", value: stats.totalIncome.toLocaleString(), unit: "฿", color: "emerald", icon: "money", onClick: () => drillDown("ชำระแล้ว", isPaid) },
+    { title: "Conversion", value: stats.totalUsers > 0 ? ((stats.uniquePaid / stats.totalUsers) * 100).toFixed(1) : 0, unit: "%", color: "violet", icon: "trend", onClick: () => drillDown("ชำระแล้ว", isPaid) },
+    { title: "รอตรวจสลิป", value: stats.pendingSlips.toLocaleString(), unit: "รายการ", color: "orange", icon: "clock", onClick: () => drillDown("รอตรวจสลิป", (r) => r.status === "slip_uploaded") },
   ]
+  const KPI_STYLE = {
+    sky: { bg: "bg-sky-50", border: "border-sky-100", text: "text-sky-600", icon: "text-sky-500" },
+    emerald: { bg: "bg-emerald-50", border: "border-emerald-100", text: "text-emerald-600", icon: "text-emerald-500" },
+    violet: { bg: "bg-violet-50", border: "border-violet-100", text: "text-violet-600", icon: "text-violet-500" },
+    orange: { bg: "bg-orange-50", border: "border-orange-100", text: "text-[#F15A24]", icon: "text-[#F15A24]" },
+  }
   const statusBadges = [
     { label: "คิวสำรอง", value: filtered.filter((r) => r.status === "waitlist").length, status: "waitlist", filter: (r) => r.status === "waitlist" },
     { label: "รอชำระ", value: filtered.filter((r) => r.status === "pending_payment").length, status: "pending_payment", filter: (r) => r.status === "pending_payment" },
@@ -268,7 +270,7 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-4 pb-24 lg:pb-6">
       {/* Header + filter */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 space-y-3">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-9 h-9 bg-gradient-to-br from-[#F15A24] to-amber-500 rounded-xl flex items-center justify-center shadow-sm shrink-0">
@@ -288,11 +290,11 @@ export default function AdminDashboard() {
           <div className="flex bg-slate-100 p-1 rounded-xl gap-0.5">
             {Object.entries(timeLabels).map(([k, v]) => (
               <button key={k} onClick={() => setTimeFilter(k)}
-                className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition ${timeFilter === k ? "bg-white text-[#f15a24] shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>{v}</button>
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition ${timeFilter === k ? "bg-white text-[#F15A24] shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>{v}</button>
             ))}
           </div>
           <input type="date" value={customDate} onChange={(e) => { setCustomDate(e.target.value); setTimeFilter("CUSTOM") }}
-            className={`flex-1 min-w-0 sm:flex-none px-3 py-1.5 rounded-xl text-xs border outline-none focus:ring-2 focus:ring-[#f15a24] transition ${timeFilter === "CUSTOM" ? "border-[#f15a24] bg-orange-50 text-[#f15a24] font-bold" : "border-slate-200 text-slate-600"}`} />
+            className={`flex-1 min-w-0 sm:flex-none px-3 py-1.5 rounded-xl text-xs border outline-none focus:ring-2 focus:ring-[#F15A24] transition ${timeFilter === "CUSTOM" ? "border-[#F15A24] bg-orange-50 text-[#F15A24] font-bold" : "border-slate-200 text-slate-600"}`} />
         </div>
 
         {/* ตัวกรองหมวด — กรองทั้ง Dashboard */}
@@ -300,12 +302,12 @@ export default function AdminDashboard() {
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[11px] font-bold text-slate-400">หมวด:</span>
             <button onClick={() => setCatFilter("ALL")}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${catFilter === "ALL" ? "bg-slate-700 text-white border-slate-700" : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"}`}>
+              className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${catFilter === "ALL" ? "bg-[#F15A24] text-white border-[#F15A24]" : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"}`}>
               ทั้งหมด
             </button>
             {allCategories.map((cat) => (
               <button key={cat} onClick={() => setCatFilter(cat)}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${catFilter === cat ? "bg-[#f15a24] text-white border-[#f15a24]" : (CAT_COLORS[cat] || "bg-white text-slate-500 border-slate-200") + " hover:opacity-80"}`}>
+                className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${catFilter === cat ? "bg-[#F15A24] text-white border-[#F15A24]" : catBadgeCls(cat) + " hover:opacity-80"}`}>
                 {cat}
               </button>
             ))}
@@ -315,21 +317,24 @@ export default function AdminDashboard() {
 
       {/* KPI */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {kpiCards.map((k) => (
-          <button key={k.title} onClick={k.onClick}
-            className="text-left rounded-2xl p-4 sm:p-5 border transition hover:shadow-md active:scale-[.98] relative overflow-hidden"
-            style={{ backgroundColor: k.bg, borderColor: `${k.color}22` }}>
-            <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: k.color }}>{k.title}</p>
-            <p className="text-2xl sm:text-3xl font-extrabold leading-none" style={{ color: k.color }}>
-              {k.value}<span className="text-xs font-normal ml-1 opacity-60">{k.unit}</span>
-            </p>
-            <span className="absolute right-3 bottom-2 text-5xl opacity-10 select-none">{k.icon}</span>
-          </button>
-        ))}
+        {kpiCards.map((k) => {
+          const st = KPI_STYLE[k.color]
+          const I = Ico[k.icon]
+          return (
+            <button key={k.title} onClick={k.onClick}
+              className={`text-left rounded-2xl p-4 sm:p-5 border transition hover:shadow-md active:scale-[.98] relative overflow-hidden ${st.bg} ${st.border}`}>
+              <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${st.text}`}>{k.title}</p>
+              <p className={`text-2xl sm:text-3xl font-extrabold leading-none ${st.text}`}>
+                {k.value}<span className="text-xs font-normal ml-1 opacity-60">{k.unit}</span>
+              </p>
+              <span className={`absolute right-3 bottom-3 opacity-15 ${st.icon}`}><I className="w-10 h-10" /></span>
+            </button>
+          )
+        })}
       </div>
 
       {/* Status badges */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3 flex flex-wrap items-center gap-2">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-4 py-3 flex flex-wrap items-center gap-2">
         <span className="text-xs font-semibold text-slate-400 mr-1 hidden sm:inline">สถานะอื่นๆ</span>
         {statusBadges.map((b) => (
           <button key={b.label} onClick={() => drillDown(b.label, b.filter)}
@@ -343,24 +348,24 @@ export default function AdminDashboard() {
       {/* Trend + Pie */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2">
-          <SectionCard title="📈 แนวโน้มการสมัคร" action={<span className="text-xs text-slate-400">{trendData.length} วัน</span>}>
+          <SectionCard title="แนวโน้มการสมัคร" icon={Ico.trend} action={<span className="text-xs text-slate-400">{trendData.length} วัน</span>}>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={trendData}>
                   <defs><linearGradient id="grad1" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f15a24" stopOpacity={0.25} /><stop offset="95%" stopColor="#f15a24" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#F15A24" stopOpacity={0.25} /><stop offset="95%" stopColor="#F15A24" stopOpacity={0} />
                   </linearGradient></defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
                   <XAxis dataKey="date" fontSize={10} tick={{ fill: "#9ca3af" }} />
                   <YAxis allowDecimals={false} fontSize={10} tick={{ fill: "#9ca3af" }} />
                   <Tooltip contentStyle={TOOLTIP_STYLE} />
-                  <Area type="monotone" dataKey="count" name="ผู้สมัคร" stroke="#f15a24" strokeWidth={2} fill="url(#grad1)" />
+                  <Area type="monotone" dataKey="count" name="ผู้สมัคร" stroke="#F15A24" strokeWidth={2} fill="url(#grad1)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </SectionCard>
         </div>
-        <SectionCard title="🔥 ความนิยมตามหมวด">
+        <SectionCard title="ความนิยมตามหมวด" icon={Ico.fire}>
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -377,7 +382,7 @@ export default function AdminDashboard() {
 
       {/* Province + Rankings */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <SectionCard title="📍 5 จังหวัดมาแรง">
+        <SectionCard title="5 จังหวัดมาแรง" icon={Ico.pin}>
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={provinceData} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
@@ -392,7 +397,7 @@ export default function AdminDashboard() {
             </ResponsiveContainer>
           </div>
         </SectionCard>
-        <SectionCard title="🏫 อันดับโรงเรียน (Top 10)">
+        <SectionCard title="อันดับโรงเรียน (Top 10)" icon={Ico.school}>
           <div className="overflow-y-auto max-h-56 space-y-1">
             {schoolRanking.map((s, i) => {
               const pct = Math.round((s.value / (schoolRanking[0]?.value || 1)) * 100)
@@ -402,7 +407,7 @@ export default function AdminDashboard() {
                   <span className="text-xs font-bold text-slate-300 w-5 text-center shrink-0">{i + 1}</span>
                   <div className="flex-1 min-w-0">
                     <div className="text-xs font-medium text-slate-700 truncate mb-1">{s.name}</div>
-                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-[#f15a24] to-orange-300" style={{ width: `${pct}%` }} /></div>
+                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden"><div className="h-full rounded-full bg-gradient-to-r from-[#F15A24] to-orange-300" style={{ width: `${pct}%` }} /></div>
                   </div>
                   <span className="text-xs font-bold text-slate-500 shrink-0">{s.value} คน</span>
                 </div>
@@ -414,7 +419,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* กราฟความสนใจตามชั้นปี × หมวด */}
-      <SectionCard title="🧩 ความสนใจตามชั้นปี (แยกตามหมวดวิชา)">
+      <SectionCard title="ความสนใจตามชั้นปี (แยกตามหมวดวิชา)" icon={Ico.puzzle}>
         <div className="overflow-x-auto -mx-5 px-5">
           <div className="h-64 min-w-[320px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -434,10 +439,10 @@ export default function AdminDashboard() {
       </SectionCard>
 
       {/* Course ranking */}
-      <SectionCard title="🏆 อันดับวิชายอดฮิต" action={<span className="text-xs font-bold text-[#f15a24] bg-orange-50 px-2.5 py-1 rounded-full border border-orange-100">คลิกวิชาเพื่อดูรายละเอียด</span>}>
+      <SectionCard title="อันดับวิชายอดฮิต" icon={Ico.trophy} action={<span className="text-xs font-bold text-[#F15A24] bg-orange-50 px-2.5 py-1 rounded-full border border-orange-100">คลิกวิชาเพื่อดูรายละเอียด</span>}>
         <div className="overflow-y-auto max-h-80 -mx-5 px-5">
           <table className="w-full text-xs">
-            <thead className="sticky top-0 bg-white border-b border-slate-50">
+            <thead className="sticky top-0 bg-white border-b border-slate-100">
               <tr className="text-[10px] text-slate-400 uppercase">
                 <th className="py-2 text-center w-7">#</th><th className="py-2 text-left">วิชา</th>
                 <th className="py-2 text-left">หมวด</th>
@@ -450,9 +455,9 @@ export default function AdminDashboard() {
                   className="border-b last:border-0 hover:bg-orange-50/50 cursor-pointer transition">
                   <td className="py-3 text-center font-bold text-slate-300">{i + 1}</td>
                   <td className="py-3 font-medium text-slate-700 max-w-[140px]"><span className="line-clamp-2 leading-snug">{c.fullName}</span></td>
-                  <td className="py-3"><span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold border ${CAT_COLORS[c.category] || "bg-slate-50 text-slate-600 border-slate-200"}`}>{c.category}</span></td>
+                  <td className="py-3"><span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold border ${catBadgeCls(c.category)}`}>{c.category}</span></td>
                   <td className="py-3 text-right font-bold text-slate-600 pr-2 whitespace-nowrap">{c.Applicants} คน</td>
-                  <td className="py-3 text-right font-bold text-[#f15a24] whitespace-nowrap">฿{c.TotalRevenue.toLocaleString()}</td>
+                  <td className="py-3 text-right font-bold text-[#F15A24] whitespace-nowrap">฿{c.TotalRevenue.toLocaleString()}</td>
                 </tr>
               ))}
               {courseChartData.length === 0 && <tr><td colSpan="5" className="py-8 text-center text-slate-300">ยังไม่มีข้อมูล</td></tr>}
@@ -463,9 +468,9 @@ export default function AdminDashboard() {
 
       {/* Drill-down modal */}
       {drill && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={(e) => e.target === e.currentTarget && setDrill(null)}>
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={(e) => e.target === e.currentTarget && setDrill(null)}>
           <div className="bg-white w-full sm:rounded-2xl sm:max-w-5xl flex flex-col max-h-[95dvh] sm:max-h-[90vh] shadow-2xl rounded-t-2xl overflow-hidden">
-            <div className="bg-gradient-to-r from-[#f15a24] to-[#e04510] px-5 py-4 flex justify-between items-center shrink-0">
+            <div className="bg-gradient-to-r from-[#F15A24] to-amber-500 px-5 py-4 flex justify-between items-center shrink-0">
               <div>
                 <h3 className="text-base font-bold text-white">{drill.title}</h3>
                 <p className="text-orange-100 text-xs mt-0.5">พบ {drillList.length} จาก {drill.list.length} รายการ</p>
@@ -473,13 +478,16 @@ export default function AdminDashboard() {
               <button onClick={() => setDrill(null)} className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xl font-bold flex items-center justify-center">×</button>
             </div>
             <div className="px-4 py-3 bg-slate-50 border-b border-slate-100 shrink-0 grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <input type="text" placeholder="🔍 ค้นหาชื่อ, เบอร์…" value={drillSearch} onChange={(e) => setDrillSearch(e.target.value)}
-                className="px-3 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-[#f15a24] text-xs bg-white" />
-              <select value={drillCourse} onChange={(e) => setDrillCourse(e.target.value)} className="px-3 py-2 border border-slate-200 rounded-xl bg-white text-xs outline-none focus:ring-2 focus:ring-[#f15a24]">
-                <option value="All">📚 ทุกวิชา</option>
+              <div className="relative">
+                <Ico.search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <input type="text" placeholder="ค้นหาชื่อ, เบอร์…" value={drillSearch} onChange={(e) => setDrillSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-[#F15A24] text-xs bg-white" />
+              </div>
+              <select value={drillCourse} onChange={(e) => setDrillCourse(e.target.value)} className="px-3 py-2 border border-slate-200 rounded-xl bg-white text-xs outline-none focus:ring-2 focus:ring-[#F15A24]">
+                <option value="All">ทุกวิชา</option>
                 {[...new Set(drill.list.map((i) => i.course_name))].sort().map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
-              <select value={drillStatus} onChange={(e) => setDrillStatus(e.target.value)} className="px-3 py-2 border border-slate-200 rounded-xl bg-white text-xs outline-none focus:ring-2 focus:ring-[#f15a24]">
+              <select value={drillStatus} onChange={(e) => setDrillStatus(e.target.value)} className="px-3 py-2 border border-slate-200 rounded-xl bg-white text-xs outline-none focus:ring-2 focus:ring-[#F15A24]">
                 <option value="All">ทุกสถานะ</option>
                 {Object.entries(STATUS_CFG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
               </select>
@@ -494,7 +502,7 @@ export default function AdminDashboard() {
                     <tr key={i} onClick={() => openUser(r)} className="hover:bg-orange-50/50 transition cursor-pointer">
                       <td className="px-4 py-3 text-center text-slate-300 font-bold">{i + 1}</td>
                       <td className="px-4 py-3 font-medium text-slate-800">{r.full_name} {r.nickname && <span className="text-slate-400 font-normal">({r.nickname})</span>}</td>
-                      <td className="px-4 py-3"><span className="bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-md font-bold text-[10px]">{r.grade_level}</span></td>
+                      <td className="px-4 py-3"><span className="bg-sky-50 text-sky-700 border border-sky-100 px-2 py-0.5 rounded-md font-bold text-[10px]">{r.grade_level}</span></td>
                       <td className="px-4 py-3 text-slate-600 max-w-[140px]"><span className="line-clamp-1">{r.course_name}</span></td>
                       <td className="px-4 py-3 text-slate-500">{r.province}</td>
                       <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
@@ -521,7 +529,7 @@ export default function AdminDashboard() {
               <span className="text-xs text-slate-400">แสดง {drillList.length} / {drill.list.length}</span>
               <div className="flex gap-2">
                 <button onClick={() => exportXlsx(drillList, drill.title)} className="flex items-center gap-1.5 px-4 py-2 bg-orange-50 hover:bg-orange-100 border border-orange-200 text-[#F15A24] rounded-xl text-sm font-bold transition"><Ico.download className="w-4 h-4" /> Export</button>
-                <button onClick={() => setDrill(null)} className="px-5 py-2 bg-slate-800 hover:bg-black text-white rounded-xl text-sm font-bold transition">ปิด</button>
+                <button onClick={() => setDrill(null)} className="px-5 py-2 bg-[#F15A24] hover:bg-[#c44215] text-white rounded-xl text-sm font-bold transition">ปิด</button>
               </div>
             </div>
           </div>
@@ -530,15 +538,15 @@ export default function AdminDashboard() {
 
       {/* User detail modal */}
       {selectedUser && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={(e) => e.target === e.currentTarget && setSelectedUser(null)}>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm" onClick={(e) => e.target === e.currentTarget && setSelectedUser(null)}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
-            <div className="bg-gradient-to-r from-[#f15a24] to-orange-400 px-5 py-4 text-white flex justify-between items-start shrink-0">
+            <div className="bg-gradient-to-r from-[#F15A24] to-amber-500 px-5 py-4 text-white flex justify-between items-start shrink-0">
               <div>
                 <p className="text-xs opacity-75 mb-0.5">ข้อมูลผู้สมัคร</p>
                 <h3 className="font-bold text-lg leading-tight">{selectedUser.full_name}</h3>
                 {selectedUser.nickname && <p className="text-xs opacity-75">({selectedUser.nickname})</p>}
               </div>
-              <button onClick={() => setSelectedUser(null)} className="w-8 h-8 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center font-bold text-lg">✕</button>
+              <button onClick={() => setSelectedUser(null)} className="w-8 h-8 bg-white/20 hover:bg-white/30 rounded-xl flex items-center justify-center font-bold text-lg">×</button>
             </div>
             <div className="overflow-y-auto flex-1 p-5 space-y-4">
               <div className="grid grid-cols-2 gap-3">
@@ -552,7 +560,7 @@ export default function AdminDashboard() {
               <hr className="border-slate-100" />
               {/* ประวัติการสมัครทุกวิชา */}
               <div>
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">💳 ประวัติการสมัคร ({selectedUser.transactions?.length || 0})</p>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5"><Ico.card className="w-3.5 h-3.5 text-[#F15A24]" /> ประวัติการสมัคร ({selectedUser.transactions?.length || 0})</p>
                 {(selectedUser.transactions || []).map((tx, i) => (
                   <div key={i} className="bg-slate-50 rounded-xl p-3 mb-2 border border-slate-100 flex justify-between items-center">
                     <div className="min-w-0">
@@ -565,7 +573,7 @@ export default function AdminDashboard() {
               </div>
             </div>
             <div className="px-5 py-3 border-t border-slate-100 bg-slate-50 shrink-0 flex justify-end">
-              <button onClick={() => setSelectedUser(null)} className="px-5 py-2 bg-slate-800 hover:bg-black text-white rounded-xl text-sm font-bold transition">ปิด</button>
+              <button onClick={() => setSelectedUser(null)} className="px-5 py-2 bg-[#F15A24] hover:bg-[#c44215] text-white rounded-xl text-sm font-bold transition">ปิด</button>
             </div>
           </div>
         </div>
@@ -573,9 +581,9 @@ export default function AdminDashboard() {
 
       {/* Course Detail Modal */}
       {courseDetail && (
-        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm" onClick={(e) => e.target === e.currentTarget && setCourseDetail(null)}>
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/60 backdrop-blur-sm" onClick={(e) => e.target === e.currentTarget && setCourseDetail(null)}>
           <div className="bg-white w-full sm:rounded-2xl sm:max-w-2xl flex flex-col max-h-[92dvh] shadow-2xl rounded-t-2xl overflow-hidden">
-            <div className="bg-gradient-to-r from-[#f15a24] to-[#e04510] px-5 py-4 flex justify-between items-start shrink-0">
+            <div className="bg-gradient-to-r from-[#F15A24] to-amber-500 px-5 py-4 flex justify-between items-start shrink-0">
               <div>
                 <p className="text-orange-200 text-[10px] uppercase tracking-widest mb-0.5">สรุปวิชา</p>
                 <h3 className="text-base font-bold text-white leading-snug">{courseDetail.courseName}</h3>
@@ -584,40 +592,40 @@ export default function AdminDashboard() {
             </div>
             <div className="grid grid-cols-3 divide-x divide-slate-100 border-b border-slate-100 shrink-0">
               <div className="px-4 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">ผู้สมัคร</p><p className="text-lg font-extrabold text-emerald-600">{courseDetail.regs.length} <span className="text-xs font-normal">คน</span></p></div>
-              <div className="px-4 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">รายได้รวม</p><p className="text-lg font-extrabold text-[#f15a24]">฿{courseDetail.revenue.toLocaleString()}</p></div>
+              <div className="px-4 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">รายได้รวม</p><p className="text-lg font-extrabold text-[#F15A24]">฿{courseDetail.revenue.toLocaleString()}</p></div>
               <div className="px-4 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">โรงเรียน</p><p className="text-lg font-extrabold text-violet-600">{courseDetail.schools.length} <span className="text-xs font-normal">แห่ง</span></p></div>
             </div>
             <div className="overflow-y-auto flex-1 p-5 space-y-5">
               {/* ระดับชั้น */}
               <div>
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">🎓 สัดส่วนระดับชั้น</p>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5"><Ico.cap className="w-3.5 h-3.5 text-[#F15A24]" /> สัดส่วนระดับชั้น</p>
                 <div className="flex flex-wrap gap-2">
                   {courseDetail.grades.map((g, i) => (
-                    <span key={i} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-orange-100 bg-orange-50 text-xs font-bold text-[#f15a24]">
-                      {g.name} <span className="bg-[#f15a24] text-white rounded-full px-1.5 py-0.5 text-[10px]">{g.count}</span>
+                    <span key={i} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-orange-100 bg-orange-50 text-xs font-bold text-[#F15A24]">
+                      {g.name} <span className="bg-[#F15A24] text-white rounded-full px-1.5 py-0.5 text-[10px]">{g.count}</span>
                     </span>
                   ))}
                 </div>
               </div>
               {/* โรงเรียน */}
               <div>
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">🏫 โรงเรียนที่สมัคร ({courseDetail.schools.length})</p>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5"><Ico.school className="w-3.5 h-3.5 text-[#F15A24]" /> โรงเรียนที่สมัคร ({courseDetail.schools.length})</p>
                 <div className="space-y-2">
                   {courseDetail.schools.map((s, i) => {
                     const pct = Math.round((s.count / (courseDetail.schools[0]?.count || 1)) * 100)
                     return (
                       <div key={i} className="bg-slate-50 rounded-xl p-3 border border-transparent">
                         <div className="flex items-center gap-2 mb-1.5">
-                          <span className="text-[10px] font-black text-white bg-[#f15a24] w-5 h-5 rounded-full flex items-center justify-center shrink-0">{i + 1}</span>
+                          <span className="text-[10px] font-black text-white bg-[#F15A24] w-5 h-5 rounded-full flex items-center justify-center shrink-0">{i + 1}</span>
                           <span className="text-xs font-semibold text-slate-700 flex-1 min-w-0 truncate">{s.name}</span>
                           <span className="text-sm font-extrabold text-slate-700 shrink-0">{s.count} <span className="text-[10px] font-normal text-slate-400">คน</span></span>
                         </div>
                         <div className="ml-7">
-                          <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden mb-1.5"><div className="h-full rounded-full bg-gradient-to-r from-[#f15a24] to-orange-300" style={{ width: `${pct}%` }} /></div>
+                          <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden mb-1.5"><div className="h-full rounded-full bg-gradient-to-r from-[#F15A24] to-orange-300" style={{ width: `${pct}%` }} /></div>
                           {s.grades?.length > 0 && (
                             <div className="flex flex-wrap gap-1">
                               {s.grades.map((g, gi) => (
-                                <span key={gi} className="inline-flex items-center gap-1 bg-white border border-orange-100 text-[#f15a24] text-[10px] font-bold px-2 py-0.5 rounded-full">{g.name} <span className="text-orange-300">×{g.count}</span></span>
+                                <span key={gi} className="inline-flex items-center gap-1 bg-white border border-orange-100 text-[#F15A24] text-[10px] font-bold px-2 py-0.5 rounded-full">{g.name} <span className="text-orange-300">×{g.count}</span></span>
                               ))}
                             </div>
                           )}
@@ -631,7 +639,7 @@ export default function AdminDashboard() {
             </div>
             <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/80 flex justify-between items-center shrink-0">
               <button onClick={() => exportXlsx(courseDetail.regs, `วิชา_${courseDetail.courseName}`)} className="flex items-center gap-1.5 px-4 py-2 bg-orange-50 hover:bg-orange-100 border border-orange-200 text-[#F15A24] rounded-xl text-sm font-bold transition"><Ico.download className="w-4 h-4" /> Export Excel</button>
-              <button onClick={() => setCourseDetail(null)} className="px-5 py-2 bg-slate-800 hover:bg-black text-white rounded-xl text-sm font-bold transition">ปิด</button>
+              <button onClick={() => setCourseDetail(null)} className="px-5 py-2 bg-[#F15A24] hover:bg-[#c44215] text-white rounded-xl text-sm font-bold transition">ปิด</button>
             </div>
           </div>
         </div>
