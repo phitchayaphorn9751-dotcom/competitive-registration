@@ -152,56 +152,67 @@ export default function AdminStudents() {
       )}
 
       {/* รายการ — การ์ดแบบหน้ารายการสมัคร (เหมือนกันทั้ง desktop & mobile) */}
-      {items.length > 0 ? (
-        <div className="grid grid-cols-1 gap-3">
-          {items.map((u, idx) => (
-            <div key={u.id} onClick={() => openStudent(u)}
-              className="group bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md hover:border-orange-200 transition-all duration-300 cursor-pointer">
-              <div className="p-4 sm:p-5">
-                {/* แถวบน: ลำดับ + ชื่อ / ปุ่มดูข้อมูล */}
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <span className="w-7 h-7 rounded-lg bg-orange-50 text-[#F15A24] text-xs font-bold flex items-center justify-center shrink-0 border border-orange-100">{firstIdx + idx + 1}</span>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-slate-800 text-sm sm:text-[15px] leading-snug">{u.first_name} {u.last_name}{u.nickname && <span className="font-normal text-slate-400 ml-1 text-xs">({u.nickname})</span>}</h3>
-                      {u.grade_level && <span className="inline-block mt-1 text-[10px] font-bold text-[#F15A24] bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-md">{u.grade_level}</span>}
-                    </div>
-                  </div>
-                  <span className="inline-flex items-center gap-1 text-xs font-bold text-[#F15A24] opacity-60 group-hover:opacity-100 transition shrink-0">ดูข้อมูล <Ico.arrowRight className="w-3.5 h-3.5" /></span>
-                </div>
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        {/* Desktop table */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead><tr className="bg-gradient-to-r from-[#fff5f0] to-[#fff9f6] border-b border-orange-100">
+              <th className="px-4 py-3 text-xs font-bold text-[#F15A24] uppercase w-10">#</th>
+              <th className="px-4 py-3 text-xs font-bold text-[#F15A24] uppercase">ชื่อ – อีเมล – เบอร์</th>
+              <th className="px-4 py-3 text-xs font-bold text-[#F15A24] uppercase">โรงเรียน · ระดับชั้น</th>
+              <th className="px-4 py-3 text-xs font-bold text-[#F15A24] uppercase text-right">Action</th>
+            </tr></thead>
+            <tbody className="divide-y divide-slate-50">
+              {items.length > 0 ? items.map((u, idx) => (
+                <tr key={u.id} onClick={() => openStudent(u)} className="cursor-pointer hover:bg-orange-50/60 transition group">
+                  <td className="px-4 py-3.5 text-xs text-slate-400 font-mono">{firstIdx + idx + 1}</td>
+                  <td className="px-4 py-3.5">
+                    <div className="font-bold text-slate-800 text-sm">{u.first_name} {u.last_name}{u.nickname && <span className="font-normal text-slate-400 ml-1 text-xs">({u.nickname})</span>}</div>
+                    <div className="text-xs text-sky-500 font-mono mt-0.5 inline-flex items-center gap-1"><Ico.mail className="w-3 h-3 shrink-0" /> {u.email || "-"}</div>
+                    {u.phone && <div className="text-xs text-slate-400 inline-flex items-center gap-1 ml-2"><Ico.phone className="w-3 h-3" /> {u.phone}</div>}
+                  </td>
+                  <td className="px-4 py-3.5 max-w-[200px]">
+                    <div className="text-xs text-slate-600 line-clamp-2 inline-flex items-start gap-1"><Ico.school className="w-3 h-3 shrink-0 mt-0.5" /> {u.school || "-"}</div>
+                    {u.grade_level && <div className="mt-1"><span className="text-[10px] font-bold text-[#F15A24] bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-md">{u.grade_level}</span></div>}
+                  </td>
+                  <td className="px-4 py-3.5 text-right">
+                    <span className="text-[#F15A24] text-xs font-bold opacity-0 group-hover:opacity-100 transition inline-flex items-center gap-1">ดูข้อมูล <Ico.arrowRight className="w-3.5 h-3.5" /></span>
+                  </td>
+                </tr>
+              )) : <tr><td colSpan="4" className="py-16 text-center text-sm text-slate-400">ไม่พบข้อมูล</td></tr>}
+            </tbody>
+          </table>
+        </div>
 
-                {/* รายละเอียดรอง: อีเมล · เบอร์ · โรงเรียน */}
-                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400 mt-3 pt-2.5 border-t border-slate-50">
-                  {u.email && <span className="inline-flex items-center gap-1 truncate max-w-[220px]"><Ico.mail className="w-3 h-3 shrink-0" /> {u.email}</span>}
-                  {u.phone && <span className="inline-flex items-center gap-1"><Ico.phone className="w-3 h-3" /> {u.phone}</span>}
-                  {u.school && <span className="inline-flex items-center gap-1 truncate max-w-[200px]"><Ico.school className="w-3 h-3 shrink-0" /> {u.school}</span>}
-                </div>
+        {/* Mobile cards */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {items.length > 0 ? items.map((u) => (
+            <div key={u.id} onClick={() => openStudent(u)} className="p-4 cursor-pointer hover:bg-orange-50/60 active:bg-orange-100 transition">
+              <div className="font-bold text-slate-800 text-sm">{u.first_name} {u.last_name}{u.nickname && <span className="font-normal text-slate-400 ml-1 text-xs">({u.nickname})</span>}</div>
+              <div className="text-xs text-sky-500 font-mono truncate inline-flex items-center gap-1"><Ico.mail className="w-3 h-3 shrink-0" /> {u.email || "-"}</div>
+              {/* รายละเอียดรอง: เบอร์ · โรงเรียน · ระดับชั้น */}
+              <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-400 mt-1">
+                {u.phone && <span className="inline-flex items-center gap-1"><Ico.phone className="w-3 h-3" /> {u.phone}</span>}
+                {u.school && <span className="truncate max-w-[180px] inline-flex items-center gap-1"><Ico.school className="w-3 h-3 shrink-0" /> {u.school}</span>}
+                {u.grade_level && <span>{u.grade_level}</span>}
               </div>
             </div>
-          ))}
+          )) : <div className="py-12 text-center text-sm text-slate-400">ไม่พบข้อมูล</div>}
         </div>
-      ) : (
-        <div className="text-center py-16 bg-white rounded-2xl shadow-sm border border-slate-100">
-          <div className="w-14 h-14 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mx-auto mb-3">
-            <Ico.folder className="w-6 h-6" />
-          </div>
-          <p className="font-semibold text-slate-700">ไม่พบข้อมูล</p>
-          <p className="text-xs text-slate-400 mt-1">ลองเปลี่ยนตัวกรองหรือคำค้นหา</p>
-        </div>
-      )}
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="mt-4 px-4 py-3 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center gap-1.5 flex-wrap">
-          <button onClick={() => setPage(page - 1)} disabled={page === 1} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-600 disabled:opacity-40 hover:bg-slate-50 transition"><Ico.arrowLeft className="w-3.5 h-3.5" /> ก่อนหน้า</button>
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
-            const near = Math.abs(p - page) <= 2 || p === 1 || p === totalPages
-            if (!near) { if (p === page - 3 || p === page + 3) return <span key={p} className="text-slate-300 text-xs px-1">…</span>; return null }
-            return <button key={p} onClick={() => setPage(p)} className={`w-8 h-8 rounded-lg border text-xs font-bold transition ${page === p ? "bg-[#F15A24] text-white border-[#F15A24] shadow-sm" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}>{p}</button>
-          })}
-          <button onClick={() => setPage(page + 1)} disabled={page === totalPages} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-600 disabled:opacity-40 hover:bg-slate-50 transition">ถัดไป <Ico.arrowRight className="w-3.5 h-3.5" /></button>
-        </div>
-      )}
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/50 flex items-center justify-center gap-1.5 flex-wrap">
+            <button onClick={() => setPage(page - 1)} disabled={page === 1} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-600 disabled:opacity-40 hover:bg-slate-50 transition"><Ico.arrowLeft className="w-3.5 h-3.5" /> ก่อนหน้า</button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
+              const near = Math.abs(p - page) <= 2 || p === 1 || p === totalPages
+              if (!near) { if (p === page - 3 || p === page + 3) return <span key={p} className="text-slate-300 text-xs px-1">…</span>; return null }
+              return <button key={p} onClick={() => setPage(p)} className={`w-8 h-8 rounded-lg border text-xs font-bold transition ${page === p ? "bg-[#F15A24] text-white border-[#F15A24] shadow-sm" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"}`}>{p}</button>
+            })}
+            <button onClick={() => setPage(page + 1)} disabled={page === totalPages} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-600 disabled:opacity-40 hover:bg-slate-50 transition">ถัดไป <Ico.arrowRight className="w-3.5 h-3.5" /></button>
+          </div>
+        )}
+      </div>
 
       {/* Detail modal */}
       {selected && (
