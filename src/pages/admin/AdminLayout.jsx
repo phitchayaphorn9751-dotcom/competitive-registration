@@ -16,6 +16,7 @@ const BIco = {
   calendar:(p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M8 2v4M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>),
   chevron: (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="m6 9 6 6 6-6"/></svg>),
   shield:  (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="M12 8v4M12 16h.01"/></svg>),
+  upload:  (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>),
 }
 
 // เมนูใน bottom bar (มือถือ) — เช็คอินตรงกลางเป็นปุ่มเด่น
@@ -35,6 +36,7 @@ const NAV = [
   { to: "/admin/checkin", label: "จุดสแกน (Check-In)", icon: "scan" },
   { to: "/admin/attendance", label: "สรุปการมาเรียน", icon: "clipboard" },
   { to: "/admin/students", label: "จัดการนักเรียน", icon: "cap" },
+  { to: "/admin/import", label: "นำเข้าผู้สมัคร", icon: "upload" },
   { to: "/admin/settings", label: "ตั้งค่าเว็บ", icon: "gear" },
 ]
 
