@@ -5,22 +5,15 @@ import {
   attendanceUpdate, attendanceSummary,
 } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
-
-// ───── ไอคอน SVG inline (สไตล์ lucide) — โทนเดียวกับหน้าอื่น ─────
-const Ico = {
-  clipboard: (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M9 14l2 2 4-4"/></svg>),
-  download:(p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>),
-  book:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>),
-  search:  (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>),
-}
+import { Ico } from "../../lib/icons.jsx"
 
 const EVALS = [
-  { v: "ดีมาก", label: "🌟 ดีมาก", cls: "bg-purple-100 text-purple-700" },
-  { v: "ดี", label: "✅ ดี", cls: "bg-green-100 text-green-700" },
-  { v: "พอใช้", label: "🆗 พอใช้", cls: "bg-yellow-100 text-yellow-700" },
-  { v: "ปรับปรุง", label: "⚠️ ปรับปรุง", cls: "bg-red-100 text-red-700" },
+  { v: "ดีมาก", label: "ดีมาก", icon: "star", cls: "bg-violet-100 text-violet-700" },
+  { v: "ดี", label: "ดี", icon: "check", cls: "bg-emerald-100 text-emerald-700" },
+  { v: "พอใช้", label: "พอใช้", icon: "check", cls: "bg-amber-100 text-amber-700" },
+  { v: "ปรับปรุง", label: "ปรับปรุง", icon: "alert", cls: "bg-rose-100 text-rose-700" },
 ]
-function evalInfo(v) { return EVALS.find((e) => e.v === v) || { v, label: v, cls: "bg-slate-100 text-slate-600" } }
+function evalInfo(v) { return EVALS.find((e) => e.v === v) || { v, label: v, icon: null, cls: "bg-slate-100 text-slate-600" } }
 
 export default function AdminAttendance() {
   const { event } = useOutletContext()
@@ -170,7 +163,7 @@ export default function AdminAttendance() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-5">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 bg-gradient-to-br from-[#F15A24] to-amber-500 rounded-xl flex items-center justify-center shadow-sm shrink-0">
-            <Ico.clipboard className="w-5 h-5 text-white" />
+            <Ico.clip className="w-5 h-5 text-white" />
           </div>
           <div>
             <h1 className="text-xl sm:text-2xl font-extrabold bg-gradient-to-r from-[#F15A24] to-amber-500 bg-clip-text text-transparent leading-tight">เช็คชื่อ & ประเมินผล</h1>
@@ -184,7 +177,7 @@ export default function AdminAttendance() {
 
       {/* Control panel */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 mb-5">
-        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">📚 วิชา</label>
+        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5"><Ico.book className="w-3.5 h-3.5 text-[#F15A24]" /> วิชา</label>
         <select value={courseId} onChange={(e) => setCourseId(e.target.value)}
           className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 bg-slate-50 focus:bg-white focus:border-[#F15A24] outline-none transition mb-3">
           <option value="">— เลือกวิชา —</option>
@@ -195,12 +188,15 @@ export default function AdminAttendance() {
           <div className="flex flex-col sm:flex-row gap-3">
             {/* View toggle */}
             <div className="flex p-1 bg-slate-100 rounded-xl">
-              {[{ k: "daily", icon: "📅", l: "เช็ครายวัน" }, { k: "overall", icon: "📊", l: "สรุปยอดรวม" }].map(({ k, icon, l }) => (
-                <button key={k} onClick={() => setViewMode(k)}
-                  className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition ${viewMode === k ? (k === "daily" ? "bg-white text-[#F15A24] shadow" : "bg-white text-blue-600 shadow") : "text-slate-500 hover:text-slate-700"}`}>
-                  <span>{icon}</span><span>{l}</span>
-                </button>
-              ))}
+              {[{ k: "daily", icon: "calendar", l: "เช็ครายวัน" }, { k: "overall", icon: "chart", l: "สรุปยอดรวม" }].map(({ k, icon, l }) => {
+                const I = Ico[icon]
+                return (
+                  <button key={k} onClick={() => setViewMode(k)}
+                    className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition ${viewMode === k ? "bg-white text-[#F15A24] shadow" : "text-slate-500 hover:text-slate-700"}`}>
+                    <I className="w-4 h-4" /><span>{l}</span>
+                  </button>
+                )
+              })}
             </div>
             {/* Date picker (daily) */}
             {viewMode === "daily" && (
@@ -229,7 +225,7 @@ export default function AdminAttendance() {
 
       {!courseId && !loading && (
         <div className="py-20 text-center text-slate-400">
-          <div className="text-5xl mb-3">📚</div><div className="font-semibold text-lg">เลือกวิชาเพื่อเริ่มต้น</div>
+          <Ico.book className="w-12 h-12 mx-auto mb-3 text-slate-300" /><div className="font-semibold text-lg">เลือกวิชาเพื่อเริ่มต้น</div>
         </div>
       )}
 
@@ -238,13 +234,21 @@ export default function AdminAttendance() {
         <>
           {/* stats */}
           <div className="grid grid-cols-3 gap-3 mb-4">
-            {[{ l: "ทั้งหมด", v: dailyStats.total, c: "blue", i: "👥" }, { l: "มาเรียน", v: dailyStats.present, c: "green", i: "✅" }, { l: "ขาด", v: dailyStats.absent, c: "red", i: "❌" }].map((s) => (
-              <div key={s.l} className={`rounded-2xl p-3 sm:p-4 text-center border ${s.c === "blue" ? "bg-blue-50 border-blue-100" : s.c === "green" ? "bg-green-50 border-green-100" : "bg-red-50 border-red-100"}`}>
-                <div className="text-lg sm:text-2xl">{s.i}</div>
-                <div className={`text-2xl sm:text-3xl font-bold ${s.c === "blue" ? "text-blue-700" : s.c === "green" ? "text-green-700" : "text-red-700"}`}>{s.v}</div>
-                <div className={`text-xs font-semibold mt-0.5 ${s.c === "blue" ? "text-blue-500" : s.c === "green" ? "text-green-500" : "text-red-500"}`}>{s.l}</div>
-              </div>
-            ))}
+            {[{ l: "ทั้งหมด", v: dailyStats.total, c: "sky", i: "users" }, { l: "มาเรียน", v: dailyStats.present, c: "emerald", i: "check" }, { l: "ขาด", v: dailyStats.absent, c: "rose", i: "x" }].map((s) => {
+              const I = Ico[s.i]
+              const cmap = {
+                sky: { bg: "bg-sky-50 border-sky-100", num: "text-sky-700", lbl: "text-sky-500", ic: "text-sky-500" },
+                emerald: { bg: "bg-emerald-50 border-emerald-100", num: "text-emerald-700", lbl: "text-emerald-500", ic: "text-emerald-500" },
+                rose: { bg: "bg-rose-50 border-rose-100", num: "text-rose-700", lbl: "text-rose-500", ic: "text-rose-500" },
+              }[s.c]
+              return (
+                <div key={s.l} className={`rounded-2xl p-3 sm:p-4 text-center border ${cmap.bg}`}>
+                  <I className={`w-5 h-5 sm:w-6 sm:h-6 mx-auto ${cmap.ic}`} />
+                  <div className={`text-2xl sm:text-3xl font-bold mt-1 ${cmap.num}`}>{s.v}</div>
+                  <div className={`text-xs font-semibold mt-0.5 ${cmap.lbl}`}>{s.l}</div>
+                </div>
+              )
+            })}
           </div>
           {dailyStats.total > 0 && (
             <div className="mb-4 bg-white rounded-xl border border-slate-200 p-3 sm:p-4">
@@ -254,11 +258,14 @@ export default function AdminAttendance() {
           )}
           {/* search + filter */}
           <div className="flex flex-col sm:flex-row gap-2 mb-3">
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="🔍 ค้นหาชื่อ…" className="flex-1 px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:border-[#F15A24] outline-none" />
+            <div className="flex-1 relative">
+              <Ico.search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ค้นหาชื่อ…" className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:border-[#F15A24] outline-none" />
+            </div>
             <div className="flex gap-1.5">
               {["All", "Present", "Absent"].map((f) => (
                 <button key={f} onClick={() => setFilterType(f)}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold border transition ${filterType === f ? (f === "Present" ? "bg-green-500 text-white border-green-500" : f === "Absent" ? "bg-red-500 text-white border-red-500" : "bg-slate-800 text-white border-slate-800") : "bg-white text-slate-500 border-slate-200 hover:border-slate-400"}`}>
+                  className={`px-3 py-2 rounded-xl text-xs font-bold border transition ${filterType === f ? (f === "Present" ? "bg-emerald-500 text-white border-emerald-500" : f === "Absent" ? "bg-rose-500 text-white border-rose-500" : "bg-[#F15A24] text-white border-[#F15A24]") : "bg-white text-slate-500 border-slate-200 hover:border-slate-400"}`}>
                   {f === "All" ? `ทั้งหมด (${roster.length})` : f === "Present" ? `มา (${dailyStats.present})` : `ขาด (${dailyStats.absent})`}
                 </button>
               ))}
@@ -276,13 +283,13 @@ export default function AdminAttendance() {
               <tbody className="divide-y divide-slate-100">
                 {dailyFiltered.length === 0 ? <tr><td colSpan={6} className="py-12 text-center text-slate-400 text-sm">ไม่พบข้อมูล</td></tr>
                   : dailyFiltered.map((r, idx) => (
-                    <tr key={r.participant_id} className={`transition ${busyId === r.participant_id ? "opacity-50" : r.present ? "bg-green-50/40 hover:bg-green-50/60" : "hover:bg-slate-50"}`}>
+                    <tr key={r.participant_id} className={`transition ${busyId === r.participant_id ? "opacity-50" : r.present ? "bg-emerald-50/40 hover:bg-emerald-50/60" : "hover:bg-slate-50"}`}>
                       <td className="px-4 py-3 text-center text-slate-400 text-xs">{idx + 1}</td>
                       <td className="px-4 py-3"><div className="font-bold text-slate-800 text-sm">{r.full_name}</div><div className="text-xs text-slate-400">{r.school || ""}{r.phone ? " · " + r.phone : ""}</div></td>
-                      <td className="px-4 py-3 text-center">{r.present ? <span className="text-xs font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-md">{r.scanned_at ? new Date(r.scanned_at).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }) : "✓"}</span> : <span className="text-slate-300 text-xs">—</span>}</td>
+                      <td className="px-4 py-3 text-center">{r.present ? <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">{r.scanned_at ? new Date(r.scanned_at).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }) : "✓"}</span> : <span className="text-slate-300 text-xs">—</span>}</td>
                       <td className="px-4 py-3"><div className="flex justify-center gap-1.5">
-                        <button onClick={() => mark(r, true)} disabled={busyId === r.participant_id} className={`px-3 py-1.5 rounded-lg font-bold text-xs border-2 transition ${r.present ? "bg-green-500 text-white border-green-500" : "bg-white text-slate-400 border-slate-200 hover:border-green-400 hover:text-green-600"}`}>มา</button>
-                        <button onClick={() => mark(r, false)} disabled={busyId === r.participant_id} className={`px-3 py-1.5 rounded-lg font-bold text-xs border-2 transition ${!r.present ? "bg-red-500 text-white border-red-500" : "bg-white text-slate-400 border-slate-200 hover:border-red-400 hover:text-red-600"}`}>ขาด</button>
+                        <button onClick={() => mark(r, true)} disabled={busyId === r.participant_id} className={`px-3 py-1.5 rounded-lg font-bold text-xs border-2 transition ${r.present ? "bg-emerald-500 text-white border-emerald-500" : "bg-white text-slate-400 border-slate-200 hover:border-emerald-400 hover:text-emerald-600"}`}>มา</button>
+                        <button onClick={() => mark(r, false)} disabled={busyId === r.participant_id} className={`px-3 py-1.5 rounded-lg font-bold text-xs border-2 transition ${!r.present ? "bg-rose-500 text-white border-rose-500" : "bg-white text-slate-400 border-slate-200 hover:border-rose-400 hover:text-rose-600"}`}>ขาด</button>
                       </div></td>
                       <td className="px-4 py-3">{r.present ? (
                         <select value={r.evaluation} onChange={(e) => updateField(r, "evaluation", e.target.value)} className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold outline-none focus:border-[#F15A24] bg-white">
@@ -301,16 +308,16 @@ export default function AdminAttendance() {
           <div className="md:hidden space-y-2">
             {dailyFiltered.length === 0 ? <div className="py-10 text-center text-slate-400 text-sm">ไม่พบข้อมูล</div>
               : dailyFiltered.map((r) => (
-                <div key={r.participant_id} className={`bg-white rounded-xl border-2 p-3 shadow-sm ${r.present ? "border-green-200" : "border-slate-200"}`}>
+                <div key={r.participant_id} className={`bg-white rounded-xl border-2 p-3 shadow-sm ${r.present ? "border-emerald-200" : "border-slate-200"}`}>
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="flex-1 min-w-0">
-                      {r.present && r.scanned_at && <span className="text-[10px] font-bold text-green-700 bg-green-100 px-1.5 py-0.5 rounded">{new Date(r.scanned_at).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}</span>}
+                      {r.present && r.scanned_at && <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">{new Date(r.scanned_at).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}</span>}
                       <div className="font-bold text-slate-800 text-sm mt-1 truncate">{r.full_name}</div>
                       <div className="text-xs text-slate-400">{r.school || ""}{r.phone ? " · " + r.phone : ""}</div>
                     </div>
                     <div className="flex gap-1.5 shrink-0">
-                      <button onClick={() => mark(r, true)} disabled={busyId === r.participant_id} className={`w-10 h-9 rounded-lg font-bold text-xs border-2 ${r.present ? "bg-green-500 text-white border-green-500" : "bg-white text-slate-300 border-slate-200"}`}>มา</button>
-                      <button onClick={() => mark(r, false)} disabled={busyId === r.participant_id} className={`w-10 h-9 rounded-lg font-bold text-xs border-2 ${!r.present ? "bg-red-500 text-white border-red-500" : "bg-white text-slate-300 border-slate-200"}`}>ขาด</button>
+                      <button onClick={() => mark(r, true)} disabled={busyId === r.participant_id} className={`w-10 h-9 rounded-lg font-bold text-xs border-2 ${r.present ? "bg-emerald-500 text-white border-emerald-500" : "bg-white text-slate-300 border-slate-200"}`}>มา</button>
+                      <button onClick={() => mark(r, false)} disabled={busyId === r.participant_id} className={`w-10 h-9 rounded-lg font-bold text-xs border-2 ${!r.present ? "bg-rose-500 text-white border-rose-500" : "bg-white text-slate-300 border-slate-200"}`}>ขาด</button>
                     </div>
                   </div>
                   {r.present && (
@@ -331,22 +338,34 @@ export default function AdminAttendance() {
       {courseId && !loading && viewMode === "overall" && (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-            {[{ l: "ทั้งหมด", v: overallList.length, c: "blue", i: "👥" }, { l: "ผ่านเกณฑ์ (≥80%)", v: overallList.filter((d) => d.percent >= 80).length, c: "green", i: "🏆" }, { l: "ต่ำกว่าเกณฑ์", v: overallList.filter((d) => d.percent < 80).length, c: "red", i: "⚠️" }, { l: "จำนวนวันเรียน", v: totalSessions, c: "orange", i: "📅" }].map((s) => (
-              <div key={s.l} className={`rounded-2xl p-3 text-center border ${s.c === "blue" ? "bg-blue-50 border-blue-100" : s.c === "green" ? "bg-green-50 border-green-100" : s.c === "red" ? "bg-red-50 border-red-100" : "bg-orange-50 border-orange-100"}`}>
-                <div className="text-lg">{s.i}</div>
-                <div className={`text-2xl font-bold ${s.c === "blue" ? "text-blue-700" : s.c === "green" ? "text-green-700" : s.c === "red" ? "text-red-700" : "text-orange-700"}`}>{s.v}</div>
-                <div className={`text-xs font-semibold mt-0.5 leading-tight ${s.c === "blue" ? "text-blue-500" : s.c === "green" ? "text-green-500" : s.c === "red" ? "text-red-500" : "text-orange-500"}`}>{s.l}</div>
-              </div>
-            ))}
+            {[{ l: "ทั้งหมด", v: overallList.length, c: "sky", i: "users" }, { l: "ผ่านเกณฑ์ (≥80%)", v: overallList.filter((d) => d.percent >= 80).length, c: "emerald", i: "trophy" }, { l: "ต่ำกว่าเกณฑ์", v: overallList.filter((d) => d.percent < 80).length, c: "rose", i: "alert" }, { l: "จำนวนวันเรียน", v: totalSessions, c: "orange", i: "calendar" }].map((s) => {
+              const I = Ico[s.i]
+              const cmap = {
+                sky: { bg: "bg-sky-50 border-sky-100", num: "text-sky-700", lbl: "text-sky-500", ic: "text-sky-500" },
+                emerald: { bg: "bg-emerald-50 border-emerald-100", num: "text-emerald-700", lbl: "text-emerald-500", ic: "text-emerald-500" },
+                rose: { bg: "bg-rose-50 border-rose-100", num: "text-rose-700", lbl: "text-rose-500", ic: "text-rose-500" },
+                orange: { bg: "bg-orange-50 border-orange-100", num: "text-orange-700", lbl: "text-orange-500", ic: "text-[#F15A24]" },
+              }[s.c]
+              return (
+                <div key={s.l} className={`rounded-2xl p-3 text-center border ${cmap.bg}`}>
+                  <I className={`w-5 h-5 mx-auto ${cmap.ic}`} />
+                  <div className={`text-2xl font-bold mt-1 ${cmap.num}`}>{s.v}</div>
+                  <div className={`text-xs font-semibold mt-0.5 leading-tight ${cmap.lbl}`}>{s.l}</div>
+                </div>
+              )
+            })}
           </div>
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="🔍 ค้นหาชื่อ…" className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:border-[#F15A24] outline-none mb-3" />
+          <div className="relative mb-3">
+            <Ico.search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="ค้นหาชื่อ…" className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm bg-white focus:border-[#F15A24] outline-none" />
+          </div>
 
           {/* Desktop */}
           <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="px-4 py-3 bg-blue-50 border-b border-blue-100 flex items-center justify-between"><h3 className="font-bold text-blue-800 text-sm">📊 สรุปการเข้าเรียนและการประเมิน</h3><span className="text-xs text-blue-600">{overallFiltered.length} คน</span></div>
+            <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between"><h3 className="font-bold text-slate-700 text-sm flex items-center gap-1.5"><Ico.chart className="w-4 h-4 text-[#F15A24]" /> สรุปการเข้าเรียนและการประเมิน</h3><span className="text-xs text-slate-500">{overallFiltered.length} คน</span></div>
             <table className="w-full text-left min-w-[720px]">
               <thead><tr className="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase">
-                <th className="px-4 py-3">ชื่อ–สกุล</th><th className="px-4 py-3 text-center w-16 text-green-600">มา</th><th className="px-4 py-3 text-center w-16 text-red-500">ขาด</th>
+                <th className="px-4 py-3">ชื่อ–สกุล</th><th className="px-4 py-3 text-center w-16">มา</th><th className="px-4 py-3 text-center w-16">ขาด</th>
                 <th className="px-4 py-3 text-center w-24">%</th><th className="px-4 py-3 w-44">ประเมินสะสม</th><th className="px-4 py-3 text-center w-28">สถานะ</th><th className="px-4 py-3 text-center w-20">ประวัติ</th>
               </tr></thead>
               <tbody className="divide-y divide-slate-100">
@@ -354,12 +373,12 @@ export default function AdminAttendance() {
                   : overallFiltered.map((s) => (
                     <tr key={s.participant_id} className="hover:bg-slate-50 transition">
                       <td className="px-4 py-3"><div className="font-bold text-slate-800 text-sm">{s.full_name}</div><div className="text-xs text-slate-400">{s.school || ""}{s.phone ? " · " + s.phone : ""}</div></td>
-                      <td className="px-4 py-3 text-center"><span className="font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-md text-sm">{s.presentCount}</span></td>
-                      <td className="px-4 py-3 text-center"><span className="font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-md text-sm">{s.absentCount}</span></td>
-                      <td className="px-4 py-3 text-center"><div className="flex flex-col items-center gap-1"><span className={`font-bold text-sm ${s.percent >= 80 ? "text-green-700" : "text-red-600"}`}>{s.percent}%</span><div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div className={`h-full rounded-full ${s.percent >= 80 ? "bg-green-400" : "bg-red-400"}`} style={{ width: `${s.percent}%` }} /></div></div></td>
+                      <td className="px-4 py-3 text-center"><span className="font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md text-sm">{s.presentCount}</span></td>
+                      <td className="px-4 py-3 text-center"><span className="font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md text-sm">{s.absentCount}</span></td>
+                      <td className="px-4 py-3 text-center"><div className="flex flex-col items-center gap-1"><span className={`font-bold text-sm ${s.percent >= 80 ? "text-emerald-700" : "text-rose-600"}`}>{s.percent}%</span><div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div className={`h-full rounded-full ${s.percent >= 80 ? "bg-emerald-400" : "bg-rose-400"}`} style={{ width: `${s.percent}%` }} /></div></div></td>
                       <td className="px-4 py-3"><div className="flex flex-wrap gap-1">{Object.entries(s.evalCounts).filter(([, c]) => c > 0).map(([k, c]) => { const e = evalInfo(k); return <span key={k} className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${e.cls}`}>{e.label} ×{c}</span> })}{Object.values(s.evalCounts).every((v) => v === 0) && <span className="text-xs text-slate-300">—</span>}</div></td>
-                      <td className="px-4 py-3 text-center"><span className={`px-2 py-1 rounded-lg text-xs font-bold ${s.percent >= 80 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>{s.percent >= 80 ? "✅ ผ่าน" : "⚠️ ต่ำ"}</span></td>
-                      <td className="px-4 py-3 text-center"><button onClick={() => setHistoryOf(s)} className="text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg hover:bg-blue-200 font-bold transition">ดูประวัติ</button></td>
+                      <td className="px-4 py-3 text-center"><span className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold ${s.percent >= 80 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>{s.percent >= 80 ? <><Ico.check className="w-3 h-3" /> ผ่าน</> : <><Ico.alert className="w-3 h-3" /> ต่ำ</>}</span></td>
+                      <td className="px-4 py-3 text-center"><button onClick={() => setHistoryOf(s)} className="text-xs bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-200 font-bold transition">ดูประวัติ</button></td>
                     </tr>
                   ))}
               </tbody>
@@ -370,21 +389,21 @@ export default function AdminAttendance() {
           <div className="md:hidden space-y-2">
             {overallFiltered.length === 0 ? <div className="py-10 text-center text-slate-400 text-sm">ไม่พบข้อมูล</div>
               : overallFiltered.map((s) => (
-                <div key={s.participant_id} className={`bg-white rounded-xl border-2 p-3 shadow-sm ${s.percent >= 80 ? "border-green-200" : "border-red-200"}`}>
+                <div key={s.participant_id} className={`bg-white rounded-xl border-2 p-3 shadow-sm ${s.percent >= 80 ? "border-emerald-200" : "border-rose-200"}`}>
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="flex-1 min-w-0">
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${s.percent >= 80 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>{s.percent >= 80 ? "✅ ผ่าน" : "⚠️ ต่ำกว่าเกณฑ์"}</span>
+                      <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-lg ${s.percent >= 80 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>{s.percent >= 80 ? <><Ico.check className="w-3 h-3" /> ผ่าน</> : <><Ico.alert className="w-3 h-3" /> ต่ำกว่าเกณฑ์</>}</span>
                       <div className="font-bold text-slate-800 text-sm mt-1 truncate">{s.full_name}</div>
                       <div className="text-xs text-slate-400">{s.school || ""}{s.phone ? " · " + s.phone : ""}</div>
                     </div>
-                    <button onClick={() => setHistoryOf(s)} className="text-xs bg-blue-100 text-blue-700 px-2.5 py-1.5 rounded-lg font-bold shrink-0">ประวัติ</button>
+                    <button onClick={() => setHistoryOf(s)} className="text-xs bg-slate-100 text-slate-700 px-2.5 py-1.5 rounded-lg font-bold shrink-0">ประวัติ</button>
                   </div>
                   <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
                     <div className="flex gap-3 text-center">
-                      <div><div className="font-bold text-green-700 text-base">{s.presentCount}</div><div className="text-[10px] text-green-600">มา</div></div>
-                      <div><div className="font-bold text-red-600 text-base">{s.absentCount}</div><div className="text-[10px] text-red-500">ขาด</div></div>
+                      <div><div className="font-bold text-emerald-700 text-base">{s.presentCount}</div><div className="text-[10px] text-emerald-600">มา</div></div>
+                      <div><div className="font-bold text-rose-600 text-base">{s.absentCount}</div><div className="text-[10px] text-rose-500">ขาด</div></div>
                     </div>
-                    <div className="flex-1"><div className="flex justify-between text-[10px] text-slate-500 mb-1"><span>เข้าเรียน</span><span className="font-bold">{s.percent}%</span></div><div className="h-2 bg-slate-100 rounded-full overflow-hidden"><div className={`h-full rounded-full ${s.percent >= 80 ? "bg-green-400" : "bg-red-400"}`} style={{ width: `${s.percent}%` }} /></div></div>
+                    <div className="flex-1"><div className="flex justify-between text-[10px] text-slate-500 mb-1"><span>เข้าเรียน</span><span className="font-bold">{s.percent}%</span></div><div className="h-2 bg-slate-100 rounded-full overflow-hidden"><div className={`h-full rounded-full ${s.percent >= 80 ? "bg-emerald-400" : "bg-rose-400"}`} style={{ width: `${s.percent}%` }} /></div></div>
                   </div>
                 </div>
               ))}
@@ -394,21 +413,21 @@ export default function AdminAttendance() {
 
       {/* History modal */}
       {historyOf && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={(e) => e.target === e.currentTarget && setHistoryOf(null)}>
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={(e) => e.target === e.currentTarget && setHistoryOf(null)}>
           <div className="bg-white w-full sm:max-w-2xl rounded-t-2xl sm:rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[85vh]">
-            <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-4 sm:p-5 text-white flex items-center gap-3 shrink-0">
+            <div className="bg-gradient-to-r from-[#F15A24] to-amber-500 p-4 sm:p-5 text-white flex items-center gap-3 shrink-0">
               <div className="flex-1 min-w-0">
-                <div className="text-[10px] font-semibold opacity-70 uppercase tracking-widest mb-0.5">ประวัติการเข้าเรียน</div>
+                <div className="text-[10px] font-semibold opacity-80 uppercase tracking-widest mb-0.5">ประวัติการเข้าเรียน</div>
                 <h3 className="text-base sm:text-lg font-bold truncate">{historyOf.full_name}</h3>
-                <div className="text-xs opacity-80 mt-1">{historyOf.school || ""}{historyOf.phone ? " · " + historyOf.phone : ""}</div>
+                <div className="text-xs opacity-90 mt-1">{historyOf.school || ""}{historyOf.phone ? " · " + historyOf.phone : ""}</div>
               </div>
               <button onClick={() => setHistoryOf(null)} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 text-white font-bold shrink-0">×</button>
             </div>
             <div className="grid grid-cols-3 border-b border-slate-200 shrink-0">
-              {[{ l: "มาเรียน", v: historyOf.presentCount, c: "green" }, { l: "ขาด", v: historyOf.absentCount, c: "red" }, { l: "เปอร์เซ็นต์", v: `${historyOf.percent}%`, c: historyOf.percent >= 80 ? "green" : "red" }].map((x) => (
+              {[{ l: "มาเรียน", v: historyOf.presentCount, c: "emerald" }, { l: "ขาด", v: historyOf.absentCount, c: "rose" }, { l: "เปอร์เซ็นต์", v: `${historyOf.percent}%`, c: historyOf.percent >= 80 ? "emerald" : "rose" }].map((x) => (
                 <div key={x.l} className="py-3 text-center border-r last:border-r-0 border-slate-200">
-                  <div className={`text-xl font-bold ${x.c === "green" ? "text-green-700" : "text-red-700"}`}>{x.v}</div>
-                  <div className={`text-xs font-semibold ${x.c === "green" ? "text-green-500" : "text-red-500"}`}>{x.l}</div>
+                  <div className={`text-xl font-bold ${x.c === "emerald" ? "text-emerald-700" : "text-rose-700"}`}>{x.v}</div>
+                  <div className={`text-xs font-semibold ${x.c === "emerald" ? "text-emerald-500" : "text-rose-500"}`}>{x.l}</div>
                 </div>
               ))}
             </div>
@@ -421,9 +440,9 @@ export default function AdminAttendance() {
                   {dates.map((d) => {
                     const log = historyOf.logs.find((l) => l.date_key === d)
                     return (
-                      <tr key={d} className={log ? "hover:bg-green-50/30" : "hover:bg-red-50/20"}>
+                      <tr key={d} className={log ? "hover:bg-emerald-50/30" : "hover:bg-rose-50/20"}>
                         <td className="px-4 py-2.5 text-sm text-slate-700 font-medium">{new Date(d).toLocaleDateString("th-TH", { weekday: "short", day: "numeric", month: "long" })}</td>
-                        <td className="px-4 py-2.5 text-center">{log ? <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-lg text-xs font-bold">มาเรียน</span> : <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded-lg text-xs font-bold">ขาด</span>}</td>
+                        <td className="px-4 py-2.5 text-center">{log ? <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-lg text-xs font-bold">มาเรียน</span> : <span className="bg-rose-100 text-rose-600 px-2 py-0.5 rounded-lg text-xs font-bold">ขาด</span>}</td>
                         <td className="px-4 py-2.5 hidden sm:table-cell">{log?.evaluation ? <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${evalInfo(log.evaluation).cls}`}>{evalInfo(log.evaluation).label}</span> : <span className="text-slate-300 text-xs">—</span>}</td>
                         <td className="px-4 py-2.5 text-sm text-slate-500 hidden sm:table-cell">{log?.note || <span className="text-slate-300">—</span>}</td>
                       </tr>
@@ -433,7 +452,7 @@ export default function AdminAttendance() {
               </table>
             </div>
             <div className="p-4 border-t bg-slate-50 shrink-0 text-right">
-              <button onClick={() => setHistoryOf(null)} className="bg-slate-800 text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-slate-700 transition">ปิด</button>
+              <button onClick={() => setHistoryOf(null)} className="bg-[#F15A24] text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-[#c44215] transition">ปิด</button>
             </div>
           </div>
         </div>
