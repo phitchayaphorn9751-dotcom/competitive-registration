@@ -162,13 +162,13 @@ export default function AdminCourses() {
 
       {/* Course cards — รูปซ้าย 1/3 + ข้อมูลขวา 2/3 (เดสก์ท็อป) */}
       <div className="hidden md:grid grid-cols-1 gap-4">
-        {filtered.map((course) => <CourseCardWide key={course.id} course={course} onEdit={openEdit} onDelete={doDelete} onToggle={doToggle} onCapacity={doCapacity} onView={setViewCourse} />)}
+        {filtered.map((course) => <CourseCardWide key={course.id} course={course} onEdit={openEdit} onDelete={doDelete} onToggle={doToggle} onView={setViewCourse} />)}
         {filtered.length === 0 && <div className="bg-white rounded-2xl p-16 text-center text-sm text-slate-400 shadow-sm border border-slate-100">ไม่พบรายวิชา</div>}
       </div>
 
       {/* Mobile cards */}
       <div className="md:hidden space-y-3">
-        {filtered.map((course) => <CourseCardMobile key={course.id} course={course} onEdit={openEdit} onDelete={doDelete} onToggle={doToggle} onCapacity={doCapacity} onView={setViewCourse} />)}
+        {filtered.map((course) => <CourseCardMobile key={course.id} course={course} onEdit={openEdit} onDelete={doDelete} onToggle={doToggle} onView={setViewCourse} />)}
         {filtered.length === 0 && <div className="bg-white rounded-2xl p-12 text-center text-sm text-slate-400 shadow-sm border border-slate-100">ไม่พบรายวิชา</div>}
       </div>
 
@@ -302,7 +302,7 @@ function categoryCfg(name) {
   return CATEGORY_PALETTE[h % CATEGORY_PALETTE.length]
 }
 
-function CourseCardWide({ course, onEdit, onDelete, onToggle, onCapacity, onView }) {
+function CourseCardWide({ course, onEdit, onDelete, onToggle, onView }) {
   const { taken, cap, pct, isFull } = seatInfo(course)
   const instructors = (course.course_instructors || []).map((ci) => ci.instructors?.full_name).filter(Boolean)
   const typeLabel = course.course_types?.label
@@ -363,15 +363,6 @@ function CourseCardWide({ course, onEdit, onDelete, onToggle, onCapacity, onView
           )}
         </div>
 
-        {/* ปรับจำนวนที่รับ (คง logic updateCapacity) */}
-        {!unlimited && (
-          <div className="flex items-center justify-between gap-2 mt-3 bg-slate-50/70 rounded-xl px-3 py-2 border border-slate-100">
-            <span className="text-[11px] text-slate-500 font-medium">ปรับที่นั่งสูงสุด ({course.count_mode === "team" ? "ทีม" : "คน"})</span>
-            <input type="number" defaultValue={cap} onBlur={(e) => onCapacity(course, e.target.value)}
-              className="w-20 text-center border border-slate-200 rounded-lg py-1.5 text-sm font-bold bg-white focus:border-[#F15A24] focus:ring-1 focus:ring-[#F15A24] outline-none" />
-          </div>
-        )}
-
         {/* ปุ่ม action — แถวล่างสุด */}
         <div className="flex items-center gap-2 mt-3.5">
           <button onClick={() => onView(course)} className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition border border-slate-200/60"><Ico.eye className="w-4 h-4" /> ผู้สมัคร</button>
@@ -396,6 +387,8 @@ function modeLabel(course) {
 function CourseCardMobile({ course, onEdit, onDelete, onToggle, onView }) {
   const { taken, cap, pct, isFull } = seatInfo(course)
   const instructors = (course.course_instructors || []).map((ci) => ci.instructors?.full_name).filter(Boolean)
+  const typeLabel = course.course_types?.label
+  const cc = categoryCfg(typeLabel)
   const unlimited = course.seat_mode === "unlimited"
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
@@ -406,17 +399,18 @@ function CourseCardMobile({ course, onEdit, onDelete, onToggle, onView }) {
         </div>
         {/* ข้อมูล */}
         <div className="flex-1 min-w-0">
-          {/* ชื่อวิชา (ส้มเด่น) */}
-          <div className="font-bold text-[#F15A24] text-base leading-snug">{course.title}</div>
-          {/* ป้ายกำกับ: หมวด · รูปแบบ */}
-          <div className="flex flex-wrap gap-1.5 mt-1">
-            {course.course_types?.label && <span className="text-[10px] bg-orange-50 text-orange-700 border border-orange-100 px-1.5 py-0.5 rounded-md font-bold">{course.course_types.label}</span>}
-            <span className="text-[10px] bg-slate-50 text-slate-600 border border-slate-200 px-1.5 py-0.5 rounded-md font-bold inline-flex items-center gap-1"><Ico.users className="w-3 h-3" /> {modeLabel(course)}</span>
+          {/* ป้ายกำกับ: หมวด · รูปแบบ (ใช้ categoryCfg เหมือน desktop) */}
+          <div className="flex flex-wrap items-center gap-1.5 mb-1">
+            {typeLabel && <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-md ${cc.bg} ${cc.text}`}>{typeLabel}</span>}
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500 bg-slate-50 border border-slate-200/60 rounded-md px-2 py-0.5"><Ico.users className="w-3 h-3" /> {modeLabel(course)}</span>
           </div>
-          {instructors.length > 0 && <div className="text-xs text-slate-500 mt-1.5 truncate inline-flex items-center gap-1"><Ico.cap className="w-3 h-3 shrink-0" /> {instructors.join(", ")}</div>}
-          <div className="flex items-baseline gap-2 mt-1.5">
-            <span className="text-lg font-extrabold text-[#F15A24]">{course.price > 0 ? `฿${Number(course.price).toLocaleString()}` : "ไม่มีค่าลงทะเบียน"}</span>
-            <span className="text-[11px] text-slate-400">รับ {unlimited ? "ไม่จำกัด" : `${cap} ${course.count_mode === "team" ? "ทีม" : "คน"}`}</span>
+          {/* ชื่อวิชา (ส้มเด่น) */}
+          <h3 className="font-bold text-[#F15A24] text-sm leading-snug">{course.title}</h3>
+          {instructors.length > 0 && <div className="text-[11px] text-slate-500 mt-1 truncate inline-flex items-center gap-1"><Ico.cap className="w-3 h-3 shrink-0" /> {instructors.join(", ")}</div>}
+          <div className="text-right mt-1">
+            {course.price > 0
+              ? <span className="text-base font-extrabold text-[#F15A24] whitespace-nowrap">{Number(course.price).toLocaleString()}<span className="text-[10px] font-bold text-slate-400 ml-1">บาท</span></span>
+              : <span className="text-sm font-extrabold text-emerald-600">ฟรี</span>}
           </div>
         </div>
         {/* toggle เปิดรับ */}
@@ -428,16 +422,18 @@ function CourseCardMobile({ course, onEdit, onDelete, onToggle, onView }) {
         </div>
       </div>
 
-      {/* แถบที่นั่ง — เต็มกว้าง */}
-      <div className="mt-3">
-        <div className="flex justify-between items-center text-xs mb-1">
+      {/* แถบที่นั่ง — เต็มกว้าง (สีเหมือน desktop) */}
+      <div className="mt-3 pt-3 border-t border-slate-50">
+        <div className="flex justify-between items-center text-[11px] mb-1">
           <span className="text-slate-500">ที่นั่ง: <span className={`font-bold ${isFull && !unlimited ? "text-rose-600" : "text-slate-700"}`}>{taken} / {unlimited ? "∞" : cap}</span></span>
-          {!unlimited && <span className={`font-bold ${isFull ? "text-rose-600" : pct >= 80 ? "text-amber-500" : "text-emerald-600"}`}>{pct}%</span>}
+          {!unlimited && <span className={`font-bold ${isFull ? "text-rose-500" : pct >= 80 ? "text-amber-500" : "text-[#F15A24]"}`}>{pct}%</span>}
         </div>
-        {!unlimited && (
+        {!unlimited ? (
           <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-            <div className={`h-full rounded-full ${isFull ? "bg-rose-500" : pct >= 80 ? "bg-amber-400" : "bg-emerald-500"}`} style={{ width: `${pct}%` }} />
+            <div className={`h-full rounded-full transition-all duration-500 ${isFull ? "bg-gradient-to-r from-rose-500 to-rose-600" : pct >= 80 ? "bg-amber-400" : "bg-gradient-to-r from-[#fb923c] to-[#F15A24]"}`} style={{ width: `${pct}%` }} />
           </div>
+        ) : (
+          <div className="text-[11px] text-slate-400">รับสมัครไม่จำกัดจำนวน</div>
         )}
       </div>
 
@@ -584,7 +580,7 @@ function CourseModal({ course, types, onSave, onClose }) {
 
             {/* Base ID + ระดับชั้น */}
             <div className="grid grid-cols-2 gap-3">
-              <div><label className={labelCls}>Base ID (รหัสนำหน้าเลขประจำตัว)</label><input type="text" className={inputCls} placeholder="เช่น GAME, MUSIC, CODE" value={f.base_id || ""} onChange={(e) => set("base_id", e.target.value.toUpperCase())} /><p className="text-[11px] text-slate-400 mt-1">💡 ควรตั้งให้<b>ต่างกันทุกคอร์ส</b> เพื่อแยกรหัสนักเรียน เช่น GAME-001, MUSIC-001</p></div>
+              <div><label className={labelCls}>Base ID (รหัสนำหน้าเลขประจำตัว)</label><input type="text" className={inputCls} placeholder="เช่น GAME, MUSIC, CODE" value={f.base_id || ""} onChange={(e) => set("base_id", e.target.value.toUpperCase())} /><p className="text-[11px] text-slate-400 mt-1 inline-flex items-start gap-1"><Ico.alert className="w-3 h-3 shrink-0 mt-0.5 text-amber-400" /> ควรตั้งให้<b>ต่างกันทุกคอร์ส</b> เพื่อแยกรหัสนักเรียน เช่น GAME-001, MUSIC-001</p></div>
               <div>
                 <label className={labelCls}>ระดับชั้น</label>
                 <select className={inputCls} value={f.level || ""} onChange={(e) => set("level", e.target.value)}>
@@ -633,7 +629,7 @@ function CourseModal({ course, types, onSave, onClose }) {
                 ) : <div />}
               </div>
             )}
-            {f.count_choice === "team" && <p className="text-[11px] text-slate-400 -mt-2">💡 เช่น ต่ำสุด 1 มากสุด 4 → 1 ทีมมี 1-4 คนก็ได้ (ยืดหยุ่น)</p>}
+            {f.count_choice === "team" && <p className="text-[11px] text-slate-400 -mt-2 inline-flex items-start gap-1"><Ico.alert className="w-3 h-3 shrink-0 mt-0.5 text-amber-400" /> เช่น ต่ำสุด 1 มากสุด 4 → 1 ทีมมี 1-4 คนก็ได้ (ยืดหยุ่น)</p>}
 
             {/* การชำระเงิน */}
             <div>
@@ -732,7 +728,7 @@ function CourseModal({ course, types, onSave, onClose }) {
                   </div>
                 ))}
               </div>
-              <p className="text-[11px] text-slate-400 mt-1.5">💡 เว้นว่างได้ถ้าไม่ต้องการ · หัวข้อจะแสดงเป็นหมวดในหน้ารายละเอียดวิชา</p>
+              <p className="text-[11px] text-slate-400 mt-1.5 inline-flex items-start gap-1"><Ico.alert className="w-3 h-3 shrink-0 mt-0.5 text-amber-400" /> เว้นว่างได้ถ้าไม่ต้องการ · หัวข้อจะแสดงเป็นหมวดในหน้ารายละเอียดวิชา</p>
             </div>
 
             {/* เปิด/ปิดรับ */}
