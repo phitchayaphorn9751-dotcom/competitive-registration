@@ -4,23 +4,31 @@ const DialogContext = createContext(null)
 
 // ใช้สีตามธีม: เขียว=สำเร็จ/ถูก, แดง=ผิด/ลบ, ฟ้า=ข้อมูล/เน้น, ส้ม=ปุ่มหลัก
 const TONE = {
-  success: { ring: "border-green-200", bar: "bg-green-500", icon: "✅", btn: "bg-green-600 hover:bg-green-700" },
-  error:   { ring: "border-red-200", bar: "bg-red-500", icon: "⚠️", btn: "bg-red-600 hover:bg-red-700" },
-  info:    { ring: "border-blue-200", bar: "bg-blue-500", icon: "ℹ️", btn: "bg-blue-600 hover:bg-blue-700" },
+  success: { ring: "border-emerald-200", bar: "bg-emerald-500", icon: "✅", btn: "bg-emerald-600 hover:bg-emerald-700" },
+  error:   { ring: "border-rose-200", bar: "bg-rose-500", icon: "⚠️", btn: "bg-rose-600 hover:bg-rose-700" },
+  info:    { ring: "border-sky-200", bar: "bg-sky-500", icon: "ℹ️", btn: "bg-sky-600 hover:bg-sky-700" },
   warn:    { ring: "border-orange-200", bar: "bg-[#F15A24]", icon: "🔔", btn: "bg-[#F15A24] hover:bg-orange-600" },
-  danger:  { ring: "border-red-200", bar: "bg-red-500", icon: "🗑️", btn: "bg-red-600 hover:bg-red-700" },
+  danger:  { ring: "border-rose-200", bar: "bg-rose-500", icon: "🗑️", btn: "bg-rose-600 hover:bg-rose-700" },
 }
 
 export function DialogProvider({ children }) {
-  const [toasts, setToasts] = useState([])
+  const [popups, setPopups] = useState([])   // toast → pop up กลางจอ
   const [confirmState, setConfirmState] = useState(null)
 
-  // toast — แจ้งเตือนมุมจอ หายเอง
+  // toast (เดิม) → แสดงเป็น pop up กลางจอ
+  // success หายเองใน 2.5 วิ / error+warn+danger ไม่หายเอง ต้องกดปิด (ให้เห็นชัด)
   const toast = useCallback((message, tone = "success") => {
     const id = Date.now() + Math.random()
-    setToasts((prev) => [...prev, { id, message, tone }])
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3500)
+    setPopups((prev) => [...prev, { id, message, tone }])
+    // เฉพาะข้อความสำเร็จ/ข้อมูล → หายเอง ; error/เตือน/ลบ → ค้างไว้ให้กดรับรู้
+    if (tone === "success" || tone === "info") {
+      setTimeout(() => setPopups((prev) => prev.filter((t) => t.id !== id)), 2500)
+    }
   }, [])
+
+  function closePopup(id) {
+    setPopups((prev) => prev.filter((t) => t.id !== id))
+  }
 
   // confirm — modal ยืนยัน คืน Promise<boolean>
   const confirm = useCallback((opts) => {
@@ -42,44 +50,52 @@ export function DialogProvider({ children }) {
     setConfirmState(null)
   }
 
+  // แสดง pop up ตัวบนสุด (ทีละอัน — ถ้ามีหลายอันซ้อน แสดงล่าสุด)
+  const activePopup = popups[popups.length - 1]
+
   return (
     <DialogContext.Provider value={{ toast, confirm }}>
       {children}
 
-      {/* Toasts */}
-      <div className="fixed top-4 inset-x-0 z-[100] flex flex-col items-center gap-2 pointer-events-none px-4">
-        {toasts.map((t) => {
-          const tone = TONE[t.tone] || TONE.success
-          return (
-            <div key={t.id}
-              className={`pointer-events-auto bg-white rounded-xl shadow-lg border ${tone.ring} overflow-hidden max-w-md w-full sm:w-auto animate-[slideDown_0.2s_ease-out]`}>
-              <div className="flex items-center gap-3 pl-4 pr-3 py-3">
-                <span className="text-lg shrink-0">{tone.icon}</span>
-                <p className="text-sm text-gray-700 font-medium flex-1">{t.message}</p>
-                <button onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))}
-                  className="text-gray-300 hover:text-gray-500 text-lg leading-none shrink-0">×</button>
+      {/* Toast → Pop up กลางจอ */}
+      {activePopup && (() => {
+        const tone = TONE[activePopup.tone] || TONE.success
+        return (
+          <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-[fade-in_0.15s_ease-out]"
+            onClick={() => closePopup(activePopup.id)}>
+            <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden animate-[slideDown_0.2s_ease-out]"
+              onClick={(e) => e.stopPropagation()}>
+              <div className={`h-1.5 ${tone.bar}`} />
+              <div className="p-5 sm:p-6 text-center">
+                <div className="text-4xl mb-3">{tone.icon}</div>
+                <p className="text-sm sm:text-base text-slate-700 font-medium leading-relaxed whitespace-pre-line">{activePopup.message}</p>
               </div>
-              <div className={`h-1 ${tone.bar}`} />
+              <div className="px-5 sm:px-6 pb-5 sm:pb-6">
+                <button onClick={() => closePopup(activePopup.id)}
+                  className={`w-full py-3 text-white rounded-xl font-bold shadow-sm transition text-sm ${tone.btn}`}>
+                  ตกลง
+                </button>
+              </div>
             </div>
-          )
-        })}
-      </div>
+          </div>
+        )
+      })()}
 
       {/* Confirm modal */}
       {confirmState && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-[110] p-0 sm:p-4"
+        <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-[110] p-0 sm:p-4"
           onClick={() => closeConfirm(false)}>
           <div className="bg-white w-full sm:rounded-2xl sm:max-w-sm shadow-2xl overflow-hidden rounded-t-2xl"
             onClick={(e) => e.stopPropagation()}>
             <div className={`h-1.5 ${(TONE[confirmState.tone] || TONE.warn).bar}`} />
             <div className="p-5 sm:p-6 text-center">
               <div className="text-4xl mb-3">{(TONE[confirmState.tone] || TONE.warn).icon}</div>
-              <h3 className="font-bold text-gray-800 text-lg mb-2">{confirmState.title}</h3>
-              {confirmState.message && <p className="text-sm text-gray-500 leading-relaxed whitespace-pre-line">{confirmState.message}</p>}
+              <h3 className="font-bold text-slate-800 text-lg mb-2">{confirmState.title}</h3>
+              {confirmState.message && <p className="text-sm text-slate-500 leading-relaxed whitespace-pre-line">{confirmState.message}</p>}
             </div>
             <div className="px-5 sm:px-6 pb-5 sm:pb-6 grid grid-cols-2 gap-3">
               <button onClick={() => closeConfirm(false)}
-                className="py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition text-sm">
+                className="py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition text-sm">
                 {confirmState.cancelText}
               </button>
               <button onClick={() => closeConfirm(true)}
