@@ -272,8 +272,8 @@ export default function RegisterPage() {
     return (
       <div className="min-h-screen bg-slate-50 pb-24">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 pt-5">
-          <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-bold text-[#F15A24] hover:underline">
-            <Ico.arrowLeft className="w-4 h-4" /> {t("reg.backToCourses")}
+          <Link to="/" className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-white border border-slate-200 text-[#F15A24] hover:bg-orange-50 transition shadow-sm" aria-label="ย้อนกลับ">
+            <Ico.arrowLeft className="w-5 h-5" />
           </Link>
         </div>
         <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-5">
@@ -295,10 +295,15 @@ export default function RegisterPage() {
                 <div className="flex-1">
                   <p className="text-sm font-bold text-slate-800">เปิดลิงก์แล้วกรอกใบสมัคร</p>
                   <p className="text-xs text-slate-400 mt-0.5">คอร์สนี้รับสมัครผ่านระบบภายนอก — กดปุ่มด้านล่างเพื่อเปิด (แท็บใหม่)</p>
-                  <a href={course.external_url} target="_blank" rel="noreferrer" onClick={() => setExtOpened(true)}
+                  <button type="button" onClick={() => {
+                    let url = (course.external_url || "").trim()
+                    if (url && !/^https?:\/\//i.test(url)) url = "https://" + url
+                    window.open(url, "_blank", "noopener,noreferrer")
+                    setExtOpened(true)
+                  }}
                     className="inline-flex items-center gap-2 mt-2.5 bg-violet-500 hover:bg-violet-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition shadow-sm shadow-violet-500/20">
                     <Ico.upload className="w-4 h-4" /> เปิดลิงก์สมัคร
-                  </a>
+                  </button>
                 </div>
               </li>
               <li className="flex gap-3">
@@ -339,8 +344,8 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-5">
-        <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-bold text-[#F15A24] hover:underline">
-          <Ico.arrowLeft className="w-4 h-4" /> {t("reg.backToCourses")}
+        <Link to="/" className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-white border border-slate-200 text-[#F15A24] hover:bg-orange-50 transition shadow-sm" aria-label="ย้อนกลับ">
+          <Ico.arrowLeft className="w-5 h-5" />
         </Link>
       </div>
 
