@@ -162,20 +162,28 @@ export default function AdminStudents() {
               <th className="px-4 py-3 text-xs font-bold text-[#F15A24] uppercase">โรงเรียน · ระดับชั้น</th>
               <th className="px-4 py-3 text-xs font-bold text-[#F15A24] uppercase text-right">Action</th>
             </tr></thead>
-            <tbody className="divide-y divide-slate-50">
+            <tbody className="divide-y divide-slate-100">
               {items.length > 0 ? items.map((u, idx) => (
-                <tr key={u.id} onClick={() => openStudent(u)} className="cursor-pointer hover:bg-orange-50/60 transition group">
-                  <td className="px-4 py-3.5 text-xs text-slate-400 font-mono">{firstIdx + idx + 1}</td>
-                  <td className="px-4 py-3.5">
-                    <div className="font-bold text-slate-800 text-sm">{u.first_name} {u.last_name}{u.nickname && <span className="font-normal text-slate-400 ml-1 text-xs">({u.nickname})</span>}</div>
-                    <div className="text-xs text-sky-500 font-mono mt-0.5 inline-flex items-center gap-1"><Ico.mail className="w-3 h-3 shrink-0" /> {u.email || "-"}</div>
-                    {u.phone && <div className="text-xs text-slate-400 inline-flex items-center gap-1 ml-2"><Ico.phone className="w-3 h-3" /> {u.phone}</div>}
+                <tr key={u.id} onClick={() => openStudent(u)} className="cursor-pointer hover:bg-orange-50/50 transition group">
+                  <td className="px-4 py-4 text-xs text-slate-400 font-mono align-middle">{firstIdx + idx + 1}</td>
+                  <td className="px-4 py-4 align-middle">
+                    <div className="flex items-center gap-3">
+                      {/* avatar วงกลม (เหมือนการ์ด) */}
+                      <div className="w-9 h-9 rounded-full bg-orange-100 text-[#F15A24] font-bold text-sm flex items-center justify-center shrink-0">{u.first_name?.[0] || "?"}</div>
+                      <div className="min-w-0">
+                        <div className="font-bold text-slate-800 text-sm leading-snug">{u.first_name} {u.last_name}{u.nickname && <span className="font-normal text-slate-400 ml-1 text-xs">({u.nickname})</span>}</div>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
+                          <span className="text-xs text-sky-500 font-mono inline-flex items-center gap-1 truncate max-w-[200px]"><Ico.mail className="w-3 h-3 shrink-0" /> {u.email || "-"}</span>
+                          {u.phone && <span className="text-xs text-slate-400 inline-flex items-center gap-1"><Ico.phone className="w-3 h-3" /> {u.phone}</span>}
+                        </div>
+                      </div>
+                    </div>
                   </td>
-                  <td className="px-4 py-3.5 max-w-[200px]">
-                    <div className="text-xs text-slate-600 line-clamp-2 inline-flex items-start gap-1"><Ico.school className="w-3 h-3 shrink-0 mt-0.5" /> {u.school || "-"}</div>
-                    {u.grade_level && <div className="mt-1"><span className="text-[10px] font-bold text-[#F15A24] bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-md">{u.grade_level}</span></div>}
+                  <td className="px-4 py-4 max-w-[220px] align-middle">
+                    <div className="text-xs text-slate-600 line-clamp-2 inline-flex items-start gap-1.5"><Ico.school className="w-3.5 h-3.5 shrink-0 mt-0.5 text-slate-400" /> {u.school || "-"}</div>
+                    {u.grade_level && <div className="mt-1.5"><span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#F15A24] bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-md"><Ico.cap className="w-3 h-3" /> {u.grade_level}</span></div>}
                   </td>
-                  <td className="px-4 py-3.5 text-right">
+                  <td className="px-4 py-4 text-right align-middle">
                     <span className="text-[#F15A24] text-xs font-bold opacity-0 group-hover:opacity-100 transition inline-flex items-center gap-1">ดูข้อมูล <Ico.arrowRight className="w-3.5 h-3.5" /></span>
                   </td>
                 </tr>
@@ -188,13 +196,18 @@ export default function AdminStudents() {
         <div className="md:hidden divide-y divide-slate-100">
           {items.length > 0 ? items.map((u) => (
             <div key={u.id} onClick={() => openStudent(u)} className="p-4 cursor-pointer hover:bg-orange-50/60 active:bg-orange-100 transition">
-              <div className="font-bold text-slate-800 text-sm">{u.first_name} {u.last_name}{u.nickname && <span className="font-normal text-slate-400 ml-1 text-xs">({u.nickname})</span>}</div>
-              <div className="text-xs text-sky-500 font-mono truncate inline-flex items-center gap-1"><Ico.mail className="w-3 h-3 shrink-0" /> {u.email || "-"}</div>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-orange-100 text-[#F15A24] font-bold text-sm flex items-center justify-center shrink-0">{u.first_name?.[0] || "?"}</div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-bold text-slate-800 text-sm leading-snug">{u.first_name} {u.last_name}{u.nickname && <span className="font-normal text-slate-400 ml-1 text-xs">({u.nickname})</span>}</div>
+                  <div className="text-xs text-sky-500 font-mono truncate inline-flex items-center gap-1"><Ico.mail className="w-3 h-3 shrink-0" /> {u.email || "-"}</div>
+                </div>
+              </div>
               {/* รายละเอียดรอง: เบอร์ · โรงเรียน · ระดับชั้น */}
-              <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-400 mt-1">
+              <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-400 mt-2 pl-12">
                 {u.phone && <span className="inline-flex items-center gap-1"><Ico.phone className="w-3 h-3" /> {u.phone}</span>}
                 {u.school && <span className="truncate max-w-[180px] inline-flex items-center gap-1"><Ico.school className="w-3 h-3 shrink-0" /> {u.school}</span>}
-                {u.grade_level && <span>{u.grade_level}</span>}
+                {u.grade_level && <span className="inline-flex items-center gap-1"><Ico.cap className="w-3 h-3" /> {u.grade_level}</span>}
               </div>
             </div>
           )) : <div className="py-12 text-center text-sm text-slate-400">ไม่พบข้อมูล</div>}
