@@ -150,10 +150,12 @@ export default function RegisterPage() {
 
       const fresh = await fetchCourse(courseId)
       const unlimited = fresh.seat_mode === "unlimited" || (fresh.capacity || 0) === 0
-      const willWaitlist = !unlimited && (fresh.seats_taken || 0) + 1 > (fresh.capacity || 0)
+      // นับที่นั่งเป็น "จำนวนคน" — ทีมกี่คนกินที่นั่งเท่านั้น (teamCount)
+      const willWaitlist = !unlimited && (fresh.seats_taken || 0) + teamCount > (fresh.capacity || 0)
 
       // ── ขั้นตอนหลัก (ต้องสำเร็จ) ──
-      const regId = await holdSeat(courseId, email.trim(), 1)
+      // กันที่นั่งตามจำนวนสมาชิกจริง (ทีม 3 คน = กัน 3 ที่นั่ง)
+      const regId = await holdSeat(courseId, email.trim(), teamCount)
 
       // ผู้สมัครคนแรก = เจ้าของ profile
       const ownerPid = await addParticipant(regId, {
