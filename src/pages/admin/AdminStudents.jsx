@@ -1,10 +1,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { fetchAllProfiles, fetchRegistrationsByEmail, adminDeleteUser, adminUpdateStudent, fetchAllSchools, searchSchools } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
-
-// ───── ไอคอน SVG inline (สไตล์ lucide) — ชุดเดียวกับหน้ารายการสมัคร ─────
-import { Ico } from "../lib/icons.jsx"        // ← หน้าใน src/pages/
-import { Ico } from "../../lib/icons.jsx"     // ← หน้าใน src/pages/admin/
+import { Ico } from "../../lib/icons.jsx"
 
 const TX_STATUS = {
   confirmed: "bg-emerald-50 text-emerald-700 border-emerald-200",

@@ -37,7 +37,6 @@ function categoryCfg(name) {
 
 // ───── ไอคอน SVG inline (สไตล์ lucide) ─────
 import { Ico } from "../lib/icons.jsx"        // ← หน้าใน src/pages/
-import { Ico } from "../../lib/icons.jsx"     // ← หน้าใน src/pages/admin/
 
 // แปลงสถานะดิบ (รวม payment) → key เดียวสำหรับแสดงผล
 function displayStatus(r) {

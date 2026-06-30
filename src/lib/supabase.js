@@ -857,3 +857,18 @@ export async function searchThaiAddress(query) {
   const data = await loadThaiAddrData()
   return data.filter((a) => a.subDistrict.includes(q)).slice(0, 10)
 }
+
+// import ผู้สมัครจากระบบนอก (เช็คอินอย่างเดียว — ไม่กินที่นั่ง)
+export async function importExternalParticipant(courseId, row) {
+  const { data, error } = await supabase.rpc("import_external_participant", {
+    p_course_id: courseId,
+    p_full_name: row.full_name,
+    p_school: row.school || null,
+    p_grade: row.grade_level || null,
+    p_phone: row.phone || null,
+    p_email: row.email || null,
+    p_national_id: row.national_id || null,
+  })
+  if (error) throw error
+  return data
+}
