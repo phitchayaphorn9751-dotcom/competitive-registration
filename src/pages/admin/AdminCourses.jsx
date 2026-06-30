@@ -55,6 +55,7 @@ export default function AdminCourses() {
     seat_mode: "limited", require_portfolio: false,
     bank_account: "", bank_name: "", bank_holder: "",
     base_id: "", level: "", start_date: "", end_date: "", duration: "",
+    external_url: "",
   }
 
   function openAdd() { setEditCourse({ ...blank, type_id: types[0]?.id || "" }); setShowModal(true) }
@@ -330,7 +331,7 @@ function CourseCardWide({ course, onEdit, onDelete, onToggle, onView }) {
             {instructors.length > 0 && <div className="text-[11px] text-slate-500 inline-flex items-center gap-1 truncate"><Ico.cap className="w-3 h-3 shrink-0" /> {instructors.join(", ")}</div>}
           </div>
 
-          {/* ขวา: toggle เปิด/ปิดรับ (บน) → ราคา (ล่าง) */}
+          {/* ขวา: toggle เปิด/ปิดรับ (บน) → ราคา (ล่าง) ชิดขวาสุด */}
           <div className="flex flex-col items-end gap-2 shrink-0">
             <div className="flex flex-col items-end gap-1">
               <button onClick={() => onToggle(course)} aria-label="สลับสถานะรับสมัคร"
@@ -340,7 +341,6 @@ function CourseCardWide({ course, onEdit, onDelete, onToggle, onView }) {
               <span className={`text-[10px] font-bold ${course.is_open ? "text-emerald-600" : "text-slate-400"}`}>{course.is_open ? "เปิดรับ" : "ปิดรับ"}</span>
             </div>
             <div className="text-right">
-              <span className="text-[9px] text-slate-400 block -mb-0.5">ค่าลงทะเบียน</span>
               {course.price > 0
                 ? <span className="text-base sm:text-xl font-extrabold text-[#F15A24] leading-none whitespace-nowrap">{Number(course.price).toLocaleString()}<span className="text-[10px] font-bold text-slate-400 ml-1">บาท</span></span>
                 : <span className="text-sm font-extrabold text-emerald-600 whitespace-nowrap">ฟรี</span>}
@@ -348,26 +348,32 @@ function CourseCardWide({ course, onEdit, onDelete, onToggle, onView }) {
           </div>
         </div>
 
-        {/* แถบ progress ที่นั่ง — เต็มกว้าง */}
-        <div className="mt-3 pt-3 border-t border-slate-50">
-          <div className="flex justify-between items-center text-[11px] mb-1">
-            <span className="text-slate-500">ที่นั่ง: <span className={`font-bold ${isFull && !unlimited ? "text-rose-600" : "text-slate-700"}`}>{taken} / {unlimited ? "∞" : cap}</span></span>
-            {!unlimited && <span className={`font-bold ${isFull ? "text-rose-500" : pct >= 80 ? "text-amber-500" : "text-[#F15A24]"}`}>{pct}%</span>}
-          </div>
-          {!unlimited ? (
-            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-              <div className={`h-full rounded-full transition-all duration-500 ${isFull ? "bg-gradient-to-r from-rose-500 to-rose-600" : pct >= 80 ? "bg-amber-400" : "bg-gradient-to-r from-[#fb923c] to-[#F15A24]"}`} style={{ width: `${pct}%` }} />
+        {/* แถวล่าง: (ซ้าย) แถบที่นั่ง  |  (ขวา) ปุ่ม action — มีเส้นเทากั้น */}
+        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-4">
+          {/* ซ้าย: แถบที่นั่ง */}
+          <div className="flex-1 min-w-0">
+            <div className="flex justify-between items-center text-[11px] mb-1">
+              <span className="text-slate-500">ที่นั่ง: <span className={`font-bold ${isFull && !unlimited ? "text-rose-600" : "text-slate-700"}`}>{taken} / {unlimited ? "∞" : cap}</span></span>
+              {!unlimited && <span className={`font-bold ${isFull ? "text-rose-500" : pct >= 80 ? "text-amber-500" : "text-[#F15A24]"}`}>{pct}%</span>}
             </div>
-          ) : (
-            <div className="text-[11px] text-slate-400">รับสมัครไม่จำกัดจำนวน</div>
-          )}
-        </div>
+            {!unlimited ? (
+              <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                <div className={`h-full rounded-full transition-all duration-500 ${isFull ? "bg-gradient-to-r from-rose-500 to-rose-600" : pct >= 80 ? "bg-amber-400" : "bg-gradient-to-r from-[#fb923c] to-[#F15A24]"}`} style={{ width: `${pct}%` }} />
+              </div>
+            ) : (
+              <div className="text-[11px] text-slate-400">รับสมัครไม่จำกัดจำนวน</div>
+            )}
+          </div>
 
-        {/* ปุ่ม action — แถวล่างสุด */}
-        <div className="flex items-center gap-2 mt-3.5">
-          <button onClick={() => onView(course)} className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition border border-slate-200/60"><Ico.eye className="w-4 h-4" /> ผู้สมัคร</button>
-          <button onClick={() => onEdit(course)} className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-bold text-[#F15A24] bg-orange-50 hover:bg-[#F15A24] hover:text-white rounded-xl transition border border-orange-100"><Ico.pencil className="w-4 h-4 shrink-0" /> แก้ไขข้อมูล</button>
-          <button onClick={() => onDelete(course)} className="p-2.5 rounded-xl border border-rose-200 text-rose-500 hover:bg-rose-500 hover:text-white transition shrink-0" aria-label="ลบรายวิชา"><Ico.trash className="w-4 h-4" /></button>
+          {/* เส้นกั้น */}
+          <div className="w-px self-stretch bg-slate-200 shrink-0" />
+
+          {/* ขวา: ปุ่ม action */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button onClick={() => onView(course)} className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition border border-slate-200/60"><Ico.eye className="w-4 h-4" /> ผู้สมัคร</button>
+            <button onClick={() => onEdit(course)} className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold text-[#F15A24] bg-orange-50 hover:bg-[#F15A24] hover:text-white rounded-xl transition border border-orange-100"><Ico.pencil className="w-4 h-4 shrink-0" /> แก้ไข</button>
+            <button onClick={() => onDelete(course)} className="p-2 rounded-xl border border-rose-200 text-rose-500 hover:bg-rose-500 hover:text-white transition shrink-0" aria-label="ลบรายวิชา"><Ico.trash className="w-4 h-4" /></button>
+          </div>
         </div>
       </div>
     </div>
@@ -422,26 +428,32 @@ function CourseCardMobile({ course, onEdit, onDelete, onToggle, onView }) {
         </div>
       </div>
 
-      {/* แถบที่นั่ง — เต็มกว้าง (สีเหมือน desktop) */}
-      <div className="mt-3 pt-3 border-t border-slate-50">
-        <div className="flex justify-between items-center text-[11px] mb-1">
-          <span className="text-slate-500">ที่นั่ง: <span className={`font-bold ${isFull && !unlimited ? "text-rose-600" : "text-slate-700"}`}>{taken} / {unlimited ? "∞" : cap}</span></span>
-          {!unlimited && <span className={`font-bold ${isFull ? "text-rose-500" : pct >= 80 ? "text-amber-500" : "text-[#F15A24]"}`}>{pct}%</span>}
-        </div>
-        {!unlimited ? (
-          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-            <div className={`h-full rounded-full transition-all duration-500 ${isFull ? "bg-gradient-to-r from-rose-500 to-rose-600" : pct >= 80 ? "bg-amber-400" : "bg-gradient-to-r from-[#fb923c] to-[#F15A24]"}`} style={{ width: `${pct}%` }} />
+      {/* แถวล่าง: (ซ้าย) แถบที่นั่ง | (ขวา) ปุ่ม — มีเส้นกั้น */}
+      <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-3">
+        {/* ซ้าย: แถบที่นั่ง */}
+        <div className="flex-1 min-w-0">
+          <div className="flex justify-between items-center text-[11px] mb-1">
+            <span className="text-slate-500">ที่นั่ง: <span className={`font-bold ${isFull && !unlimited ? "text-rose-600" : "text-slate-700"}`}>{taken} / {unlimited ? "∞" : cap}</span></span>
+            {!unlimited && <span className={`font-bold ${isFull ? "text-rose-500" : pct >= 80 ? "text-amber-500" : "text-[#F15A24]"}`}>{pct}%</span>}
           </div>
-        ) : (
-          <div className="text-[11px] text-slate-400">รับสมัครไม่จำกัดจำนวน</div>
-        )}
-      </div>
+          {!unlimited ? (
+            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <div className={`h-full rounded-full transition-all duration-500 ${isFull ? "bg-gradient-to-r from-rose-500 to-rose-600" : pct >= 80 ? "bg-amber-400" : "bg-gradient-to-r from-[#fb923c] to-[#F15A24]"}`} style={{ width: `${pct}%` }} />
+            </div>
+          ) : (
+            <div className="text-[11px] text-slate-400">ไม่จำกัด</div>
+          )}
+        </div>
 
-      {/* ปุ่ม ดู/แก้ไข/ลบ — แถวล่างชิดขวา */}
-      <div className="flex justify-end gap-2 mt-3 pt-3 border-t border-slate-100">
-        <button onClick={() => onView(course)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold hover:bg-slate-200 transition"><Ico.eye className="w-3.5 h-3.5" /> ผู้สมัคร</button>
-        <button onClick={() => onEdit(course)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-50 text-[#F15A24] border border-orange-200 text-xs font-bold hover:bg-orange-100 transition"><Ico.pencil className="w-3.5 h-3.5" /> แก้ไข</button>
-        <button onClick={() => onDelete(course)} className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center hover:bg-rose-100 transition"><Ico.trash className="w-3.5 h-3.5" /></button>
+        {/* เส้นกั้น */}
+        <div className="w-px self-stretch bg-slate-200 shrink-0" />
+
+        {/* ขวา: ปุ่ม (ไอคอนล้วน ประหยัดพื้นที่) */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button onClick={() => onView(course)} className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 flex items-center justify-center hover:bg-slate-200 transition" aria-label="ผู้สมัคร"><Ico.eye className="w-4 h-4" /></button>
+          <button onClick={() => onEdit(course)} className="w-8 h-8 rounded-lg bg-orange-50 text-[#F15A24] border border-orange-200 flex items-center justify-center hover:bg-orange-100 transition" aria-label="แก้ไข"><Ico.pencil className="w-4 h-4" /></button>
+          <button onClick={() => onDelete(course)} className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center hover:bg-rose-100 transition" aria-label="ลบ"><Ico.trash className="w-4 h-4" /></button>
+        </div>
       </div>
     </div>
   )
@@ -540,6 +552,7 @@ function CourseModal({ course, types, onSave, onClose }) {
       bank_name: f.pay_mode === "paid" ? f.bank_name : "",
       bank_holder: f.pay_mode === "paid" ? f.bank_holder : "",
       image_url: f.image_urls?.[0] || "",
+      external_url: (f.external_url && f.external_url.trim() !== "" && f.external_url.trim() !== "https://") ? f.external_url.trim() : null,
       instructor_names: f.instructor_text.split(",").map((s) => s.trim()).filter(Boolean),
     })
   }
@@ -729,6 +742,27 @@ function CourseModal({ course, types, onSave, onClose }) {
                 ))}
               </div>
               <p className="text-[11px] text-slate-400 mt-1.5 inline-flex items-start gap-1"><Ico.alert className="w-3 h-3 shrink-0 mt-0.5 text-amber-400" /> เว้นว่างได้ถ้าไม่ต้องการ · หัวข้อจะแสดงเป็นหมวดในหน้ารายละเอียดวิชา</p>
+            </div>
+
+            {/* สมัครผ่านลิงก์นอก */}
+            <div className="bg-violet-50/60 rounded-xl p-4 border border-violet-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-bold text-sm text-slate-800 flex items-center gap-1.5"><Ico.copy className="w-4 h-4 text-violet-500" /> สมัครผ่านลิงก์นอก</div>
+                  <div className="text-[11px] text-slate-400">คอร์สที่รับสมัครผ่านระบบอื่น — user กดลงทะเบียนจะเด้งไปลิงก์นี้</div>
+                </div>
+                <button type="button" onClick={() => set("external_url", f.external_url ? "" : "https://")}
+                  className={`relative inline-flex items-center h-7 rounded-full w-12 shrink-0 transition-colors ${f.external_url ? "bg-violet-500" : "bg-slate-300"}`}>
+                  <span className={`inline-block w-5 h-5 bg-white rounded-full shadow-md transition-transform ${f.external_url ? "translate-x-6" : "translate-x-1"}`} />
+                </button>
+              </div>
+              {f.external_url !== "" && f.external_url !== undefined && f.external_url !== null && (
+                <div className="mt-3">
+                  <label className={labelCls}>ลิงก์สมัครภายนอก</label>
+                  <input className={inputCls} type="url" placeholder="https://forms.google.com/..." value={f.external_url} onChange={(e) => set("external_url", e.target.value)} />
+                  <p className="text-[11px] text-slate-400 mt-1 inline-flex items-start gap-1"><Ico.alert className="w-3 h-3 shrink-0 mt-0.5 text-amber-400" /> user จะเปิดลิงก์นี้สมัคร แล้วกด "ฉันสมัครแล้ว" → ขึ้นสถานะรอพิจารณา จากนั้นนำเข้ารายชื่อเพื่อยืนยัน</p>
+                </div>
+              )}
             </div>
 
             {/* เปิด/ปิดรับ */}

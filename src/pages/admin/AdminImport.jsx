@@ -42,6 +42,27 @@ function parseCsv(text) {
   return { headers, fields, rows }
 }
 
+// แยกคำนำหน้าออกจากชื่อเต็ม → { title, name }
+// ตรวจคำนำหน้ายอดนิยม (รองรับทั้งมีจุด/ไม่มีจุด/มีเว้นวรรค)
+const TITLE_PREFIXES = [
+  "เด็กชาย", "เด็กหญิง", "นางสาว", "นาง", "นาย",
+  "ด.ช.", "ด.ญ.", "ด.ช", "ด.ญ", "น.ส.", "น.ส",
+  "Master", "Mr.", "Mrs.", "Miss", "Ms.", "Mr", "Mrs", "Ms",
+]
+function splitTitle(fullName) {
+  const s = (fullName || "").trim()
+  if (!s) return { title: "", name: "" }
+  for (const pre of TITLE_PREFIXES) {
+    // ขึ้นต้นด้วยคำนำหน้า (ตามด้วยเว้นวรรค หรือ ตามด้วยตัวอักษรเลย เช่น "นายสมชาย")
+    if (s.startsWith(pre)) {
+      const rest = s.slice(pre.length).trim()
+      // ถ้าตัดแล้วยังเหลือชื่อ → แยกได้
+      if (rest) return { title: pre, name: rest }
+    }
+  }
+  return { title: "", name: s }  // ไม่พบคำนำหน้า → คำนำหน้าว่าง ชื่อเต็มเดิม
+}
+
 export default function AdminImport() {
   const { event } = useOutletContext() || {}
   const { toast, confirm } = useDialog()
@@ -128,12 +149,27 @@ export default function AdminImport() {
     loadImported(courseId)
   }
 
+  // ดาวน์โหลด Section 2 (ผลการนำเข้า): คงข้อมูลเดิม + รหัส (คอลัมน์แรก) + แยกคำนำหน้า
+  // หา header ที่เป็นช่องชื่อ → แทนที่ด้วย "คำนำหน้า" + "ชื่อ-สกุล"
   function exportResults() {
-    const head = ["รหัสผู้สมัคร", ...headers]
+    // ตำแหน่ง header ที่ถูก map เป็น full_name (ช่องชื่อ)
+    const nameIdx = headers.findIndex((h) => (HEADER_MAP[h.toLowerCase()] || HEADER_MAP[h]) === "full_name")
+    // header ใหม่: รหัส + (แทนช่องชื่อด้วย คำนำหน้า,ชื่อ-สกุล) + ที่เหลือเดิม
+    const head = ["รหัสผู้สมัคร"]
+    headers.forEach((h, i) => {
+      if (i === nameIdx) head.push("คำนำหน้า", "ชื่อ-สกุล")
+      else head.push(h)
+    })
     const lines = [head.join(",")]
     results.forEach((r) => {
-      const vals = [r.participant_code, ...headers.map((h) => r.raw[h] || "")].map((v) => `"${String(v).replace(/"/g, '""')}"`)
-      lines.push(vals.join(","))
+      const vals = [r.participant_code]
+      headers.forEach((h, i) => {
+        if (i === nameIdx) {
+          const { title, name } = splitTitle(r.raw[h] || "")
+          vals.push(title, name)
+        } else vals.push(r.raw[h] || "")
+      })
+      lines.push(vals.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
     })
     const blob = new Blob(["\ufeff" + lines.join("\n")], { type: "text/csv;charset=utf-8;" })
     const url = URL.createObjectURL(blob)
@@ -141,11 +177,13 @@ export default function AdminImport() {
     URL.revokeObjectURL(url)
   }
 
+  // ดาวน์โหลด Section 3 (รายการที่นำเข้าแล้ว): แยกคำนำหน้าออกจากชื่อ
   function exportImported() {
-    const head = ["รหัสผู้สมัคร", "ชื่อ-สกุล", "โรงเรียน", "ระดับชั้น", "เบอร์โทร", "อีเมล", "เช็คอิน"]
+    const head = ["รหัสผู้สมัคร", "คำนำหน้า", "ชื่อ-สกุล", "โรงเรียน", "ระดับชั้น", "เบอร์โทร", "อีเมล", "เช็คอิน"]
     const lines = [head.join(",")]
     imported.forEach((p) => {
-      const vals = [p.code, p.full_name, p.school, p.grade, p.phone, p.email, p.checkedIn ? "เช็คอินแล้ว" : "ยังไม่"].map((v) => `"${String(v).replace(/"/g, '""')}"`)
+      const { title, name } = splitTitle(p.full_name)
+      const vals = [p.code, title, name, p.school, p.grade, p.phone, p.email, p.checkedIn ? "เช็คอินแล้ว" : "ยังไม่"].map((v) => `"${String(v).replace(/"/g, '""')}"`)
       lines.push(vals.join(","))
     })
     const blob = new Blob(["\ufeff" + lines.join("\n")], { type: "text/csv;charset=utf-8;" })

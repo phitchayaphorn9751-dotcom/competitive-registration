@@ -4,6 +4,7 @@ import {
   fetchCourse, fetchMyProfile, getSession,
   holdSeat, finalizeRegistration, setPaymentDeadline, fetchRegistrationDeadline, addParticipant, addAdvisor, uploadSlip, attachSlip, savePortfolioUrl,
   checkDuplicateRegistration, assignParticipantCode, assignCodesForRegistration, saveRegistrationTheme,
+  registerExternal,
   fetchAllSchools, searchSchools,
 } from "../lib/supabase.js"
 import { useLang } from "../lib/i18n.jsx"
@@ -68,6 +69,10 @@ export default function RegisterPage() {
 
   // ผลลัพธ์หลังกันที่นั่ง
   const [result, setResult] = useState(null) // { regId, requiresPayment, isWaitlist }
+  // โหมดสมัครผ่านลิงก์นอก
+  const [extOpened, setExtOpened] = useState(false)   // user กดเปิดลิงก์แล้วหรือยัง
+  const [extSubmitting, setExtSubmitting] = useState(false)
+  const [extDone, setExtDone] = useState(false)       // กด "ฉันสมัครแล้ว" สำเร็จ
 
   useEffect(() => {
     async function load() {
@@ -215,6 +220,20 @@ export default function RegisterPage() {
     }
   }
 
+  // กด "ฉันสมัครแล้ว" (โหมดลิงก์นอก) → สร้าง record รอพิจารณา
+  async function handleExternalConfirm() {
+    setError(null); setExtSubmitting(true)
+    try {
+      const res = await registerExternal(courseId)
+      setExtDone(true)
+    } catch (e) {
+      const m = e.message || ""
+      if (m.includes("NOT_LOGGED_IN")) setError("กรุณาเข้าสู่ระบบก่อน")
+      else if (m.includes("NOT_EXTERNAL_COURSE")) setError("คอร์สนี้ไม่ใช่คอร์สสมัครผ่านลิงก์นอก")
+      else setError("เกิดข้อผิดพลาด: " + m)
+    } finally { setExtSubmitting(false) }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -240,6 +259,77 @@ export default function RegisterPage() {
       return <ResultScreen iconKey="clock" color="orange" title="ส่งใบสมัครแล้ว รอการอนุมัติ" msg="ใบสมัครของคุณถูกส่งให้แอดมินพิจารณาผลงานแล้ว เมื่อได้รับอนุมัติจะกันที่นั่งให้ — ติดตามสถานะได้ที่ 'ใบสมัครของฉัน'" t={t} navigate={navigate} />
     // ฟรี + ไม่แนบผลงาน → ยืนยัน/กันที่นั่งเลย
     return <ResultScreen iconKey="check" color="emerald" title={t("reg.successFreeTitle")} msg={t("reg.successFreeMsg")} t={t} navigate={navigate} />
+  }
+
+  // ── โหมดสมัครผ่านลิงก์นอก ──
+  const isExternalCourse = !!(course.external_url && course.external_url.trim())
+  if (isExternalCourse) {
+    if (extDone) {
+      return <ResultScreen iconKey="clock" color="orange" title="บันทึกการสมัครแล้ว รอพิจารณา"
+        msg="ระบบบันทึกว่าคุณสมัครคอร์สนี้แล้ว สถานะ 'รอพิจารณา' — เมื่อเจ้าหน้าที่ตรวจสอบรายชื่อจากระบบที่คุณสมัครแล้ว จะเปลี่ยนเป็น 'ยืนยันแล้ว' · ติดตามได้ที่ 'ใบสมัครของฉัน'"
+        t={t} navigate={navigate} />
+    }
+    return (
+      <div className="min-h-screen bg-slate-50 pb-24">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 pt-5">
+          <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-bold text-[#F15A24] hover:underline">
+            <Ico.arrowLeft className="w-4 h-4" /> {t("reg.backToCourses")}
+          </Link>
+        </div>
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100/60">
+            <div className="flex items-center gap-2 mb-2">
+              {course.course_types?.label && (
+                <span className="text-[10px] font-bold px-2.5 py-1 rounded-md bg-violet-100 text-violet-700">{course.course_types.label}</span>
+              )}
+              <span className="text-[10px] font-bold px-2.5 py-1 rounded-md bg-violet-100 text-violet-700">สมัครผ่านลิงก์</span>
+            </div>
+            <h1 className="text-2xl font-extrabold text-slate-900">{course.title}</h1>
+          </div>
+
+          <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100">
+            <h3 className="text-base font-bold text-slate-800 mb-4">วิธีสมัครคอร์สนี้</h3>
+            <ol className="space-y-4">
+              <li className="flex gap-3">
+                <span className="w-7 h-7 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center font-bold text-sm shrink-0">1</span>
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-slate-800">เปิดลิงก์แล้วกรอกใบสมัคร</p>
+                  <p className="text-xs text-slate-400 mt-0.5">คอร์สนี้รับสมัครผ่านระบบภายนอก — กดปุ่มด้านล่างเพื่อเปิด (แท็บใหม่)</p>
+                  <a href={course.external_url} target="_blank" rel="noreferrer" onClick={() => setExtOpened(true)}
+                    className="inline-flex items-center gap-2 mt-2.5 bg-violet-500 hover:bg-violet-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition shadow-sm shadow-violet-500/20">
+                    <Ico.upload className="w-4 h-4" /> เปิดลิงก์สมัคร
+                  </a>
+                </div>
+              </li>
+              <li className="flex gap-3">
+                <span className="w-7 h-7 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center font-bold text-sm shrink-0">2</span>
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-slate-800">กลับมากดยืนยันที่นี่</p>
+                  <p className="text-xs text-slate-400 mt-0.5">เมื่อกรอกใบสมัครในลิงก์เสร็จแล้ว กลับมากด "ฉันสมัครเรียบร้อยแล้ว" เพื่อบันทึกในระบบ (สถานะรอพิจารณา)</p>
+                </div>
+              </li>
+            </ol>
+          </div>
+
+          {error && (
+            <div className="flex items-start gap-3 bg-rose-50 border border-rose-100 text-rose-700 rounded-2xl px-4 py-3.5 text-sm">
+              <Ico.warn className="w-4 h-4 shrink-0 mt-0.5" /><span className="font-medium">{error}</span>
+            </div>
+          )}
+
+          {!extOpened && (
+            <div className="bg-amber-50 border border-amber-100 text-amber-700 rounded-2xl px-4 py-3 text-sm flex items-center gap-2">
+              <Ico.info className="w-4 h-4 shrink-0" /> กรุณาเปิดลิงก์และกรอกใบสมัครก่อน แล้วจึงกดยืนยัน
+            </div>
+          )}
+
+          <button onClick={handleExternalConfirm} disabled={extSubmitting || !extOpened}
+            className="w-full bg-[#F15A24] hover:bg-[#c44215] disabled:bg-slate-300 text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-500/20 transition-all active:scale-95 text-sm flex items-center justify-center gap-2">
+            {extSubmitting ? "กำลังบันทึก…" : <><Ico.check className="w-4 h-4" /> ฉันสมัครเรียบร้อยแล้ว</>}
+          </button>
+        </div>
+      </div>
+    )
   }
 
   const isCompetition = course.course_types?.requires_approval

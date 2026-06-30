@@ -28,7 +28,7 @@ export async function fetchCourses(eventId) {
   let q = supabase
     .from("courses")
     .select(
-      "id, title, description, content, count_mode, team_size, min_members, max_members, capacity, seats_taken, price, bank_account, image_url, image_urls, level, start_date, end_date, duration, line_qr_url, form_schema, is_open, course_types:type_id(code,label,requires_payment,requires_approval), course_instructors(instructors(full_name)), course_days(day_date,start_at,end_at)"
+      "id, title, description, content, count_mode, team_size, min_members, max_members, capacity, seats_taken, price, bank_account, image_url, image_urls, level, start_date, end_date, duration, line_qr_url, form_schema, is_open, external_url, course_types:type_id(code,label,requires_payment,requires_approval), course_instructors(instructors(full_name)), course_days(day_date,start_at,end_at)"
     )
     .order("created_at", { ascending: true })
   if (eventId) q = q.eq("event_id", eventId)
@@ -41,7 +41,7 @@ export async function fetchCourse(courseId) {
   const { data, error } = await supabase
     .from("courses")
     .select(
-      "id, event_id, title, description, content, count_mode, team_size, min_members, max_members, capacity, seat_mode, require_portfolio, portfolio_label, seats_taken, price, bank_account, bank_name, bank_holder, line_qr_url, image_url, image_urls, level, start_date, end_date, duration, form_schema, is_open, course_types:type_id(code,label,requires_payment,requires_approval)"
+      "id, event_id, title, description, content, count_mode, team_size, min_members, max_members, capacity, seat_mode, require_portfolio, portfolio_label, seats_taken, price, bank_account, bank_name, bank_holder, line_qr_url, image_url, image_urls, level, start_date, end_date, duration, form_schema, is_open, external_url, course_types:type_id(code,label,requires_payment,requires_approval)"
     )
     .eq("id", courseId)
     .single()
@@ -526,7 +526,7 @@ export async function deleteCourseType(id) {
 export async function fetchCoursesAdmin(eventId) {
   let q = supabase
     .from("courses")
-    .select("id, event_id, type_id, title, description, content, count_mode, team_size, min_members, max_members, capacity, seat_mode, require_portfolio, portfolio_label, seats_taken, price, bank_account, bank_name, bank_holder, image_url, image_urls, line_qr_url, base_id, level, start_date, end_date, duration, form_schema, is_open, course_types:type_id(label), course_instructors(instructors(full_name)), course_days(day_date)")
+    .select("id, event_id, type_id, title, description, content, count_mode, team_size, min_members, max_members, capacity, seat_mode, require_portfolio, portfolio_label, seats_taken, price, bank_account, bank_name, bank_holder, image_url, image_urls, line_qr_url, base_id, level, start_date, end_date, duration, form_schema, is_open, external_url, course_types:type_id(label), course_instructors(instructors(full_name)), course_days(day_date)")
     .order("created_at", { ascending: true })
   if (eventId) q = q.eq("event_id", eventId)
   const { data, error } = await q
@@ -589,6 +589,7 @@ export async function saveCourse(c) {
     duration: c.duration || null,
     form_schema: c.form_schema || [],
     is_open: c.is_open,
+    external_url: c.external_url ? String(c.external_url).trim() : null,
   }
   let courseId = c.id
   if (c.id) {
@@ -892,4 +893,13 @@ export async function deleteImportedByCourse(courseId) {
   })
   if (error) throw error
   return data
+}
+
+// สมัครผ่านลิงก์นอก — user กด "ฉันสมัครแล้ว" → สร้าง record รอพิจารณา
+export async function registerExternal(courseId) {
+  const { data, error } = await supabase.rpc("register_external", {
+    p_course_id: courseId,
+  })
+  if (error) throw error
+  return data // { registration_id, duplicate }
 }
