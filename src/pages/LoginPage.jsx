@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom"
 import {
   signIn, signUp, signInWithGoogle, getSession,
   isAdminUser, fetchSettings, resetPassword, fetchMyProfile,
+  fetchOpenEvent, fetchEventSettings,
 } from "../lib/supabase.js"
 import { useLang, LangToggle } from "../lib/i18n.jsx"
 import { useDialog } from "../lib/dialog.jsx"
@@ -35,11 +36,27 @@ export default function LoginPage() {
   const [info, setInfo] = useState("")
   const [settings, setSettings] = useState({ line_id: "", phone: "" })
   const [showResetModal, setShowResetModal] = useState(false)
+  const [siteTitle, setSiteTitle] = useState("")
+  const [heroSub, setHeroSub] = useState("")
 
   useEffect(() => {
     getSession().then((s) => { if (s) routeAfterAuth(navigate) })
     fetchSettings().then(setSettings).catch(() => {})
   }, [navigate])
+
+  // โหลดชื่องาน + ข้อความ hero จากหน้าตั้งค่า (ตามงานที่เปิดรับสมัคร)
+  useEffect(() => {
+    (async () => {
+      try {
+        const ev = await fetchOpenEvent()
+        if (ev?.id) {
+          const es = await fetchEventSettings(ev.id)
+          setSiteTitle(es.site_title || "")
+          setHeroSub(es.hero_subtitle || "")
+        }
+      } catch (_) { /* เงียบไว้ ใช้ค่า fallback */ }
+    })()
+  }, [])
 
   async function handleSubmit(e) {
     e?.preventDefault?.()
@@ -71,45 +88,74 @@ export default function LoginPage() {
   const isSignup = mode === "signup"
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] px-4 py-10 sm:py-14">
-      <div className="w-full max-w-[440px] mx-auto">
-        <div className="w-full bg-white p-8 sm:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-100/60 relative">
-          <div className="mb-8 text-center">
-            <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+    <div className="min-h-screen flex flex-col md:flex-row bg-white">
+      {/* ── Left panel (desktop) — brand + ชื่องานจาก setting ── */}
+      <div className="hidden md:flex md:w-5/12 lg:w-1/2 bg-gradient-to-br from-[#F15A24] to-amber-500 relative overflow-hidden flex-col justify-between p-12">
+        <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
+          <div className="absolute -top-40 -left-40 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 right-0 w-[40rem] h-[40rem] bg-black/10 rounded-full blur-3xl transform translate-x-1/3 translate-y-1/3" />
+          <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: `linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)`, backgroundSize: "32px 32px" }} />
+        </div>
+        <div className="relative z-10 flex items-center justify-between">
+          <Link to="/"><Logo className="h-16 w-16" /></Link>
+          <LangToggle />
+        </div>
+        <div className="relative z-10 mb-20 text-white">
+          <h1 className="text-4xl lg:text-5xl xl:text-6xl font-extrabold tracking-tight leading-[1.1] mb-6">
+            {siteTitle || "CAMT SUMMER COURSE 2026"}
+          </h1>
+          <p className="text-lg text-orange-100/90 font-medium max-w-md leading-relaxed">{heroSub || t("login.heroSub")}</p>
+        </div>
+        <div className="relative z-10 text-orange-100 text-sm font-medium">
+          &copy; {new Date().getFullYear()} College of Arts, Media and Technology
+        </div>
+      </div>
+
+      {/* ── Right form ── */}
+      <div className="flex-1 flex flex-col justify-center px-6 py-12 sm:px-12 relative bg-slate-50">
+        {/* Mobile logo */}
+        <div className="md:hidden flex justify-between items-center mb-8">
+          <Link to="/"><Logo className="h-14 w-14" /></Link>
+          <LangToggle />
+        </div>
+
+        <div className="w-full max-w-[420px] mx-auto bg-white p-8 sm:p-10 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100/60">
+          <div className="mb-8 text-center md:text-left">
+            <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
               {isSignup ? t("login.signupTitle") : t("login.title")}
             </h2>
-            <p className="text-gray-500 mt-2 text-sm">
+            <p className="text-slate-500 mt-2 text-sm">
               {isSignup ? t("login.signupSubtitle") : t("login.subtitle")}
             </p>
           </div>
 
           {errorMsg && (
-            <div className="flex items-start gap-3 bg-red-50 border border-red-100 text-red-700 rounded-2xl px-4 py-3.5 mb-6 text-sm animate-fade-in">
-              <span className="text-base shrink-0 mt-0.5">⚠️</span>
+            <div className="flex items-start gap-3 bg-rose-50 border border-rose-100 text-rose-700 rounded-2xl px-4 py-3.5 mb-6 text-sm animate-fade-in">
+              <svg className="w-4 h-4 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
               <span className="font-medium leading-relaxed">{errorMsg}</span>
             </div>
           )}
           {info && (
-            <div className="flex items-start gap-3 bg-green-50 border border-green-100 text-green-700 rounded-2xl px-4 py-3.5 mb-6 text-sm animate-fade-in">
-              <span className="text-base shrink-0 mt-0.5">✅</span>
+            <div className="flex items-start gap-3 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-2xl px-4 py-3.5 mb-6 text-sm animate-fade-in">
+              <svg className="w-4 h-4 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
               <span className="font-medium leading-relaxed">{info}</span>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1.5">{t("login.email")}</label>
+              <label className="block text-sm font-bold text-slate-700 mb-1.5">{t("login.email")}</label>
               <input
                 type="email" required autoComplete="email" value={email}
                 onChange={(e) => { setEmail(e.target.value); setErrorMsg("") }}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:border-[#F15A24] focus:ring-4 focus:ring-orange-50 outline-none transition-all text-sm text-gray-900 placeholder-gray-400"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-[#F15A24] focus:ring-4 focus:ring-orange-50 outline-none transition-all text-sm text-slate-900 placeholder-slate-400"
                 placeholder="Ex. student@example.com"
               />
             </div>
 
             <div>
               <div className="flex justify-between items-center mb-1.5">
-                <label className="block text-sm font-bold text-gray-700">{t("login.password")}</label>
+                <label className="block text-sm font-bold text-slate-700">{t("login.password")}</label>
                 {!isSignup && (
                   <button type="button" onClick={() => setShowResetModal(true)}
                     className="text-xs text-[#F15A24] hover:text-[#c44215] font-semibold transition-colors">
@@ -121,11 +167,11 @@ export default function LoginPage() {
                 <input
                   type={showPassword ? "text" : "password"} required value={password}
                   onChange={(e) => { setPassword(e.target.value); setErrorMsg("") }}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:border-[#F15A24] focus:ring-4 focus:ring-orange-50 outline-none transition-all text-sm text-gray-900 placeholder-gray-400 pr-12"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-[#F15A24] focus:ring-4 focus:ring-orange-50 outline-none transition-all text-sm text-slate-900 placeholder-slate-400 pr-12"
                   placeholder="••••••••"
                 />
                 <button type="button" onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-[#F15A24] transition-colors p-1">
+                  className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-[#F15A24] transition-colors p-1">
                   <EyeIcon off={showPassword} />
                 </button>
               </div>
@@ -142,20 +188,18 @@ export default function LoginPage() {
           </form>
 
           <div className="flex items-center gap-4 my-6">
-            <div className="flex-1 h-px bg-gray-100" />
-            <span className="text-gray-400 text-[11px] font-semibold uppercase tracking-wider">{t("login.orWith")}</span>
-            <div className="flex-1 h-px bg-gray-100" />
+            <div className="flex-1 h-px bg-slate-100" />
+            <span className="text-slate-400 text-[11px] font-semibold uppercase tracking-wider">{t("login.orWith")}</span>
+            <div className="flex-1 h-px bg-slate-100" />
           </div>
 
           <button type="button" onClick={handleGoogleLogin} disabled={loading}
-            className={`w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-3 border ${loading ? "border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed" : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50 active:scale-[0.98] hover:shadow-sm"}`}>
+            className={`w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-3 border ${loading ? "border-slate-100 bg-slate-50 text-slate-400 cursor-not-allowed" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 active:scale-[0.98] hover:shadow-sm"}`}>
             <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="Google" />
             <span>Google</span>
           </button>
-        </div>
 
-        <div className="mt-8 text-center relative z-10">
-          <p className="text-gray-500 text-sm">
+          <p className="mt-8 text-center text-slate-500 text-sm">
             {t("login.noAccount")}{" "}
             <Link to="/signup" className="text-[#F15A24] font-bold hover:text-[#c44215] hover:underline transition-colors">
               {t("login.signupNew")}
@@ -184,40 +228,43 @@ function ResetModal({ onClose, t }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-50 px-4"
+    <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center z-50 px-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="bg-white rounded-[24px] shadow-2xl w-full max-w-md overflow-hidden">
-        <div className="bg-gradient-to-r from-[#F15A24] to-[#d04616] p-6 text-white">
-          <h3 className="text-xl font-extrabold flex items-center gap-2"><span>🔑</span> {t("login.resetTitle").replace("🔑 ", "")}</h3>
+        <div className="bg-gradient-to-r from-[#F15A24] to-amber-500 p-6 text-white">
+          <h3 className="text-xl font-extrabold flex items-center gap-2">
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/></svg>
+            {t("login.resetTitle").replace("🔑 ", "")}
+          </h3>
           <p className="text-orange-100 text-sm mt-1.5 font-medium">{t("login.resetSub")}</p>
         </div>
         <div className="p-7">
           {resetSent ? (
             <div className="text-center py-5">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-green-50 rounded-full mb-4">
-                <span className="text-3xl text-green-500">✓</span>
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-50 rounded-full mb-4">
+                <svg className="w-8 h-8 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
               </div>
-              <h4 className="font-bold text-gray-900 text-lg mb-1">ส่งอีเมลเรียบร้อย!</h4>
-              <p className="text-gray-500 text-sm mb-6">กรุณาตรวจสอบ Inbox หรือโฟลเดอร์ Junk Mail ของคุณ</p>
-              <button onClick={onClose} className="w-full py-3.5 bg-gray-100 text-gray-800 rounded-xl font-bold hover:bg-gray-200 transition text-sm active:scale-[0.98]">
+              <h4 className="font-bold text-slate-900 text-lg mb-1">ส่งอีเมลเรียบร้อย!</h4>
+              <p className="text-slate-500 text-sm mb-6">กรุณาตรวจสอบ Inbox หรือโฟลเดอร์ Junk Mail ของคุณ</p>
+              <button onClick={onClose} className="w-full py-3.5 bg-slate-100 text-slate-800 rounded-xl font-bold hover:bg-slate-200 transition text-sm active:scale-[0.98]">
                 {t("login.resetClose")}
               </button>
             </div>
           ) : (
             <>
               <div className="mb-6">
-                <label className="block text-sm font-bold text-gray-700 mb-2">{t("login.resetEmailLabel")}</label>
+                <label className="block text-sm font-bold text-slate-700 mb-2">{t("login.resetEmailLabel")}</label>
                 <input type="email" placeholder="Ex. student@example.com"
-                  className="w-full px-4 py-3.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-4 focus:ring-orange-50 focus:border-[#F15A24] bg-gray-50 focus:bg-white transition"
+                  className="w-full px-4 py-3.5 border border-slate-200 rounded-xl text-sm outline-none focus:ring-4 focus:ring-orange-50 focus:border-[#F15A24] bg-slate-50 focus:bg-white transition"
                   value={resetEmail} onChange={(e) => setResetEmail(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleReset()} autoFocus />
               </div>
               <div className="flex gap-3">
-                <button onClick={onClose} className="flex-1 py-3.5 bg-gray-100 rounded-xl font-bold text-gray-600 hover:bg-gray-200 transition text-sm active:scale-[0.98]">
+                <button onClick={onClose} className="flex-1 py-3.5 bg-slate-100 rounded-xl font-bold text-slate-600 hover:bg-slate-200 transition text-sm active:scale-[0.98]">
                   {t("common.cancel")}
                 </button>
                 <button onClick={handleReset} disabled={sending}
-                  className="flex-1 py-3.5 bg-[#F15A24] text-white rounded-xl font-bold hover:bg-[#d04616] hover:shadow-lg transition text-sm active:scale-[0.98] shadow-md">
+                  className="flex-1 py-3.5 bg-[#F15A24] text-white rounded-xl font-bold hover:bg-[#c44215] hover:shadow-lg transition text-sm active:scale-[0.98] shadow-md">
                   {sending ? t("login.resetSending") : t("login.resetSend")}
                 </button>
               </div>
@@ -250,7 +297,6 @@ function Spinner() {
 // หลัง login: admin → panel, อีเมลอื่น → หน้าลงทะเบียน
 export async function routeAfterAuth(navigate) {
   if (await isAdminUser()) { navigate("/admin/dashboard"); return }
-  // ข้อ 2: ถ้ามีข้อมูลโปรไฟล์ครบแล้ว → เข้าหน้า home เลย / ยังไม่ครบ → ไปกรอกโปรไฟล์
   try {
     const p = await fetchMyProfile()
     if (p && p.is_complete) { navigate("/"); return }
