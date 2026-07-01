@@ -28,7 +28,7 @@ export async function fetchCourses(eventId) {
   let q = supabase
     .from("courses")
     .select(
-      "id, title, description, content, count_mode, team_size, min_members, max_members, capacity, seats_taken, price, bank_account, image_url, image_urls, level, start_date, end_date, duration, line_qr_url, form_schema, is_open, external_url, course_types:type_id(code,label,requires_payment,requires_approval,color), course_instructors(instructors(full_name)), course_days(day_date,start_at,end_at)"
+      "id, title, description, content, count_mode, team_size, min_members, max_members, capacity, seats_taken, price, bank_account, image_url, image_urls, level, start_date, end_date, duration, timeline, line_qr_url, form_schema, is_open, external_url, course_types:type_id(code,label,requires_payment,requires_approval,color), course_instructors(instructors(full_name)), course_days(day_date,start_at,end_at)"
     )
     .order("created_at", { ascending: true })
   if (eventId) q = q.eq("event_id", eventId)
@@ -41,7 +41,7 @@ export async function fetchCourse(courseId) {
   const { data, error } = await supabase
     .from("courses")
     .select(
-      "id, event_id, title, description, content, count_mode, team_size, min_members, max_members, capacity, seat_mode, require_portfolio, portfolio_label, seats_taken, price, bank_account, bank_name, bank_holder, line_qr_url, image_url, image_urls, level, start_date, end_date, duration, form_schema, is_open, external_url, course_types:type_id(code,label,requires_payment,requires_approval,color)"
+      "id, event_id, title, description, content, count_mode, team_size, min_members, max_members, capacity, seat_mode, require_portfolio, portfolio_label, seats_taken, price, bank_account, bank_name, bank_holder, line_qr_url, image_url, image_urls, level, start_date, end_date, duration, timeline, form_schema, is_open, external_url, course_types:type_id(code,label,requires_payment,requires_approval,color)"
     )
     .eq("id", courseId)
     .single()
@@ -527,7 +527,7 @@ export async function deleteCourseType(id) {
 export async function fetchCoursesAdmin(eventId) {
   let q = supabase
     .from("courses")
-    .select("id, event_id, type_id, title, description, content, count_mode, team_size, min_members, max_members, capacity, seat_mode, require_portfolio, portfolio_label, seats_taken, price, bank_account, bank_name, bank_holder, image_url, image_urls, line_qr_url, base_id, level, start_date, end_date, duration, form_schema, is_open, external_url, course_types:type_id(label,color), course_instructors(instructors(full_name)), course_days(day_date)")
+    .select("id, event_id, type_id, title, description, content, count_mode, team_size, min_members, max_members, capacity, seat_mode, require_portfolio, portfolio_label, seats_taken, price, bank_account, bank_name, bank_holder, image_url, image_urls, line_qr_url, base_id, level, start_date, end_date, duration, timeline, form_schema, is_open, external_url, course_types:type_id(label,color), course_instructors(instructors(full_name)), course_days(day_date)")
     .order("created_at", { ascending: true })
   if (eventId) q = q.eq("event_id", eventId)
   const { data, error } = await q
@@ -551,7 +551,7 @@ export async function duplicateCourses(courseIds, toEventId) {
   // ดึงคอร์สต้นฉบับ
   const { data: sources, error: e1 } = await supabase
     .from("courses")
-    .select("type_id, title, description, content, count_mode, team_size, min_members, max_members, capacity, seat_mode, require_portfolio, portfolio_label, price, bank_account, bank_name, bank_holder, image_url, image_urls, line_qr_url, base_id, level, start_date, end_date, duration, form_schema")
+    .select("type_id, title, description, content, count_mode, team_size, min_members, max_members, capacity, seat_mode, require_portfolio, portfolio_label, price, bank_account, bank_name, bank_holder, image_url, image_urls, line_qr_url, base_id, level, start_date, end_date, duration, timeline, form_schema")
     .in("id", courseIds)
   if (e1) throw e1
   // เตรียม payload งานใหม่ (seats_taken=0, is_open=false ให้แอดมินเปิดเอง)
@@ -588,6 +588,7 @@ export async function saveCourse(c) {
     start_date: c.start_date || null,
     end_date: c.end_date || null,
     duration: c.duration || null,
+    timeline: Array.isArray(c.timeline) ? c.timeline : [],
     form_schema: c.form_schema || [],
     is_open: c.is_open,
     external_url: c.external_url ? String(c.external_url).trim() : null,
@@ -903,4 +904,45 @@ export async function registerExternal(courseId) {
   })
   if (error) throw error
   return data // { registration_id, duplicate }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Certificate (เกียรติบัตร) — ดึงคน check-in + จัดการเทมเพลต/รางวัล
+// เทมเพลต + รายการรางวัล เก็บใน event_settings (jsonb) ไม่ต้องแก้ schema
+// ═══════════════════════════════════════════════════════════════════
+
+// ดึงคนที่ "check-in แล้ว" ในคอร์ส (สำหรับออกเกียรติบัตร)
+// คืน participant + ชื่อคอร์ส + หมวด — เฉพาะคนที่มี checkin record
+export async function fetchCertificateRecipients(courseId) {
+  const { data, error } = await supabase
+    .from("registrations")
+    .select("id, status, theme_name, course_id, courses!inner(title, event_id, course_types:type_id(label)), participants(id, full_name, school, grade_level, checkins(id, scanned_at))")
+    .eq("course_id", courseId)
+    .order("created_at", { ascending: true })
+  if (error) throw error
+  // แตก participant ออกมาเป็นรายคน — เฉพาะคนที่ check-in แล้ว
+  const recipients = []
+  for (const reg of data || []) {
+    const course = reg.courses
+    for (const p of reg.participants || []) {
+      const checkedIn = (p.checkins || []).length > 0
+      if (!checkedIn) continue
+      recipients.push({
+        participant_id: p.id,
+        registration_id: reg.id,
+        full_name: p.full_name || "",
+        school: p.school || "",
+        grade_level: p.grade_level || "",
+        theme_name: reg.theme_name || "",
+        course_title: course?.title || "",
+        category: course?.course_types?.label || "",
+      })
+    }
+  }
+  return recipients
+}
+
+// อัปโหลดรูปพื้นหลังเกียรติบัตร → คืน public URL
+export async function uploadCertificateTemplate(file) {
+  return uploadCourseAsset(file, "certificates")
 }

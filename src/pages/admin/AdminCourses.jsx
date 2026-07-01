@@ -57,6 +57,7 @@ export default function AdminCourses() {
     bank_account: "", bank_name: "", bank_holder: "",
     base_id: "", level: "", start_date: "", end_date: "", duration: "",
     external_url: "",
+    timeline: [],
   }
 
   function openAdd() { setEditCourse({ ...blank, type_id: types[0]?.id || "" }); setShowModal(true) }
@@ -442,6 +443,48 @@ function CourseCardMobile({ course, onEdit, onDelete, onToggle, onView }) {
   )
 }
 
+// ── ตัวแก้ไข Timeline (กำหนดการ) — date picker + ป้าย + ติ๊กวันเด่น ──
+function TimelineEditor({ items, onChange }) {
+  const list = Array.isArray(items) ? items : []
+  const tlInput = "w-full px-2.5 py-2 border border-slate-200 rounded-lg outline-none focus:border-[#F15A24] focus:ring-1 focus:ring-[#F15A24] text-sm transition"
+
+  function add() { onChange([...list, { date: "", label: "", highlight: false }]) }
+  function update(i, key, val) { onChange(list.map((it, idx) => idx === i ? { ...it, [key]: val } : it)) }
+  function remove(i) { onChange(list.filter((_, idx) => idx !== i)) }
+
+  return (
+    <div className="border border-slate-200 rounded-xl p-3.5 bg-slate-50/50">
+      <div className="flex items-center justify-between mb-2.5">
+        <label className="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
+          <Ico.calendar className="w-3.5 h-3.5 text-[#F15A24]" /> กำหนดการ (Timeline)
+        </label>
+        <button type="button" onClick={add}
+          className="flex items-center gap-1 bg-[#F15A24] text-white px-2.5 py-1 rounded-lg text-xs font-bold hover:bg-[#c44215] transition active:scale-95">
+          <Ico.plus className="w-3 h-3" /> เพิ่มวัน
+        </button>
+      </div>
+
+      {list.length === 0 && <p className="text-[11px] text-slate-400 text-center py-2">ยังไม่มีกำหนดการ — กด "เพิ่มวัน" เช่น ปิดรับสมัคร / ประชุม / วันงาน</p>}
+
+      <div className="space-y-2">
+        {list.map((it, i) => (
+          <div key={i} className="flex items-center gap-2 bg-white rounded-lg border border-slate-100 p-2">
+            <input type="date" className={`${tlInput} w-36 shrink-0`} value={it.date || ""} onChange={(e) => update(i, "date", e.target.value)} />
+            <input className={tlInput} placeholder="ป้าย เช่น ปิดรับสมัคร, วันงาน" value={it.label || ""} onChange={(e) => update(i, "label", e.target.value)} />
+            <label className="flex items-center gap-1 shrink-0 cursor-pointer" title="วันเด่น (เช่น วันงาน)">
+              <input type="checkbox" checked={!!it.highlight} onChange={(e) => update(i, "highlight", e.target.checked)} className="w-4 h-4 accent-[#F15A24]" />
+              <span className="text-[10px] font-bold text-slate-500">เด่น</span>
+            </label>
+            <button type="button" onClick={() => remove(i)} className="text-rose-500 hover:bg-rose-50 p-1.5 rounded-lg shrink-0" title="ลบ"><Ico.trash className="w-3.5 h-3.5" /></button>
+          </div>
+        ))}
+      </div>
+
+      {list.length > 0 && <p className="text-[10px] text-slate-400 mt-2">เรียงตามวันอัตโนมัติ · ติ๊ก "เด่น" ให้วันงานเด่นกว่าจุดอื่น</p>}
+    </div>
+  )
+}
+
 // Modal เพิ่ม/แก้คอร์ส
 function CourseModal({ course, types, onSave, onClose }) {
   const { toast } = useDialog()
@@ -561,6 +604,10 @@ function CourseModal({ course, types, onSave, onClose }) {
               <div><label className={labelCls}>วันสิ้นสุด</label><input type="date" className={inputCls} value={f.end_date || ""} onChange={(e) => onDateChange("end_date", e.target.value)} /></div>
               <div><label className={labelCls}>ระยะเวลา <span className="text-[10px] text-slate-400 font-normal">(คำนวณอัตโนมัติ)</span></label><input className={inputCls} placeholder="เช่น 5 วัน" value={f.duration || ""} onChange={(e) => set("duration", e.target.value)} /></div>
             </div>
+
+            {/* กำหนดการ (timeline) — แสดงในหน้ารายละเอียดคอร์ส */}
+            <TimelineEditor items={f.timeline || []} onChange={(tl) => set("timeline", tl)} />
+
 
             {/* 3. หมวดหมู่ + ผู้สอน */}
             <div className="grid grid-cols-2 gap-3">
