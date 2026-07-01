@@ -96,7 +96,7 @@ export default function LoginPage() {
         <div className="relative z-10 flex items-center justify-end">
           <LangToggle />
         </div>
-        <div className="relative z-10 text-white">
+        <div className="relative z-10 flex-1 flex flex-col justify-center text-white">
           <h1 className="text-4xl lg:text-5xl xl:text-6xl font-extrabold tracking-tight leading-[1.1] mb-6">
             {siteTitle || "CAMT SUMMER COURSE 2026"}
           </h1>
