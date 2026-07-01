@@ -25,8 +25,6 @@ export default function AdminSettings() {
   const [types, setTypes] = useState([])
   const [typeModal, setTypeModal] = useState(null)
   const [uploadingSchedule, setUploadingSchedule] = useState(false)
-  const [uploadingCert, setUploadingCert] = useState(false)
-  const [newAward, setNewAward] = useState("")
 
   // โหลดค่ากลาง (Line/เบอร์) + ประเภทวิชา ครั้งเดียว
   useEffect(() => { loadAll() }, [])
@@ -43,8 +41,6 @@ export default function AdminSettings() {
         hero_subtitle: es.hero_subtitle || "",
         home_notice: es.home_notice || "",
         schedule_image_url: es.schedule_image_url || "",
-        cert_template_url: es.cert_template_url || "",
-        cert_awards: es.cert_awards?.length ? es.cert_awards : ["รางวัลชนะเลิศ", "รางวัลรองชนะเลิศอันดับ 1", "รางวัลรองชนะเลิศอันดับ 2", "รางวัลชมเชย", "เข้าร่วมกิจกรรม"],
       })
       setTypes(await fetchCourseTypes(event?.id) || [])
     } catch (e) { toast("โหลดไม่สำเร็จ: " + e.message, "error") }
@@ -52,7 +48,7 @@ export default function AdminSettings() {
   async function loadEventPart() {
     try {
       const es = await fetchEventSettings(event.id)
-      setForm((f) => ({ ...(f || { line_id: "", phone: "" }), site_title: es.site_title || "", hero_subtitle: es.hero_subtitle || "", home_notice: es.home_notice || "", schedule_image_url: es.schedule_image_url || "", cert_template_url: es.cert_template_url || "", cert_awards: es.cert_awards?.length ? es.cert_awards : ["รางวัลชนะเลิศ", "รางวัลรองชนะเลิศอันดับ 1", "รางวัลรองชนะเลิศอันดับ 2", "รางวัลชมเชย", "เข้าร่วมกิจกรรม"] }))
+      setForm((f) => ({ ...(f || { line_id: "", phone: "" }), site_title: es.site_title || "", hero_subtitle: es.hero_subtitle || "", home_notice: es.home_notice || "", schedule_image_url: es.schedule_image_url || "" }))
       setTypes(await fetchCourseTypes(event.id) || [])
     } catch (e) { toast("โหลดไม่สำเร็จ: " + e.message, "error") }
   }
@@ -63,7 +59,7 @@ export default function AdminSettings() {
       // ค่ากลาง: Line/เบอร์
       await updateSettings({ line_id: form.line_id, phone: form.phone })
       // ค่าตามงาน: ชื่อเว็บ/ข้อความแจ้งเตือน
-      if (event?.id) await updateEventSettings(event.id, { site_title: form.site_title, hero_subtitle: form.hero_subtitle, home_notice: form.home_notice, schedule_image_url: form.schedule_image_url || "", cert_template_url: form.cert_template_url || "", cert_awards: form.cert_awards || [] })
+      if (event?.id) await updateEventSettings(event.id, { site_title: form.site_title, hero_subtitle: form.hero_subtitle, home_notice: form.home_notice, schedule_image_url: form.schedule_image_url || "" })
       toast("บันทึกข้อมูลสำเร็จ", "success")
     }
     catch (e) { toast("บันทึกไม่สำเร็จ: " + e.message, "error") } finally { setSaving(false) }
@@ -96,32 +92,6 @@ export default function AdminSettings() {
   }
   function removeSchedule() {
     setForm((f) => ({ ...f, schedule_image_url: "" }))
-  }
-
-  // ── เกียรติบัตร: อัปโหลดพื้นหลัง + จัดการรายการรางวัล ──
-  async function handleCertUpload(e) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setUploadingCert(true)
-    try {
-      const url = await uploadCourseAsset(file, "certificates")
-      setForm((f) => ({ ...f, cert_template_url: url }))
-      toast("อัปโหลดพื้นหลังเกียรติบัตรแล้ว กดบันทึกเพื่อใช้งาน", "success")
-    } catch (err) { toast("อัปโหลดไม่สำเร็จ: " + err.message, "error") }
-    finally { setUploadingCert(false); e.target.value = "" }
-  }
-  function removeCert() {
-    setForm((f) => ({ ...f, cert_template_url: "" }))
-  }
-  function addAward() {
-    const a = newAward.trim()
-    if (!a) return
-    if ((form.cert_awards || []).includes(a)) return toast("มีรางวัลนี้อยู่แล้ว", "error")
-    setForm((f) => ({ ...f, cert_awards: [...(f.cert_awards || []), a] }))
-    setNewAward("")
-  }
-  function removeAward(a) {
-    setForm((f) => ({ ...f, cert_awards: (f.cert_awards || []).filter((x) => x !== a) }))
   }
 
   if (!form) return <div className="py-16 text-center text-slate-400">กำลังโหลด…</div>
@@ -200,54 +170,6 @@ export default function AdminSettings() {
         </div>
       </SectionCard>
 
-      {/* ── การ์ด: เกียรติบัตร (เฉพาะงานนี้) ── */}
-      <SectionCard icon={Ico.cap} title="เกียรติบัตร (เฉพาะงานนี้)"
-        subtitle={event ? `${event.name} ${event.year} — พื้นหลัง + รายการรางวัล ใช้ออกใบให้คนที่เช็คอินแล้ว` : "เลือกงานก่อน"}>
-        <div className="space-y-5">
-          {/* พื้นหลัง */}
-          <div className="space-y-3">
-            <label className={labelCls}>รูปพื้นหลังเกียรติบัตร (ข้อความคงที่ฝังในรูป — ระบบใส่แค่ ชื่อ/รางวัล/คอร์ส)</label>
-            {form.cert_template_url ? (
-              <div className="relative inline-block">
-                <img src={form.cert_template_url} alt="พื้นหลังเกียรติบัตร" className="max-h-64 w-auto rounded-xl border border-slate-200 shadow-sm" />
-                <button onClick={removeCert} type="button"
-                  className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-rose-500 text-white flex items-center justify-center shadow-md hover:bg-rose-600 transition">
-                  <Ico.trash className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ) : (
-              <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed border-slate-200 rounded-xl py-8 cursor-pointer hover:border-[#F15A24] hover:bg-orange-50/40 transition ${uploadingCert ? "opacity-60 pointer-events-none" : ""}`}>
-                <div className="w-12 h-12 rounded-xl bg-orange-100 text-[#F15A24] flex items-center justify-center"><Ico.image className="w-6 h-6" /></div>
-                <span className="text-sm font-bold text-slate-600">{uploadingCert ? "กำลังอัปโหลด…" : "คลิกเพื่อเลือกรูปพื้นหลัง"}</span>
-                <span className="text-[11px] text-slate-400">แนวนอน (landscape) · ความละเอียดสูง · JPG / PNG</span>
-                <input type="file" accept="image/*" onChange={handleCertUpload} disabled={uploadingCert} className="hidden" />
-              </label>
-            )}
-          </div>
-
-          {/* รายการรางวัล */}
-          <div className="space-y-2">
-            <label className={labelCls}>รายการรางวัล (ใช้เป็นตัวเลือกตอนออกใบ)</label>
-            <div className="flex flex-wrap gap-2">
-              {(form.cert_awards || []).map((a) => (
-                <span key={a} className="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-1.5 py-1.5 text-xs font-bold text-slate-700">
-                  {a}
-                  <button onClick={() => removeAward(a)} className="w-4 h-4 rounded-full bg-slate-200 hover:bg-rose-200 text-slate-500 hover:text-rose-600 flex items-center justify-center transition" title="ลบ">×</button>
-                </span>
-              ))}
-              {(form.cert_awards || []).length === 0 && <p className="text-xs text-slate-400 py-1">ยังไม่มีรายการรางวัล</p>}
-            </div>
-            <div className="flex gap-2 pt-1">
-              <input value={newAward} onChange={(e) => setNewAward(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addAward()}
-                className={`${inputCls} flex-1`} placeholder="เช่น รางวัลขวัญใจกรรมการ" />
-              <button onClick={addAward} className="flex items-center gap-1 bg-[#F15A24] text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-[#c44215] transition active:scale-95 shrink-0"><Ico.plus className="w-3.5 h-3.5" /> เพิ่ม</button>
-            </div>
-          </div>
-
-          <p className="text-[11px] text-slate-400 inline-flex items-start gap-1"><Ico.alert className="w-3 h-3 shrink-0 mt-0.5 text-amber-400" /> ออกใบจริงที่เมนู "ออกเกียรติบัตร" — เลือกคอร์ส → ตั้งรางวัลให้แต่ละคน → โหลด PDF</p>
-        </div>
-      </SectionCard>
-
       {/* ── การ์ด 3: ประเภทวิชา ── */}
       <SectionCard icon={Ico.tag} title="ประเภทวิชา (หมวดหมู่)" subtitle="หมวดหมู่ + สีประจำหมวด — ใช้สีเดียวกันทุกหน้า"
         action={<AddBtn onClick={() => setTypeModal({ code: "", label: "", requires_payment: false, requires_approval: false, color: "" })} />}>
@@ -281,6 +203,10 @@ export default function AdminSettings() {
       {typeModal && <TypeModal ct={typeModal} onSave={saveType} onClose={() => setTypeModal(null)} />}
 
       {/* Footer */}
+      <footer className="mt-10 pt-6 pb-24 lg:pb-6 border-t border-slate-200 text-center text-xs text-slate-400">
+        <p>© 2026 College of Arts, Media and Technology (CAMT) | College Administration Portal</p>
+        <p className="mt-1">ระบบจัดการการแข่งขันและกิจกรรมโครงการดิจิทัล</p>
+      </footer>
     </div>
   )
 }
