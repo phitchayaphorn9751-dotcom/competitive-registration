@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { signUp, getSession } from "../lib/supabase.js"
+import { signUp, getSession, fetchOpenEvent, fetchEventSettings } from "../lib/supabase.js"
 import { useLang, LangToggle } from "../lib/i18n.jsx"
 import { useDialog } from "../lib/dialog.jsx"
 import { routeAfterAuth } from "./LoginPage.jsx"
@@ -31,10 +31,26 @@ export default function SignUpPage() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [siteTitle, setSiteTitle] = useState("")
+  const [heroSub, setHeroSub] = useState("")
 
   useEffect(() => {
     getSession().then((s) => { if (s) routeAfterAuth(navigate) })
   }, [navigate])
+
+  // โหลดชื่องาน + ข้อความ hero จากหน้าตั้งค่า (ตามงานที่เปิดรับสมัคร)
+  useEffect(() => {
+    (async () => {
+      try {
+        const ev = await fetchOpenEvent()
+        if (ev?.id) {
+          const es = await fetchEventSettings(ev.id)
+          setSiteTitle(es.site_title || "")
+          setHeroSub(es.hero_subtitle || "")
+        }
+      } catch (_) { /* เงียบไว้ ถ้าโหลดไม่ได้ใช้ค่า fallback */ }
+    })()
+  }, [])
 
   function strengthOf(pw) {
     if (!pw) return null
@@ -84,9 +100,9 @@ export default function SignUpPage() {
         </div>
         <div className="relative z-10 mb-20 text-white">
           <h1 className="text-4xl lg:text-5xl xl:text-6xl font-extrabold tracking-tight leading-[1.1] mb-6">
-            CAMT <span className="text-orange-100">SUMMER</span><br />COURSE 2026
+            {siteTitle || "CAMT SUMMER COURSE 2026"}
           </h1>
-          <p className="text-lg text-orange-100/90 font-medium max-w-md leading-relaxed">{t("login.heroSub")}</p>
+          <p className="text-lg text-orange-100/90 font-medium max-w-md leading-relaxed">{heroSub || t("login.heroSub")}</p>
         </div>
         <div className="relative z-10 text-orange-100 text-sm font-medium">
           &copy; {new Date().getFullYear()} College of Arts, Media and Technology
