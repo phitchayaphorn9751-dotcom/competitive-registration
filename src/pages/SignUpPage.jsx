@@ -5,8 +5,6 @@ import { useLang, LangToggle } from "../lib/i18n.jsx"
 import { useDialog } from "../lib/dialog.jsx"
 import { routeAfterAuth } from "./LoginPage.jsx"
 
-const LOGO_SRC = "/camt_logo.png"
-
 function EyeIcon({ off }) {
   return off ? (
     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -86,7 +84,7 @@ export default function SignUpPage() {
   const inputBase = "w-full px-4 py-3 rounded-xl border bg-slate-50/50 focus:bg-white outline-none transition-all text-sm text-slate-900 placeholder-slate-400"
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-white">
+    <div className="h-screen overflow-hidden flex flex-col md:flex-row bg-white">
       {/* Left panel */}
       <div className="hidden md:flex md:w-5/12 lg:w-1/2 bg-gradient-to-br from-[#F15A24] to-amber-500 relative overflow-hidden flex-col justify-between p-12">
         <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
@@ -94,11 +92,10 @@ export default function SignUpPage() {
           <div className="absolute bottom-0 right-0 w-[40rem] h-[40rem] bg-black/10 rounded-full blur-3xl transform translate-x-1/3 translate-y-1/3" />
           <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: `linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)`, backgroundSize: "32px 32px" }} />
         </div>
-        <div className="relative z-10 flex items-center justify-between">
-          <Link to="/"><Logo className="h-16 w-16" /></Link>
+        <div className="relative z-10 flex items-center justify-end">
           <LangToggle />
         </div>
-        <div className="relative z-10 mb-20 text-white">
+        <div className="relative z-10 text-white">
           <h1 className="text-4xl lg:text-5xl xl:text-6xl font-extrabold tracking-tight leading-[1.1] mb-6">
             {siteTitle || "CAMT SUMMER COURSE 2026"}
           </h1>
@@ -110,9 +107,8 @@ export default function SignUpPage() {
       </div>
 
       {/* Right form */}
-      <div className="flex-1 flex flex-col justify-center px-6 py-12 sm:px-12 relative bg-slate-50">
-        <div className="md:hidden flex justify-between items-center mb-8">
-          <Link to="/"><Logo className="h-14 w-14" /></Link>
+      <div className="flex-1 flex flex-col justify-center px-6 py-8 sm:px-12 relative bg-slate-50 overflow-y-auto">
+        <div className="md:hidden flex justify-end items-center mb-6">
           <LangToggle />
         </div>
 
@@ -199,12 +195,4 @@ export default function SignUpPage() {
       </div>
     </div>
   )
-}
-
-function Logo({ className }) {
-  const [err, setErr] = useState(false)
-  if (LOGO_SRC && !err) {
-    return <img src={LOGO_SRC} alt="CAMT" onError={() => setErr(true)} className={`${className} rounded-2xl bg-white p-2 shadow-2xl object-contain`} />
-  }
-  return <div className={`${className} rounded-2xl bg-white flex items-center justify-center shadow-2xl text-[#F15A24] text-3xl`}>◆</div>
 }
