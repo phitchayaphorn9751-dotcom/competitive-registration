@@ -7,27 +7,10 @@ import {
   uploadCourseAsset,
 } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
+import { Ico } from "../../lib/icons.jsx"
 import { CATEGORY_COLORS, catColor } from "../../lib/categoryColors.js"
 import AdminEvents from "./AdminEvents.jsx"
 import AdminUsers from "./AdminUsers.jsx"
-
-// ───── ไอคอน SVG inline (สไตล์ lucide) — โทนเดียวกับหน้าอื่น ─────
-const Ico = {
-  gear:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>),
-  plus:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M5 12h14M12 5v14"/></svg>),
-  pencil:  (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></svg>),
-  trash:   (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>),
-  calendar:(p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M8 2v4M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>),
-  user:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>),
-  phone:   (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>),
-  megaphone:(p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>),
-  tag:     (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></svg>),
-  save:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7M7 3v4a1 1 0 0 0 1 1h7"/></svg>),
-  image:   (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>),
-  calendarDays: (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M8 2v4M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/></svg>),
-  trash2:  (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>),
-  check:   (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M20 6 9 17l-5-5"/></svg>),
-}
 
 const inputCls = "w-full px-3 py-2.5 border border-slate-200 rounded-xl outline-none focus:border-[#F15A24] focus:ring-1 focus:ring-[#F15A24] text-sm transition"
 const labelCls = "text-xs font-bold text-slate-500 block mb-1.5"
@@ -42,6 +25,8 @@ export default function AdminSettings() {
   const [types, setTypes] = useState([])
   const [typeModal, setTypeModal] = useState(null)
   const [uploadingSchedule, setUploadingSchedule] = useState(false)
+  const [uploadingCert, setUploadingCert] = useState(false)
+  const [newAward, setNewAward] = useState("")
 
   // โหลดค่ากลาง (Line/เบอร์) + ประเภทวิชา ครั้งเดียว
   useEffect(() => { loadAll() }, [])
@@ -58,6 +43,8 @@ export default function AdminSettings() {
         hero_subtitle: es.hero_subtitle || "",
         home_notice: es.home_notice || "",
         schedule_image_url: es.schedule_image_url || "",
+        cert_template_url: es.cert_template_url || "",
+        cert_awards: es.cert_awards?.length ? es.cert_awards : ["รางวัลชนะเลิศ", "รางวัลรองชนะเลิศอันดับ 1", "รางวัลรองชนะเลิศอันดับ 2", "รางวัลชมเชย", "เข้าร่วมกิจกรรม"],
       })
       setTypes(await fetchCourseTypes(event?.id) || [])
     } catch (e) { toast("โหลดไม่สำเร็จ: " + e.message, "error") }
@@ -65,7 +52,7 @@ export default function AdminSettings() {
   async function loadEventPart() {
     try {
       const es = await fetchEventSettings(event.id)
-      setForm((f) => ({ ...(f || { line_id: "", phone: "" }), site_title: es.site_title || "", hero_subtitle: es.hero_subtitle || "", home_notice: es.home_notice || "", schedule_image_url: es.schedule_image_url || "" }))
+      setForm((f) => ({ ...(f || { line_id: "", phone: "" }), site_title: es.site_title || "", hero_subtitle: es.hero_subtitle || "", home_notice: es.home_notice || "", schedule_image_url: es.schedule_image_url || "", cert_template_url: es.cert_template_url || "", cert_awards: es.cert_awards?.length ? es.cert_awards : ["รางวัลชนะเลิศ", "รางวัลรองชนะเลิศอันดับ 1", "รางวัลรองชนะเลิศอันดับ 2", "รางวัลชมเชย", "เข้าร่วมกิจกรรม"] }))
       setTypes(await fetchCourseTypes(event.id) || [])
     } catch (e) { toast("โหลดไม่สำเร็จ: " + e.message, "error") }
   }
@@ -76,7 +63,7 @@ export default function AdminSettings() {
       // ค่ากลาง: Line/เบอร์
       await updateSettings({ line_id: form.line_id, phone: form.phone })
       // ค่าตามงาน: ชื่อเว็บ/ข้อความแจ้งเตือน
-      if (event?.id) await updateEventSettings(event.id, { site_title: form.site_title, hero_subtitle: form.hero_subtitle, home_notice: form.home_notice, schedule_image_url: form.schedule_image_url || "" })
+      if (event?.id) await updateEventSettings(event.id, { site_title: form.site_title, hero_subtitle: form.hero_subtitle, home_notice: form.home_notice, schedule_image_url: form.schedule_image_url || "", cert_template_url: form.cert_template_url || "", cert_awards: form.cert_awards || [] })
       toast("บันทึกข้อมูลสำเร็จ", "success")
     }
     catch (e) { toast("บันทึกไม่สำเร็จ: " + e.message, "error") } finally { setSaving(false) }
@@ -111,6 +98,32 @@ export default function AdminSettings() {
     setForm((f) => ({ ...f, schedule_image_url: "" }))
   }
 
+  // ── เกียรติบัตร: อัปโหลดพื้นหลัง + จัดการรายการรางวัล ──
+  async function handleCertUpload(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingCert(true)
+    try {
+      const url = await uploadCourseAsset(file, "certificates")
+      setForm((f) => ({ ...f, cert_template_url: url }))
+      toast("อัปโหลดพื้นหลังเกียรติบัตรแล้ว กดบันทึกเพื่อใช้งาน", "success")
+    } catch (err) { toast("อัปโหลดไม่สำเร็จ: " + err.message, "error") }
+    finally { setUploadingCert(false); e.target.value = "" }
+  }
+  function removeCert() {
+    setForm((f) => ({ ...f, cert_template_url: "" }))
+  }
+  function addAward() {
+    const a = newAward.trim()
+    if (!a) return
+    if ((form.cert_awards || []).includes(a)) return toast("มีรางวัลนี้อยู่แล้ว", "error")
+    setForm((f) => ({ ...f, cert_awards: [...(f.cert_awards || []), a] }))
+    setNewAward("")
+  }
+  function removeAward(a) {
+    setForm((f) => ({ ...f, cert_awards: (f.cert_awards || []).filter((x) => x !== a) }))
+  }
+
   if (!form) return <div className="py-16 text-center text-slate-400">กำลังโหลด…</div>
   const set = (k, v) => setForm({ ...form, [k]: v })
 
@@ -130,15 +143,13 @@ export default function AdminSettings() {
 
       {/* ── Section: จัดการงานรายปี ── */}
       <SectionCard icon={Ico.calendar} title="จัดการงานรายปี" subtitle="สร้าง/แก้ไขงานแต่ละปี เปิด-ปิดรับสมัคร"
-        action={<button onClick={() => eventsRef.current?.openAdd()}
-          className="flex items-center gap-1 bg-gradient-to-r from-[#F15A24] to-amber-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:from-[#d94e1e] hover:to-amber-600 transition active:scale-95"><Ico.plus className="w-3.5 h-3.5" /> เพิ่ม</button>}>
+        action={<AddBtn onClick={() => eventsRef.current?.openAdd()} />}>
         <AdminEvents ref={eventsRef} embedded />
       </SectionCard>
 
       {/* ── Section: จัดการแอดมิน ── */}
       <SectionCard icon={Ico.user} title="จัดการแอดมิน" subtitle="ผู้ดูแลระบบ · ทุกคนมีสิทธิ์เท่ากัน"
-        action={<button onClick={() => usersRef.current?.openAdd()}
-          className="flex items-center gap-1 bg-gradient-to-r from-[#F15A24] to-amber-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:from-[#d94e1e] hover:to-amber-600 transition active:scale-95"><Ico.plus className="w-3.5 h-3.5" /> เพิ่ม</button>}>
+        action={<AddBtn onClick={() => usersRef.current?.openAdd()} />}>
         <AdminUsers ref={usersRef} embedded />
       </SectionCard>
 
@@ -165,7 +176,7 @@ export default function AdminSettings() {
       </SectionCard>
 
       {/* ── การ์ด: รูปตารางกิจกรรม (เฉพาะงานนี้) ── */}
-      <SectionCard icon={Ico.calendarDays} title="ตารางกิจกรรมทั้งงาน (รูปภาพ)"
+      <SectionCard icon={Ico.calendar} title="ตารางกิจกรรมทั้งงาน (รูปภาพ)"
         subtitle={event ? `${event.name} ${event.year} — แสดงเป็นกรอบบนหน้าแรก กดดูรูปเต็ม + บันทึกได้` : "เลือกงานก่อน"}>
         <div className="space-y-3">
           <label className={labelCls}>อัปโหลดรูปตาราง (ทำกราฟิกจากข้างนอกแล้วแปะ)</label>
@@ -174,7 +185,7 @@ export default function AdminSettings() {
               <img src={form.schedule_image_url} alt="ตารางกิจกรรม" className="max-h-64 w-auto rounded-xl border border-slate-200 shadow-sm" />
               <button onClick={removeSchedule} type="button"
                 className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-rose-500 text-white flex items-center justify-center shadow-md hover:bg-rose-600 transition">
-                <Ico.trash2 className="w-3.5 h-3.5" />
+                <Ico.trash className="w-3.5 h-3.5" />
               </button>
             </div>
           ) : (
@@ -189,10 +200,57 @@ export default function AdminSettings() {
         </div>
       </SectionCard>
 
+      {/* ── การ์ด: เกียรติบัตร (เฉพาะงานนี้) ── */}
+      <SectionCard icon={Ico.cap} title="เกียรติบัตร (เฉพาะงานนี้)"
+        subtitle={event ? `${event.name} ${event.year} — พื้นหลัง + รายการรางวัล ใช้ออกใบให้คนที่เช็คอินแล้ว` : "เลือกงานก่อน"}>
+        <div className="space-y-5">
+          {/* พื้นหลัง */}
+          <div className="space-y-3">
+            <label className={labelCls}>รูปพื้นหลังเกียรติบัตร (ข้อความคงที่ฝังในรูป — ระบบใส่แค่ ชื่อ/รางวัล/คอร์ส)</label>
+            {form.cert_template_url ? (
+              <div className="relative inline-block">
+                <img src={form.cert_template_url} alt="พื้นหลังเกียรติบัตร" className="max-h-64 w-auto rounded-xl border border-slate-200 shadow-sm" />
+                <button onClick={removeCert} type="button"
+                  className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-rose-500 text-white flex items-center justify-center shadow-md hover:bg-rose-600 transition">
+                  <Ico.trash className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed border-slate-200 rounded-xl py-8 cursor-pointer hover:border-[#F15A24] hover:bg-orange-50/40 transition ${uploadingCert ? "opacity-60 pointer-events-none" : ""}`}>
+                <div className="w-12 h-12 rounded-xl bg-orange-100 text-[#F15A24] flex items-center justify-center"><Ico.image className="w-6 h-6" /></div>
+                <span className="text-sm font-bold text-slate-600">{uploadingCert ? "กำลังอัปโหลด…" : "คลิกเพื่อเลือกรูปพื้นหลัง"}</span>
+                <span className="text-[11px] text-slate-400">แนวนอน (landscape) · ความละเอียดสูง · JPG / PNG</span>
+                <input type="file" accept="image/*" onChange={handleCertUpload} disabled={uploadingCert} className="hidden" />
+              </label>
+            )}
+          </div>
+
+          {/* รายการรางวัล */}
+          <div className="space-y-2">
+            <label className={labelCls}>รายการรางวัล (ใช้เป็นตัวเลือกตอนออกใบ)</label>
+            <div className="flex flex-wrap gap-2">
+              {(form.cert_awards || []).map((a) => (
+                <span key={a} className="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-1.5 py-1.5 text-xs font-bold text-slate-700">
+                  {a}
+                  <button onClick={() => removeAward(a)} className="w-4 h-4 rounded-full bg-slate-200 hover:bg-rose-200 text-slate-500 hover:text-rose-600 flex items-center justify-center transition" title="ลบ">×</button>
+                </span>
+              ))}
+              {(form.cert_awards || []).length === 0 && <p className="text-xs text-slate-400 py-1">ยังไม่มีรายการรางวัล</p>}
+            </div>
+            <div className="flex gap-2 pt-1">
+              <input value={newAward} onChange={(e) => setNewAward(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addAward()}
+                className={`${inputCls} flex-1`} placeholder="เช่น รางวัลขวัญใจกรรมการ" />
+              <button onClick={addAward} className="flex items-center gap-1 bg-[#F15A24] text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-[#c44215] transition active:scale-95 shrink-0"><Ico.plus className="w-3.5 h-3.5" /> เพิ่ม</button>
+            </div>
+          </div>
+
+          <p className="text-[11px] text-slate-400 inline-flex items-start gap-1"><Ico.alert className="w-3 h-3 shrink-0 mt-0.5 text-amber-400" /> ออกใบจริงที่เมนู "ออกเกียรติบัตร" — เลือกคอร์ส → ตั้งรางวัลให้แต่ละคน → โหลด PDF</p>
+        </div>
+      </SectionCard>
+
       {/* ── การ์ด 3: ประเภทวิชา ── */}
       <SectionCard icon={Ico.tag} title="ประเภทวิชา (หมวดหมู่)" subtitle="หมวดหมู่ + สีประจำหมวด — ใช้สีเดียวกันทุกหน้า"
-        action={<button onClick={() => setTypeModal({ code: "", label: "", requires_payment: false, requires_approval: false, color: "" })}
-          className="flex items-center gap-1 bg-gradient-to-r from-[#F15A24] to-amber-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:from-[#d94e1e] hover:to-amber-600 transition active:scale-95"><Ico.plus className="w-3.5 h-3.5" /> เพิ่ม</button>}>
+        action={<AddBtn onClick={() => setTypeModal({ code: "", label: "", requires_payment: false, requires_approval: false, color: "" })} />}>
         <div className="space-y-2">
           {types.length === 0 && <p className="text-sm text-slate-400 text-center py-4">ยังไม่มีประเภทวิชา</p>}
           {types.map((ct) => {
@@ -216,25 +274,31 @@ export default function AdminSettings() {
       </SectionCard>
 
       {/* ── ปุ่มบันทึก (ท้ายสุด) ── */}
-      <button onClick={save} disabled={saving} className="w-full py-3.5 bg-gradient-to-r from-[#F15A24] to-amber-500 text-white rounded-xl font-bold hover:from-[#d94e1e] hover:to-amber-600 transition disabled:opacity-50 text-sm shadow-md shadow-orange-500/25 active:scale-[0.99] flex items-center justify-center gap-2">
+      <button onClick={save} disabled={saving} className="w-full py-3.5 bg-[#F15A24] text-white rounded-xl font-bold hover:bg-[#c44215] transition disabled:opacity-50 text-sm shadow-md shadow-orange-500/25 active:scale-[0.99] flex items-center justify-center gap-2">
         {saving ? "กำลังบันทึก…" : <><Ico.save className="w-4 h-4" /> บันทึกการตั้งค่า</>}
       </button>
 
       {typeModal && <TypeModal ct={typeModal} onSave={saveType} onClose={() => setTypeModal(null)} />}
 
       {/* Footer */}
-      <footer className="mt-10 pt-6 pb-24 lg:pb-6 border-t border-slate-200 text-center text-xs text-slate-400">
-        <p>© 2026 College of Arts, Media and Technology (CAMT) | College Administration Portal</p>
-        <p className="mt-1">ระบบจัดการการแข่งขันและกิจกรรมโครงการดิจิทัล</p>
-      </footer>
     </div>
+  )
+}
+
+// ปุ่ม "เพิ่ม" ส้มเรียบ — เหมือนหน้าอื่น
+function AddBtn({ onClick }) {
+  return (
+    <button onClick={onClick}
+      className="flex items-center gap-1 bg-[#F15A24] text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-[#c44215] transition active:scale-95 shrink-0">
+      <Ico.plus className="w-3.5 h-3.5" /> เพิ่ม
+    </button>
   )
 }
 
 function SectionCard({ icon: Icon, title, subtitle, action, children }) {
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 mb-5 overflow-hidden">
-      <div className="flex items-center gap-3 px-5 py-3.5 border-b border-slate-100 bg-gradient-to-r from-[#fff7f3] to-white">
+      <div className="flex items-center gap-3 px-5 py-3.5 border-b border-slate-100 bg-slate-50">
         <div className="w-8 h-8 rounded-lg bg-orange-100 text-[#F15A24] flex items-center justify-center shrink-0">{Icon && <Icon className="w-4 h-4" />}</div>
         <div className="flex-1 min-w-0">
           <h3 className="font-bold text-slate-800 text-sm">{title}</h3>
