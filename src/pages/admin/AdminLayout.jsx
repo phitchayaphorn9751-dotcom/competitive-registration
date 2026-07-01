@@ -157,7 +157,8 @@ export default function AdminLayout() {
           </div>
         </header>
 
-        <main className="flex-1 p-4 sm:p-6 w-full pb-28 lg:pb-6">
+        {/* pb เผื่อ bottom bar (h-16=64px) + ปุ่มกลางนูน + safe-area มือถือรุ่นใหม่ */}
+        <main className="flex-1 p-4 sm:p-6 w-full lg:pb-6" style={{ paddingBottom: "calc(6rem + env(safe-area-inset-bottom, 0px))" }}>
           <div className="max-w-6xl mx-auto w-full">
             <Outlet context={{ session, event, events, setEvent, isSuper, reloadEvents }} />
 
@@ -182,7 +183,7 @@ function AdminBottomBar() {
   const navigate = useNavigate()
   const path = location.pathname
   return (
-    <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white/90 backdrop-blur-md border-t border-slate-100 shadow-[0_-2px_10px_rgba(0,0,0,0.04)]">
+    <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white/90 backdrop-blur-md border-t border-slate-100 shadow-[0_-2px_10px_rgba(0,0,0,0.04)]" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
       <div className="max-w-4xl mx-auto px-1 flex items-end justify-around h-16">
         {BOTTOM_NAV.map((it) => {
           const Icon = BIco[it.icon]
