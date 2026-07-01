@@ -14,6 +14,11 @@ const Ico = {
   book:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>),
   arrow:   (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M5 12h14M12 5l7 7-7 7"/></svg>),
   list:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>),
+  calendar:(p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M8 2v4M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>),
+  flag:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></svg>),
+  clock:   (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>),
+  sparkle: (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>),
+  gift:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg>),
 }
 
 export default function HomePage() {
@@ -406,9 +411,9 @@ function DetailModal({ course, t, onClose, onRegister }) {
   })()
 
   const infoCards = [
-    { icon: "📅", label: "วันเริ่ม", value: fmtThaiDate(course.start_date) },
-    { icon: "🏁", label: "วันสิ้นสุด", value: fmtThaiDate(course.end_date) },
-    { icon: "⏱️", label: "ระยะเวลา", value: course.duration || "-" },
+    { icon: Ico.calendar, label: "วันเริ่ม", value: fmtThaiDate(course.start_date) },
+    { icon: Ico.flag, label: "วันสิ้นสุด", value: fmtThaiDate(course.end_date) },
+    { icon: Ico.clock, label: "ระยะเวลา", value: course.duration || "-" },
   ]
 
   return (
@@ -422,7 +427,7 @@ function DetailModal({ course, t, onClose, onRegister }) {
             <h3 className="font-extrabold text-2xl sm:text-3xl leading-tight mb-3">{course.title}</h3>
             <div className="flex flex-wrap gap-2">
               {course.level && <span className="text-xs font-bold bg-white/20 backdrop-blur px-3 py-1 rounded-full">{course.level}</span>}
-              {course.duration && <span className="text-xs font-bold bg-white/20 backdrop-blur px-3 py-1 rounded-full">📅 {course.duration}</span>}
+              {course.duration && <span className="text-xs font-bold bg-white/20 backdrop-blur px-3 py-1 rounded-full inline-flex items-center gap-1"><Ico.calendar className="w-3 h-3" /> {course.duration}</span>}
             </div>
           </div>
           <button onClick={onClose} aria-label="ปิด" className="text-white/80 hover:text-white text-2xl leading-none transition shrink-0 w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10">×</button>
@@ -451,11 +456,13 @@ function DetailModal({ course, t, onClose, onRegister }) {
           )}
 
           <div className="p-5 space-y-4">
-            {/* 4 การ์ดข้อมูล */}
+            {/* 3 การ์ดข้อมูล */}
             <div className="grid grid-cols-3 gap-3">
               {infoCards.map((c, i) => (
-                <div key={i} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 text-center">
-                  <div className="text-2xl mb-1">{c.icon}</div>
+                <div key={i} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3.5 text-center hover:border-orange-200 hover:shadow transition">
+                  <div className="w-9 h-9 mx-auto mb-2 rounded-full bg-orange-50 text-[#F15A24] flex items-center justify-center">
+                    <c.icon className="w-4 h-4" />
+                  </div>
                   <div className="text-[11px] text-slate-400">{c.label}</div>
                   <div className="text-sm font-bold text-slate-800 mt-0.5">{c.value}</div>
                 </div>
@@ -504,14 +511,17 @@ function DetailModal({ course, t, onClose, onRegister }) {
             )}
 
             {/* ค่าเรียน เด่น */}
-            <div className="flex flex-col items-center py-4 border-t border-dashed border-orange-200">
+            <div className="flex flex-col items-center py-5 border-t border-dashed border-orange-200">
               {isPaid ? (
                 <>
                   <p className="text-slate-400 text-xs mb-1">ค่าลงทะเบียน</p>
-                  <p className="text-4xl font-extrabold text-emerald-600">{course.price?.toLocaleString() || "-"} บาท</p>
+                  <p className="text-4xl font-extrabold text-emerald-600">{course.price?.toLocaleString() || "-"} <span className="text-2xl">บาท</span></p>
                 </>
               ) : (
-                <p className="text-2xl font-extrabold text-emerald-600">✨ ไม่มีค่าลงทะเบียน</p>
+                <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-600 px-5 py-2.5 rounded-full border border-emerald-100">
+                  <Ico.gift className="w-5 h-5" />
+                  <span className="text-lg font-extrabold">ไม่มีค่าลงทะเบียน</span>
+                </div>
               )}
             </div>
           </div>
