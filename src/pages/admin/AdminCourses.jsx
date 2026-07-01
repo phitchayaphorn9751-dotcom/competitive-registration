@@ -123,7 +123,7 @@ export default function AdminCourses() {
     <div className="pb-24 md:pb-8">
 
       {/* Header — gradient + ไอคอนวงกลม (โทนเดียวกับหน้ารายการสมัคร) */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5">
+      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 mb-5">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 bg-gradient-to-br from-[#F15A24] to-amber-500 rounded-xl flex items-center justify-center shadow-sm shrink-0">
             <Ico.book className="w-5 h-5 text-white" />
@@ -133,14 +133,14 @@ export default function AdminCourses() {
             <p className="text-slate-400 text-xs mt-0.5">{courses.length} รายวิชา</p>
           </div>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <button onClick={openAdd} className="flex items-center gap-1.5 bg-[#F15A24] text-white px-4 py-2.5 rounded-xl font-bold hover:bg-[#c44215] shadow-sm shadow-orange-500/20 transition text-sm">
+        <div className="grid grid-cols-2 sm:flex gap-2 w-full sm:w-auto">
+          <button onClick={openAdd} className="flex items-center justify-center gap-1.5 bg-[#F15A24] text-white px-4 py-2.5 rounded-xl font-bold hover:bg-[#c44215] shadow-sm shadow-orange-500/20 transition text-sm col-span-2 sm:col-span-1">
             <Ico.plus className="w-4 h-4" /> เพิ่มวิชาใหม่
           </button>
-          <button onClick={() => setShowDup(true)} className="flex items-center gap-1.5 bg-slate-700 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-slate-800 shadow-sm transition text-sm">
+          <button onClick={() => setShowDup(true)} className="flex items-center justify-center gap-1.5 bg-slate-700 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-slate-800 shadow-sm transition text-sm">
             <Ico.copy className="w-4 h-4" /> คัดลอกจากงานเก่า
           </button>
-          <button onClick={doEmergency} className="flex items-center gap-1.5 bg-rose-600 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-rose-700 shadow-sm transition text-sm">
+          <button onClick={doEmergency} className="flex items-center justify-center gap-1.5 bg-rose-600 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-rose-700 shadow-sm transition text-sm">
             <Ico.alert className="w-4 h-4" /> ปิดรับทั้งหมด
           </button>
         </div>
