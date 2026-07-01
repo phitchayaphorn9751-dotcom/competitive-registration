@@ -459,6 +459,10 @@ export default function AdminAttendance() {
       )}
 
       {/* Footer */}
+      <footer className="mt-10 pt-6 pb-24 lg:pb-6 border-t border-slate-200 text-center text-xs text-slate-400">
+        <p>© 2026 College of Arts, Media and Technology (CAMT) | College Administration Portal</p>
+        <p className="mt-1">ระบบจัดการการแข่งขันและกิจกรรมโครงการดิจิทัล</p>
+      </footer>
     </div>
   )
 }
