@@ -332,30 +332,45 @@ function CourseTimeline({ items }) {
   if (sorted.length === 0) return null
 
   return (
-    <div className="bg-white p-4 rounded-2xl border border-orange-100 shadow-sm">
-      <h4 className="font-bold text-[#F15A24] text-base mb-4 flex items-center gap-2">
+    <div className="bg-white p-4 sm:p-5 rounded-2xl border border-orange-100 shadow-sm">
+      <h4 className="font-bold text-[#F15A24] text-base mb-5 flex items-center gap-2">
         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v4M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>
         กำหนดการ
       </h4>
-      {/* แนวนอน — scroll ได้บนมือถือ */}
-      <div className="overflow-x-auto -mx-1 px-1">
-        <div className="flex items-start gap-0 min-w-max pb-1">
+
+      {/* Timeline zigzag — ข้อความสลับบน/ล่าง, เต็มกรอบ, scroll บนมือถือ */}
+      <div className="overflow-x-auto">
+        <div className="flex items-stretch min-w-max sm:min-w-0 sm:w-full">
           {sorted.map((it, i) => {
             const hl = !!it.highlight
+            const top = i % 2 === 0   // จุดคู่ = ข้อความบน, จุดคี่ = ข้อความล่าง
+            const Label = (
+              <div className={`flex flex-col ${top ? "justify-end pb-2" : "justify-start pt-2"} items-center text-center`} style={{ minHeight: "48px" }}>
+                <div className={`text-xs font-extrabold ${hl ? "text-[#F15A24]" : "text-slate-700"}`}>{fmtShortDate(it.date)}</div>
+                <div className={`text-[11px] leading-snug mt-0.5 ${hl ? "text-[#F15A24] font-bold" : "text-slate-500"}`}>{it.label || ""}</div>
+              </div>
+            )
             return (
-              <div key={i} className="flex items-start">
-                {/* จุด + ข้อความ */}
-                <div className="flex flex-col items-center text-center px-2" style={{ minWidth: "84px", maxWidth: "110px" }}>
-                  <div className={`w-3.5 h-3.5 rounded-full ring-4 shrink-0 ${hl ? "bg-[#F15A24] ring-orange-100" : "bg-slate-300 ring-slate-100"}`} />
-                  <div className={`mt-2 text-xs font-extrabold ${hl ? "text-[#F15A24]" : "text-slate-700"}`}>{fmtShortDate(it.date)}</div>
-                  <div className={`text-[11px] leading-snug mt-0.5 ${hl ? "text-[#F15A24] font-bold" : "text-slate-500"}`}>{it.label || ""}</div>
+              <div key={i} className="flex-1 flex flex-col items-center" style={{ minWidth: "90px" }}>
+                {/* ข้อความบน (เฉพาะจุดคู่) */}
+                {top ? Label : <div style={{ minHeight: "48px" }} />}
+
+                {/* แถวจุด + เส้น */}
+                <div className="relative flex items-center w-full h-6">
+                  {/* เส้นซ้าย */}
+                  <div className={`h-0.5 flex-1 ${i === 0 ? "opacity-0" : "bg-slate-200"}`} />
+                  {/* จุด/ดาว */}
+                  {hl ? (
+                    <svg className="w-6 h-6 text-[#F15A24] shrink-0 drop-shadow-sm" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1" strokeLinejoin="round"><path d="M12 2l2.9 6.9 7.1.6-5.4 4.7 1.6 7L12 18.5 5.8 21.2l1.6-7L2 9.5l7.1-.6z"/></svg>
+                  ) : (
+                    <div className="w-3.5 h-3.5 rounded-full bg-slate-300 ring-4 ring-slate-100 shrink-0" />
+                  )}
+                  {/* เส้นขวา */}
+                  <div className={`h-0.5 flex-1 ${i === sorted.length - 1 ? "opacity-0" : "bg-slate-200"}`} />
                 </div>
-                {/* เส้นเชื่อม (ยกเว้นจุดสุดท้าย) */}
-                {i < sorted.length - 1 && (
-                  <div className="h-3.5 flex items-center shrink-0" style={{ width: "24px" }}>
-                    <div className="h-0.5 w-full bg-slate-200 rounded-full" />
-                  </div>
-                )}
+
+                {/* ข้อความล่าง (เฉพาะจุดคี่) */}
+                {!top ? Label : <div style={{ minHeight: "48px" }} />}
               </div>
             )
           })}
