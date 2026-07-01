@@ -627,6 +627,20 @@ function CheckinModal({ reg, t, onClose }) {
               </div>
             )}
             <p className="text-[11px] text-slate-400 text-center">สแกนบาร์โค้ด หรือแจ้งรหัสนักเรียนให้เจ้าหน้าที่</p>
+
+            {/* QR กลุ่มไลน์ — แสดงเฉพาะคอร์สที่แนบ QR (คนมี barcode = ยืนยันแล้ว) */}
+            {reg.line_qr_url && (
+              <div className="mt-5 pt-5 border-t-2 border-dashed border-slate-200 w-full flex flex-col items-center">
+                <p className="text-sm font-bold text-emerald-700 mb-1 flex items-center gap-1.5">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 5.94 2 10.8c0 4.36 3.6 8.01 8.47 8.7.33.07.78.22.89.5.1.26.07.66.03.92l-.14.87c-.04.26-.2 1.02.89.56 1.1-.46 5.9-3.48 8.05-5.95C21.6 14.7 22 12.85 22 10.8 22 5.94 17.52 2 12 2z"/></svg>
+                  เข้ากลุ่มไลน์ของคอร์ส
+                </p>
+                <p className="text-emerald-600 text-[11px] mb-3 text-center">สแกนเพื่อรับข่าวสาร/ประกาศจากผู้จัด</p>
+                <div className="bg-white p-3 rounded-2xl shadow-sm border border-emerald-200">
+                  <img src={reg.line_qr_url} alt="Line QR" className="h-36 w-auto object-contain" />
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

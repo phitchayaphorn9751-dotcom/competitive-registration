@@ -643,12 +643,6 @@ export function PaymentScreen({ course, regId, t, navigate, deadline, isRejected
                   <p className="font-bold text-slate-800">{course.bank_holder}</p>
                 </div>
               )}
-              {course.line_qr_url && (
-                <div className="pt-2 border-t border-slate-200">
-                  <p className="text-slate-500 text-xs mb-2">หรือสแกน QR เข้ากลุ่มไลน์</p>
-                  <img src={course.line_qr_url} alt="Line QR" className="h-28 w-auto rounded-lg border border-slate-200" />
-                </div>
-              )}
             </div>
 
             <h3 className="text-base font-extrabold text-slate-800 mb-3">{t("pay.uploadSlip")}</h3>
