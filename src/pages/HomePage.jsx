@@ -300,16 +300,21 @@ function CourseCard({ course, t, onDetail, onRegister }) {
               <div className="flex justify-between items-center text-xs mb-1.5">
                 <span className="text-slate-500">{t("home.seats")}</span>
                 <span className={`font-bold ${isFull ? "text-rose-500" : "text-emerald-600"}`}>
-                  {isFull ? t("home.full") : isUnlimited ? `${taken} คน (ไม่จำกัด)` : `${taken}/${cap}`}
+                  {isFull ? t("home.full") : isUnlimited ? (
+                    <span className="inline-flex items-center gap-1">{taken} คน · <span className="text-base leading-none">∞</span></span>
+                  ) : `${taken}/${cap}`}
                 </span>
               </div>
-              <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                {isUnlimited ? (
-                  <div className="h-full rounded-full bg-emerald-400/60" style={{ width: "100%" }} />
-                ) : (
+              {isUnlimited ? (
+                /* ไม่จำกัด — แถบไล่สีมี ∞ ตรงกลาง แทนปรอท */
+                <div className="w-full h-2 rounded-full bg-gradient-to-r from-emerald-300 via-emerald-400 to-emerald-300 flex items-center justify-center relative overflow-hidden">
+                  <span className="text-white text-[10px] font-bold leading-none drop-shadow-sm">∞ ไม่จำกัดจำนวน</span>
+                </div>
+              ) : (
+                <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
                   <div className={`h-full rounded-full transition-all duration-500 ${pct >= 100 ? "bg-rose-500" : pct >= 75 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${pct}%` }} />
-                )}
-              </div>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -573,6 +578,24 @@ function DetailModal({ course, t, onClose, onRegister }) {
 
             {/* กำหนดการ (timeline) — แสดงก่อนคำอธิบาย */}
             <CourseTimeline items={course.timeline} />
+
+            {/* แกลเลอรีรูป — แสดงรูปทั้งหมดที่ admin อัปไว้ (ถ้ามี) */}
+            {images.length > 0 && (
+              <div className="bg-white p-4 rounded-2xl border border-orange-100 shadow-sm">
+                <h4 className="font-bold text-[#F15A24] text-base mb-3 flex items-center gap-2">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+                  รูปภาพ
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {images.map((src, i) => (
+                    <button key={i} type="button" onClick={() => setImgIdx(i)}
+                      className={`aspect-square rounded-xl overflow-hidden border-2 transition ${i === imgIdx ? "border-[#F15A24]" : "border-transparent hover:border-orange-200"}`}>
+                      <img src={src} alt={`${course.title} ${i + 1}`} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* รายละเอียด */}
             {course.description && (

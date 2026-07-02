@@ -337,16 +337,43 @@ function CourseCardWide({ course, onEdit, onDelete, onToggle, onView }) {
         <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-4">
           {/* ซ้าย: แถบที่นั่ง */}
           <div className="flex-1 min-w-0">
-            <div className="flex justify-between items-center text-[11px] mb-1">
-              <span className="text-slate-500">ที่นั่ง: <span className={`font-bold ${isFull && !unlimited ? "text-rose-600" : "text-slate-700"}`}>{taken} / {unlimited ? "∞" : cap}</span></span>
-              {!unlimited && <span className={`font-bold ${isFull ? "text-rose-500" : pct >= 80 ? "text-amber-500" : "text-[#F15A24]"}`}>{pct}%</span>}
-            </div>
-            {!unlimited ? (
-              <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                <div className={`h-full rounded-full transition-all duration-500 ${isFull ? "bg-gradient-to-r from-rose-500 to-rose-600" : pct >= 80 ? "bg-amber-400" : "bg-gradient-to-r from-[#fb923c] to-[#F15A24]"}`} style={{ width: `${pct}%` }} />
+            {Array.isArray(course.sessions) && course.sessions.length > 0 ? (
+              /* คอร์สมีรอบ — ปรอทแยกแต่ละรอบ */
+              <div className="space-y-1.5">
+                {course.sessions.map((s) => {
+                  const sTaken = s.taken || 0
+                  const sCap = s.capacity || 0
+                  const sPct = sCap > 0 ? Math.min(100, Math.round((sTaken / sCap) * 100)) : 0
+                  const sFull = sCap > 0 && sTaken >= sCap
+                  return (
+                    <div key={s.id}>
+                      <div className="flex justify-between items-center text-[10px] mb-0.5">
+                        <span className="text-slate-500 truncate">{s.label || "รอบ"}: <span className={`font-bold ${sFull ? "text-rose-600" : "text-slate-700"}`}>{sTaken}/{sCap}</span></span>
+                        <span className={`font-bold ${sFull ? "text-rose-500" : sPct >= 80 ? "text-amber-500" : "text-[#F15A24]"}`}>{sPct}%</span>
+                      </div>
+                      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full ${sFull ? "bg-gradient-to-r from-rose-500 to-rose-600" : sPct >= 80 ? "bg-amber-400" : "bg-gradient-to-r from-[#fb923c] to-[#F15A24]"}`} style={{ width: `${sPct}%` }} />
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             ) : (
-              <div className="text-[11px] text-slate-400">รับสมัครไม่จำกัดจำนวน</div>
+              <>
+                <div className="flex justify-between items-center text-[11px] mb-1">
+                  <span className="text-slate-500">ที่นั่ง: <span className={`font-bold ${isFull && !unlimited ? "text-rose-600" : "text-slate-700"}`}>{taken} / {unlimited ? "∞" : cap}</span></span>
+                  {!unlimited && <span className={`font-bold ${isFull ? "text-rose-500" : pct >= 80 ? "text-amber-500" : "text-[#F15A24]"}`}>{pct}%</span>}
+                </div>
+                {!unlimited ? (
+                  <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full transition-all duration-500 ${isFull ? "bg-gradient-to-r from-rose-500 to-rose-600" : pct >= 80 ? "bg-amber-400" : "bg-gradient-to-r from-[#fb923c] to-[#F15A24]"}`} style={{ width: `${pct}%` }} />
+                  </div>
+                ) : (
+                  <div className="h-1.5 rounded-full bg-gradient-to-r from-emerald-300 via-emerald-400 to-emerald-300 flex items-center justify-center">
+                    <span className="text-white text-[9px] font-bold leading-none">∞ ไม่จำกัด</span>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -417,16 +444,43 @@ function CourseCardMobile({ course, onEdit, onDelete, onToggle, onView }) {
       <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-3">
         {/* ซ้าย: แถบที่นั่ง */}
         <div className="flex-1 min-w-0">
-          <div className="flex justify-between items-center text-[11px] mb-1">
-            <span className="text-slate-500">ที่นั่ง: <span className={`font-bold ${isFull && !unlimited ? "text-rose-600" : "text-slate-700"}`}>{taken} / {unlimited ? "∞" : cap}</span></span>
-            {!unlimited && <span className={`font-bold ${isFull ? "text-rose-500" : pct >= 80 ? "text-amber-500" : "text-[#F15A24]"}`}>{pct}%</span>}
-          </div>
-          {!unlimited ? (
-            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-              <div className={`h-full rounded-full transition-all duration-500 ${isFull ? "bg-gradient-to-r from-rose-500 to-rose-600" : pct >= 80 ? "bg-amber-400" : "bg-gradient-to-r from-[#fb923c] to-[#F15A24]"}`} style={{ width: `${pct}%` }} />
+          {Array.isArray(course.sessions) && course.sessions.length > 0 ? (
+            /* คอร์สมีรอบ — ปรอทแยกแต่ละรอบ */
+            <div className="space-y-1.5">
+              {course.sessions.map((s) => {
+                const sTaken = s.taken || 0
+                const sCap = s.capacity || 0
+                const sPct = sCap > 0 ? Math.min(100, Math.round((sTaken / sCap) * 100)) : 0
+                const sFull = sCap > 0 && sTaken >= sCap
+                return (
+                  <div key={s.id}>
+                    <div className="flex justify-between items-center text-[10px] mb-0.5">
+                      <span className="text-slate-500 truncate">{s.label || "รอบ"}: <span className={`font-bold ${sFull ? "text-rose-600" : "text-slate-700"}`}>{sTaken}/{sCap}</span></span>
+                      <span className={`font-bold ${sFull ? "text-rose-500" : sPct >= 80 ? "text-amber-500" : "text-[#F15A24]"}`}>{sPct}%</span>
+                    </div>
+                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full ${sFull ? "bg-gradient-to-r from-rose-500 to-rose-600" : sPct >= 80 ? "bg-amber-400" : "bg-gradient-to-r from-[#fb923c] to-[#F15A24]"}`} style={{ width: `${sPct}%` }} />
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           ) : (
-            <div className="text-[11px] text-slate-400">ไม่จำกัด</div>
+            <>
+              <div className="flex justify-between items-center text-[11px] mb-1">
+                <span className="text-slate-500">ที่นั่ง: <span className={`font-bold ${isFull && !unlimited ? "text-rose-600" : "text-slate-700"}`}>{taken} / {unlimited ? "∞" : cap}</span></span>
+                {!unlimited && <span className={`font-bold ${isFull ? "text-rose-500" : pct >= 80 ? "text-amber-500" : "text-[#F15A24]"}`}>{pct}%</span>}
+              </div>
+              {!unlimited ? (
+                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div className={`h-full rounded-full transition-all duration-500 ${isFull ? "bg-gradient-to-r from-rose-500 to-rose-600" : pct >= 80 ? "bg-amber-400" : "bg-gradient-to-r from-[#fb923c] to-[#F15A24]"}`} style={{ width: `${pct}%` }} />
+                </div>
+              ) : (
+                <div className="h-1.5 rounded-full bg-gradient-to-r from-emerald-300 via-emerald-400 to-emerald-300 flex items-center justify-center">
+                  <span className="text-white text-[9px] font-bold leading-none">∞ ไม่จำกัด</span>
+                </div>
+              )}
+            </>
           )}
         </div>
 

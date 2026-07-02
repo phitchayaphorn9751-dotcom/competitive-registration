@@ -98,7 +98,7 @@ export default function LoginPage() {
         </div>
         <div className="relative z-10 flex-1 flex flex-col justify-center text-white">
           <h1 className="text-4xl lg:text-5xl xl:text-6xl font-extrabold tracking-tight leading-[1.1] mb-6">
-            {siteTitle || "CAMT SUMMER COURSE 2026"}
+            {siteTitle || " "}
           </h1>
           <p className="text-lg text-orange-100/90 font-medium max-w-md leading-relaxed">{heroSub || t("login.heroSub")}</p>
         </div>
