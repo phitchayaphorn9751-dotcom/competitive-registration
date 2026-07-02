@@ -966,8 +966,16 @@ function ParticipantsModal({ course, onClose }) {
   const [err, setErr] = useState(null)
   const [fSchool, setFSchool] = useState("")
   const [fStatus, setFStatus] = useState("")
+  const [fSession, setFSession] = useState("")
 
   useEffect(() => { fetchCourseParticipants(course.id).then(setRegs).catch((e) => setErr(e.message)) }, [course])
+
+  const hasSessions = Array.isArray(course.sessions) && course.sessions.length > 0
+  const sessionLabel = (sid) => {
+    if (!sid) return ""
+    const s = (course.sessions || []).find((x) => x.id === sid)
+    return s ? (s.label || "รอบ") : ""
+  }
 
   const allRows = []
   ;(regs || []).forEach((r) => {
@@ -977,19 +985,20 @@ function ParticipantsModal({ course, onClose }) {
         phone: p.phone || "", email: r.submitter_email || "",
         advisor: r.advisors?.[0]?.full_name || "", status: r.status,
         checkedIn: (p.checkins?.length || 0) > 0,
+        sessionId: r.session_id || "", sessionName: sessionLabel(r.session_id),
       })
     })
   })
 
   const schools = [...new Set(allRows.map((r) => r.school).filter(Boolean))].sort()
   const statuses = [...new Set(allRows.map((r) => r.status).filter(Boolean))].sort()
-  const rows = allRows.filter((r) => (!fSchool || r.school === fSchool) && (!fStatus || r.status === fStatus))
+  const rows = allRows.filter((r) => (!fSchool || r.school === fSchool) && (!fStatus || r.status === fStatus) && (!fSession || r.sessionId === fSession))
 
   function exportCsv() {
-    const headers = ["คอร์ส", "ชื่อ-สกุล", "โรงเรียน", "ระดับชั้น", "เบอร์โทร", "อีเมลผู้สมัคร", "ครูที่ปรึกษา", "สถานะ", "เช็คอิน"]
+    const headers = ["คอร์ส", "ชื่อ-สกุล", "โรงเรียน", "ระดับชั้น", ...(hasSessions ? ["รอบ"] : []), "เบอร์โทร", "อีเมลผู้สมัคร", "ครูที่ปรึกษา", "สถานะ", "เช็คอิน"]
     const lines = [headers.join(",")]
     rows.forEach((r) => {
-      const vals = [course.title, r.name, r.school, r.grade, r.phone, r.email, r.advisor, r.status, r.checkedIn ? "เช็คอินแล้ว" : "ยังไม่"]
+      const vals = [course.title, r.name, r.school, r.grade, ...(hasSessions ? [r.sessionName] : []), r.phone, r.email, r.advisor, r.status, r.checkedIn ? "เช็คอินแล้ว" : "ยังไม่"]
         .map((v) => `"${String(v).replace(/"/g, '""')}"`)
       lines.push(vals.join(","))
     })
@@ -1025,8 +1034,14 @@ function ParticipantsModal({ course, onClose }) {
               <option value="">ทุกสถานะ</option>
               {statuses.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
-            {(fSchool || fStatus) && (
-              <button onClick={() => { setFSchool(""); setFStatus("") }} className="text-xs text-[#F15A24] font-bold hover:underline">ล้างตัวกรอง</button>
+            {hasSessions && (
+              <select value={fSession} onChange={(e) => setFSession(e.target.value)} className="text-xs font-medium border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-[#F15A24] bg-white text-slate-700 max-w-[140px]">
+                <option value="">ทุกรอบ</option>
+                {course.sessions.map((s) => <option key={s.id} value={s.id}>{s.label || "รอบ"}</option>)}
+              </select>
+            )}
+            {(fSchool || fStatus || fSession) && (
+              <button onClick={() => { setFSchool(""); setFStatus(""); setFSession("") }} className="text-xs text-[#F15A24] font-bold hover:underline">ล้างตัวกรอง</button>
             )}
           </div>
         )}
@@ -1041,6 +1056,7 @@ function ParticipantsModal({ course, onClose }) {
                   <tr className="text-[10px] text-slate-400 uppercase">
                     <th className="px-4 py-3 text-left">ชื่อ-สกุล</th>
                     <th className="px-4 py-3 text-left">โรงเรียน</th>
+                    {hasSessions && <th className="px-4 py-3 text-left">รอบ</th>}
                     <th className="px-4 py-3 text-left">เบอร์โทร</th>
                     <th className="px-4 py-3 text-left">สถานะ</th>
                     <th className="px-4 py-3 text-center">เช็คอิน</th>
@@ -1051,6 +1067,7 @@ function ParticipantsModal({ course, onClose }) {
                     <tr key={i} className="hover:bg-orange-50/40">
                       <td className="px-4 py-3 font-medium text-slate-800">{r.name}</td>
                       <td className="px-4 py-3 text-slate-600">{r.school}</td>
+                      {hasSessions && <td className="px-4 py-3">{r.sessionName ? <span className="text-[11px] font-bold bg-orange-50 text-[#F15A24] px-2 py-0.5 rounded-full">{r.sessionName}</span> : <span className="text-slate-300">—</span>}</td>}
                       <td className="px-4 py-3 font-mono text-slate-600">{r.phone}</td>
                       <td className="px-4 py-3 text-slate-600">{r.status}</td>
                       <td className={`px-4 py-3 text-center font-bold ${r.checkedIn ? "text-emerald-600" : "text-slate-300"}`}>{r.checkedIn ? "✓" : "—"}</td>
