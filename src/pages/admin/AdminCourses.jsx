@@ -49,7 +49,7 @@ export default function AdminCourses() {
 
   const blank = {
     title: "", description: "", content: "", instructor_names: [], image_url: "",
-    image_urls: [], detail_images: [], line_qr_url: "",
+    image_urls: [], detail_images: [], attachments: [], line_qr_url: "",
     type_id: types[0]?.id || "", count_mode: "person", team_size: 2,
     min_members: 1, max_members: 1,
     capacity: 30, price: 0, is_open: true,
@@ -606,6 +606,7 @@ function CourseModal({ course, types, onSave, onClose }) {
     count_choice: initCount,
     image_urls: course.image_urls || (course.image_url ? [course.image_url] : []),
     detail_images: course.detail_images || [],
+    attachments: course.attachments || [],
   })
   // เนื้อหาแบบหัวข้อย่อย — parse จาก content (รองรับข้อมูลเก่าที่เป็น text ธรรมดา)
   const [sections, setSections] = useState(() => {
@@ -674,6 +675,24 @@ function CourseModal({ course, types, onSave, onClose }) {
   }
   function removeDetailImage(idx) {
     setF((prev) => ({ ...prev, detail_images: (prev.detail_images || []).filter((_, i) => i !== idx) }))
+  }
+  // ไฟล์แนบ PDF (ให้ผู้สมัครดาวน์โหลด) — เก็บ {name, url}
+  async function handleAttachmentFiles(e) {
+    const files = Array.from(e.target.files || [])
+    if (!files.length) return
+    setUploading(true)
+    try {
+      const items = []
+      for (const file of files) {
+        const url = await uploadCourseAsset(file, "attachments")
+        items.push({ name: file.name, url })
+      }
+      setF((prev) => ({ ...prev, attachments: [...(prev.attachments || []), ...items] }))
+    } catch (err) { toast("อัปโหลดไฟล์ไม่สำเร็จ: " + err.message, "error") }
+    finally { setUploading(false); e.target.value = "" }
+  }
+  function removeAttachment(idx) {
+    setF((prev) => ({ ...prev, attachments: (prev.attachments || []).filter((_, i) => i !== idx) }))
   }
 
   function submit(e) {
@@ -886,6 +905,22 @@ function CourseModal({ course, types, onSave, onClose }) {
               <input type="file" accept="image/*" onChange={handleQrFile} disabled={uploading}
                 className="block w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-100 file:text-emerald-700 disabled:opacity-50" />
               {f.line_qr_url && <img src={f.line_qr_url} alt="QR" className="h-20 w-auto rounded-lg border border-emerald-300 mt-2" />}
+            </div>
+
+            {/* 6.5 ไฟล์แนบ PDF — ให้ผู้สมัครดาวน์โหลด */}
+            <div className="bg-violet-50/50 border border-violet-100 rounded-xl p-4">
+              <label className="text-xs font-black text-violet-700 uppercase tracking-wide mb-2.5 flex items-center gap-1.5"><Ico.folder className="w-4 h-4" /> ไฟล์แนบ (PDF)</label>
+              <input type="file" multiple accept=".pdf,application/pdf" onChange={handleAttachmentFiles} disabled={uploading}
+                className="block w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-violet-100 file:text-violet-700 hover:file:bg-violet-200 mb-3 disabled:opacity-50" />
+              <div className="space-y-1.5">
+                {(f.attachments || []).map((att, idx) => (
+                  <div key={idx} className="flex items-center gap-2 bg-white rounded-lg border border-slate-100 px-3 py-2">
+                    <Ico.receipt className="w-4 h-4 text-violet-500 shrink-0" />
+                    <span className="text-xs text-slate-700 truncate flex-1">{att.name}</span>
+                    <button type="button" onClick={() => removeAttachment(idx)} className="text-rose-500 hover:bg-rose-50 rounded p-1 shrink-0"><Ico.trash className="w-3.5 h-3.5" /></button>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* 7. คำอธิบายย่อ */}

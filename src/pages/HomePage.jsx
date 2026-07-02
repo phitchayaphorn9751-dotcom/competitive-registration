@@ -611,6 +611,28 @@ function DetailModal({ course, t, onClose, onRegister }) {
                 ))}
               </div>
             )}
+
+            {/* ไฟล์แนบ PDF — ให้ผู้สมัครดาวน์โหลด */}
+            {Array.isArray(course.attachments) && course.attachments.length > 0 && (
+              <div className="bg-white p-4 rounded-2xl border border-orange-100 shadow-sm">
+                <h4 className="font-bold text-[#F15A24] text-base mb-3 flex items-center gap-2">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+                  ไฟล์แนบ
+                </h4>
+                <div className="space-y-2">
+                  {course.attachments.map((att, i) => (
+                    <a key={i} href={att.url} download target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 hover:border-[#F15A24] hover:bg-orange-50/40 transition group">
+                      <span className="w-9 h-9 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center shrink-0">
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+                      </span>
+                      <span className="text-sm font-medium text-slate-700 truncate flex-1 group-hover:text-[#F15A24]">{att.name}</span>
+                      <svg className="w-4 h-4 text-slate-400 group-hover:text-[#F15A24] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

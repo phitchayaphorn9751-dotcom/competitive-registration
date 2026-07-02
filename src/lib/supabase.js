@@ -28,7 +28,7 @@ export async function fetchCourses(eventId) {
   let q = supabase
     .from("courses")
     .select(
-      "id, title, description, content, count_mode, team_size, min_members, max_members, capacity, seats_taken, price, bank_account, image_url, image_urls, detail_images, level, start_date, end_date, duration, timeline, sessions, line_qr_url, form_schema, is_open, external_url, course_types:type_id(code,label,requires_payment,requires_approval,color), course_instructors(instructors(full_name)), course_days(day_date,start_at,end_at)"
+      "id, title, description, content, count_mode, team_size, min_members, max_members, capacity, seats_taken, price, bank_account, image_url, image_urls, detail_images, attachments, level, start_date, end_date, duration, timeline, sessions, line_qr_url, form_schema, is_open, external_url, course_types:type_id(code,label,requires_payment,requires_approval,color), course_instructors(instructors(full_name)), course_days(day_date,start_at,end_at)"
     )
     .order("created_at", { ascending: true })
   if (eventId) q = q.eq("event_id", eventId)
@@ -41,7 +41,7 @@ export async function fetchCourse(courseId) {
   const { data, error } = await supabase
     .from("courses")
     .select(
-      "id, event_id, title, description, content, count_mode, team_size, min_members, max_members, capacity, seat_mode, require_portfolio, portfolio_label, seats_taken, price, bank_account, bank_name, bank_holder, line_qr_url, image_url, image_urls, detail_images, level, start_date, end_date, duration, timeline, sessions, form_schema, is_open, external_url, course_types:type_id(code,label,requires_payment,requires_approval,color)"
+      "id, event_id, title, description, content, count_mode, team_size, min_members, max_members, capacity, seat_mode, require_portfolio, portfolio_label, seats_taken, price, bank_account, bank_name, bank_holder, line_qr_url, image_url, image_urls, detail_images, attachments, level, start_date, end_date, duration, timeline, sessions, form_schema, is_open, external_url, course_types:type_id(code,label,requires_payment,requires_approval,color)"
     )
     .eq("id", courseId)
     .single()
@@ -527,7 +527,7 @@ export async function deleteCourseType(id) {
 export async function fetchCoursesAdmin(eventId) {
   let q = supabase
     .from("courses")
-    .select("id, event_id, type_id, title, description, content, count_mode, team_size, min_members, max_members, capacity, seat_mode, require_portfolio, portfolio_label, seats_taken, price, bank_account, bank_name, bank_holder, image_url, image_urls, detail_images, line_qr_url, base_id, level, start_date, end_date, duration, timeline, sessions, form_schema, is_open, external_url, course_types:type_id(label,color), course_instructors(instructors(full_name)), course_days(day_date)")
+    .select("id, event_id, type_id, title, description, content, count_mode, team_size, min_members, max_members, capacity, seat_mode, require_portfolio, portfolio_label, seats_taken, price, bank_account, bank_name, bank_holder, image_url, image_urls, detail_images, attachments, line_qr_url, base_id, level, start_date, end_date, duration, timeline, sessions, form_schema, is_open, external_url, course_types:type_id(label,color), course_instructors(instructors(full_name)), course_days(day_date)")
     .order("created_at", { ascending: true })
   if (eventId) q = q.eq("event_id", eventId)
   const { data, error } = await q
@@ -551,7 +551,7 @@ export async function duplicateCourses(courseIds, toEventId) {
   // ดึงคอร์สต้นฉบับ
   const { data: sources, error: e1 } = await supabase
     .from("courses")
-    .select("type_id, title, description, content, count_mode, team_size, min_members, max_members, capacity, seat_mode, require_portfolio, portfolio_label, price, bank_account, bank_name, bank_holder, image_url, image_urls, detail_images, line_qr_url, base_id, level, start_date, end_date, duration, timeline, sessions, form_schema")
+    .select("type_id, title, description, content, count_mode, team_size, min_members, max_members, capacity, seat_mode, require_portfolio, portfolio_label, price, bank_account, bank_name, bank_holder, image_url, image_urls, detail_images, attachments, line_qr_url, base_id, level, start_date, end_date, duration, timeline, sessions, form_schema")
     .in("id", courseIds)
   if (e1) throw e1
   // เตรียม payload งานใหม่ (seats_taken=0, is_open=false ให้แอดมินเปิดเอง)
@@ -583,6 +583,7 @@ export async function saveCourse(c) {
     image_url: c.image_url || (c.image_urls?.[0] || null),
     image_urls: c.image_urls || [],
     detail_images: Array.isArray(c.detail_images) ? c.detail_images : [],
+    attachments: Array.isArray(c.attachments) ? c.attachments : [],
     line_qr_url: c.line_qr_url || null,
     base_id: c.base_id ? String(c.base_id).trim().toUpperCase() : null,
     level: c.level || null,
