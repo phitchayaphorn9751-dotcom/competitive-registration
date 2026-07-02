@@ -307,8 +307,8 @@ function CourseCard({ course, t, onDetail, onRegister }) {
               </div>
               {isUnlimited ? (
                 /* ไม่จำกัด — แถบไล่สีมี ∞ ตรงกลาง แทนปรอท */
-                <div className="w-full h-2 rounded-full bg-gradient-to-r from-emerald-300 via-emerald-400 to-emerald-300 flex items-center justify-center relative overflow-hidden">
-                  <span className="text-white text-[10px] font-bold leading-none drop-shadow-sm">∞ ไม่จำกัดจำนวน</span>
+                <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
+                  <div className="h-full w-full rounded-full bg-emerald-200/70" />
                 </div>
               ) : (
                 <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">

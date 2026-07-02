@@ -369,8 +369,8 @@ function CourseCardWide({ course, onEdit, onDelete, onToggle, onView }) {
                     <div className={`h-full rounded-full transition-all duration-500 ${isFull ? "bg-gradient-to-r from-rose-500 to-rose-600" : pct >= 80 ? "bg-amber-400" : "bg-gradient-to-r from-[#fb923c] to-[#F15A24]"}`} style={{ width: `${pct}%` }} />
                   </div>
                 ) : (
-                  <div className="h-1.5 rounded-full bg-gradient-to-r from-emerald-300 via-emerald-400 to-emerald-300 flex items-center justify-center">
-                    <span className="text-white text-[9px] font-bold leading-none">∞ ไม่จำกัด</span>
+                  <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full w-full rounded-full bg-emerald-200/70" />
                   </div>
                 )}
               </>
@@ -476,8 +476,8 @@ function CourseCardMobile({ course, onEdit, onDelete, onToggle, onView }) {
                   <div className={`h-full rounded-full transition-all duration-500 ${isFull ? "bg-gradient-to-r from-rose-500 to-rose-600" : pct >= 80 ? "bg-amber-400" : "bg-gradient-to-r from-[#fb923c] to-[#F15A24]"}`} style={{ width: `${pct}%` }} />
                 </div>
               ) : (
-                <div className="h-1.5 rounded-full bg-gradient-to-r from-emerald-300 via-emerald-400 to-emerald-300 flex items-center justify-center">
-                  <span className="text-white text-[9px] font-bold leading-none">∞ ไม่จำกัด</span>
+                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-full w-full rounded-full bg-emerald-200/70" />
                 </div>
               )}
             </>
