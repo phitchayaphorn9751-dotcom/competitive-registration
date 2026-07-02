@@ -58,6 +58,7 @@ export default function AdminCourses() {
     base_id: "", level: "", start_date: "", end_date: "", duration: "",
     external_url: "",
     timeline: [],
+    sessions: [],
   }
 
   function openAdd() { setEditCourse({ ...blank, type_id: types[0]?.id || "" }); setShowModal(true) }
@@ -485,6 +486,58 @@ function TimelineEditor({ items, onChange }) {
   )
 }
 
+// ── ตัวแก้ไข "รอบ" (session) — แบ่งคอร์สเป็นหลายรอบ โควตาแยกกัน ──
+// ว่าง = คอร์สไม่มีรอบ (flow เดิมปกติ) · มีรอบ = ผู้สมัครเลือกรอบตอนสมัคร
+function SessionEditor({ items, onChange }) {
+  const list = Array.isArray(items) ? items : []
+  const sInput = "w-full px-2.5 py-2 border border-slate-200 rounded-lg outline-none focus:border-[#F15A24] focus:ring-1 focus:ring-[#F15A24] text-sm transition"
+
+  function add() {
+    // สร้าง id ไม่ซ้ำ
+    const id = "s" + (Date.now().toString(36).slice(-4)) + Math.floor(Math.random() * 90 + 10)
+    onChange([...list, { id, label: "", time: "", capacity: 30, taken: 0 }])
+  }
+  function update(i, key, val) { onChange(list.map((it, idx) => idx === i ? { ...it, [key]: val } : it)) }
+  function remove(i) { onChange(list.filter((_, idx) => idx !== i)) }
+
+  return (
+    <div className="border border-slate-200 rounded-xl p-3.5 bg-slate-50/50">
+      <div className="flex items-center justify-between mb-1.5">
+        <label className="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
+          <Ico.clock className="w-3.5 h-3.5 text-[#F15A24]" /> รอบ (Session)
+        </label>
+        <button type="button" onClick={add}
+          className="flex items-center gap-1 bg-[#F15A24] text-white px-2.5 py-1 rounded-lg text-xs font-bold hover:bg-[#c44215] transition active:scale-95">
+          <Ico.plus className="w-3 h-3" /> เพิ่มรอบ
+        </button>
+      </div>
+      <p className="text-[10px] text-slate-400 mb-2.5">เว้นว่าง = คอร์สรอบเดียว (ปกติ) · ใส่รอบ = ผู้สมัครต้องเลือกรอบ แต่ละรอบมีโควตาแยกกัน</p>
+
+      {list.length === 0 && <p className="text-[11px] text-slate-400 text-center py-2">ยังไม่มีรอบ — คอร์สนี้รับสมัครแบบรอบเดียว (ปกติ)</p>}
+
+      <div className="space-y-2">
+        {list.map((it, i) => (
+          <div key={it.id || i} className="flex items-center gap-2 bg-white rounded-lg border border-slate-100 p-2">
+            <input className={`${sInput} flex-1`} placeholder="ชื่อรอบ เช่น รอบเช้า" value={it.label || ""} onChange={(e) => update(i, "label", e.target.value)} />
+            <input className={`${sInput} w-32 shrink-0`} placeholder="09:00-12:00" value={it.time || ""} onChange={(e) => update(i, "time", e.target.value)} />
+            <div className="flex items-center gap-1 shrink-0">
+              <input type="number" min="0" className={`${sInput} w-20`} placeholder="โควตา" value={it.capacity ?? ""} onChange={(e) => update(i, "capacity", parseInt(e.target.value) || 0)} />
+              <span className="text-[10px] text-slate-400">คน</span>
+            </div>
+            <button type="button" onClick={() => remove(i)} className="text-rose-500 hover:bg-rose-50 p-1.5 rounded-lg shrink-0" title="ลบรอบ"><Ico.trash className="w-3.5 h-3.5" /></button>
+          </div>
+        ))}
+      </div>
+
+      {list.length > 0 && (
+        <p className="text-[10px] text-amber-500 mt-2 flex items-start gap-1">
+          <Ico.alert className="w-3 h-3 shrink-0 mt-0.5" /> เมื่อมีรอบ: ช่อง "จำนวนที่รับ" ด้านบนจะไม่ใช้ — ระบบนับโควตาจากแต่ละรอบแทน
+        </p>
+      )}
+    </div>
+  )
+}
+
 // Modal เพิ่ม/แก้คอร์ส
 function CourseModal({ course, types, onSave, onClose }) {
   const { toast } = useDialog()
@@ -607,6 +660,9 @@ function CourseModal({ course, types, onSave, onClose }) {
 
             {/* กำหนดการ (timeline) — แสดงในหน้ารายละเอียดคอร์ส */}
             <TimelineEditor items={f.timeline || []} onChange={(tl) => set("timeline", tl)} />
+
+            {/* รอบ (session) — แบ่งคอร์สเป็นหลายรอบ (optional) */}
+            <SessionEditor items={f.sessions || []} onChange={(ss) => set("sessions", ss)} />
 
 
             {/* 3. หมวดหมู่ + ผู้สอน */}
