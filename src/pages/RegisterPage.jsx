@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
 import {
-  fetchCourse, fetchMyProfile, getSession,
+  fetchCourse, fetchMyProfile, getSession, fetchMyRegistrationStatus,
   holdSeat, finalizeRegistration, setPaymentDeadline, fetchRegistrationDeadline, addParticipant, addAdvisor, uploadSlip, attachSlip, savePortfolioUrl,
   checkDuplicateRegistration, assignParticipantCode, assignCodesForRegistration, saveRegistrationTheme, assignSession,
   registerExternal,
@@ -222,14 +222,22 @@ export default function RegisterPage() {
         } catch (_) { /* ถ้า RPC ยังไม่มี ใบจะค้างที่ held แต่ยังขึ้นรายการ */ }
       }
 
+      // ── เช็ค status จริงจาก DB (hold_seat อาจตั้ง waitlist ถ้าเต็ม แม้ JS เดาว่าไม่เต็ม) ──
+      // ป้องกันกรณี seats_taken ที่ fetch มาไม่ตรงกับตอน hold จริง → พาไปหน้าจ่ายเงินผิด
+      let actualWaitlist = willWaitlist
+      try {
+        const realStatus = finalStatus || (await fetchMyRegistrationStatus(regId))
+        if (realStatus === "waitlist") actualWaitlist = true
+      } catch (_) { /* อ่านไม่ได้ ใช้ค่าที่เดาไว้ */ }
+
       const requiresPayment = (course.price || 0) > 0
 
       // ── RPC เสริม (fail ได้ ไม่กระทบการสมัคร) ──
       try { if (ownerPid) await assignParticipantCode(ownerPid) } catch (_) {}
       try { await assignCodesForRegistration(regId) } catch (_) {}
-      try { if (requiresPayment && !willWaitlist) await setPaymentDeadline(regId) } catch (_) {}
+      try { if (requiresPayment && !actualWaitlist) await setPaymentDeadline(regId) } catch (_) {}
 
-      setResult({ regId, requiresPayment, isWaitlist: willWaitlist, status: finalStatus, hasPortfolio: !!hasPortfolio })
+      setResult({ regId, requiresPayment, isWaitlist: actualWaitlist, status: finalStatus, hasPortfolio: !!hasPortfolio })
     } catch (e) {
       setError(translateError(e.message))
     } finally {
@@ -629,7 +637,10 @@ export function PaymentScreen({ course, regId, t, navigate, deadline, isRejected
     } catch (e) {
       if (e.message === "TIMEOUT") {
         setErr("⏳ การส่งใช้เวลานานผิดปกติ — ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง")
-      } else if (e.message?.includes("INVALID_STATE") || e.message?.includes("expired")) {
+      } else if (e.message?.includes("INVALID_STATE")) {
+        setExpired(true)
+        setErr("⚠️ ใบสมัครนี้ไม่อยู่ในสถานะที่ชำระเงินได้ (อาจเป็นคิวสำรอง หรือหมดเวลาแล้ว) — กรุณาตรวจสอบที่ 'ใบสมัครของฉัน' หรือสมัครใหม่")
+      } else if (e.message?.includes("expired")) {
         setExpired(true)
         setErr("⏰ ใบสมัครนี้หมดเวลาชำระเงินแล้ว ที่นั่งถูกปล่อยให้คิวถัดไป กรุณาสมัครใหม่อีกครั้ง")
       } else {

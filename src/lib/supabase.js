@@ -982,3 +982,11 @@ export async function fetchCourseSessions(courseId) {
   if (error) throw error
   return data?.sessions || []
 }
+
+// อ่าน status จริงของ registration (ใช้เช็คว่า hold_seat ตั้ง waitlist ไหม)
+export async function fetchMyRegistrationStatus(registrationId) {
+  const { data, error } = await supabase
+    .from("registrations").select("status").eq("id", registrationId).single()
+  if (error) throw error
+  return data?.status || null
+}
