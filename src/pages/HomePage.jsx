@@ -214,9 +214,13 @@ function CourseCard({ course, t, onDetail, onRegister }) {
   const taken = course.seats_taken || 0
   const cap = course.capacity || 0
   const isUnlimited = course.seat_mode === "unlimited"
+  const hasSessions = Array.isArray(course.sessions) && course.sessions.length > 0
   const remaining = Math.max(0, cap - taken)
   const pct = cap > 0 ? Math.min((taken / cap) * 100, 100) : 0
-  const isFull = !isUnlimited && cap > 0 && remaining <= 0
+  // คอร์สมีรอบ = เต็มเมื่อทุกรอบเต็ม / คอร์สปกติ = เช็ค capacity
+  const isFull = hasSessions
+    ? course.sessions.every((s) => (s.capacity || 0) > 0 && (s.taken || 0) >= (s.capacity || 0))
+    : (!isUnlimited && cap > 0 && remaining <= 0)
   const isClosed = course.is_open === false
   const isExternal = !!(course.external_url && course.external_url.trim())
   const isPaid = (course.price || 0) > 0
@@ -267,19 +271,47 @@ function CourseCard({ course, t, onDetail, onRegister }) {
 
         {/* Seat progress */}
         <div className="mb-4">
-          <div className="flex justify-between items-center text-xs mb-1.5">
-            <span className="text-slate-500">{t("home.seats")}</span>
-            <span className={`font-bold ${isFull ? "text-rose-500" : "text-emerald-600"}`}>
-              {isFull ? t("home.full") : isUnlimited ? `${taken} คน (ไม่จำกัด)` : `${taken}/${cap}`}
-            </span>
-          </div>
-          <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-            {isUnlimited ? (
-              <div className="h-full rounded-full bg-emerald-400/60" style={{ width: "100%" }} />
-            ) : (
-              <div className={`h-full rounded-full transition-all duration-500 ${pct >= 100 ? "bg-rose-500" : pct >= 75 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${pct}%` }} />
-            )}
-          </div>
+          {Array.isArray(course.sessions) && course.sessions.length > 0 ? (
+            /* คอร์สมีรอบ — แสดงปรอทแยกแต่ละรอบ */
+            <div className="space-y-2">
+              {course.sessions.map((s) => {
+                const sTaken = s.taken || 0
+                const sCap = s.capacity || 0
+                const sPct = sCap > 0 ? Math.min((sTaken / sCap) * 100, 100) : 0
+                const sFull = sCap > 0 && sTaken >= sCap
+                return (
+                  <div key={s.id}>
+                    <div className="flex justify-between items-center text-[11px] mb-1">
+                      <span className="text-slate-500 font-medium truncate">{s.label || "รอบ"}</span>
+                      <span className={`font-bold ${sFull ? "text-rose-500" : "text-emerald-600"}`}>
+                        {sFull ? "เต็ม" : `${sTaken}/${sCap}`}
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                      <div className={`h-full rounded-full transition-all duration-500 ${sPct >= 100 ? "bg-rose-500" : sPct >= 75 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${sPct}%` }} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            /* คอร์สปกติ — ปรอทเดียว */
+            <>
+              <div className="flex justify-between items-center text-xs mb-1.5">
+                <span className="text-slate-500">{t("home.seats")}</span>
+                <span className={`font-bold ${isFull ? "text-rose-500" : "text-emerald-600"}`}>
+                  {isFull ? t("home.full") : isUnlimited ? `${taken} คน (ไม่จำกัด)` : `${taken}/${cap}`}
+                </span>
+              </div>
+              <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                {isUnlimited ? (
+                  <div className="h-full rounded-full bg-emerald-400/60" style={{ width: "100%" }} />
+                ) : (
+                  <div className={`h-full rounded-full transition-all duration-500 ${pct >= 100 ? "bg-rose-500" : pct >= 75 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${pct}%` }} />
+                )}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Price & Buttons */}
