@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom"
 import {
   fetchCourse, fetchMyProfile, getSession,
   holdSeat, finalizeRegistration, setPaymentDeadline, fetchRegistrationDeadline, addParticipant, addAdvisor, uploadSlip, attachSlip, savePortfolioUrl,
-  checkDuplicateRegistration, assignParticipantCode, assignCodesForRegistration, saveRegistrationTheme,
+  checkDuplicateRegistration, assignParticipantCode, assignCodesForRegistration, saveRegistrationTheme, assignSession,
   registerExternal,
   fetchAllSchools, searchSchools,
 } from "../lib/supabase.js"
@@ -49,6 +49,7 @@ export default function RegisterPage() {
   const [advisor, setAdvisor] = useState({ full_name: "", phone: "", email: "" })
   const [portfolioUrl, setPortfolioUrl] = useState("")
   const [themeName, setThemeName] = useState("")        // ชื่อธีม (ข้อ 2.4)
+  const [selectedSession, setSelectedSession] = useState("")  // รอบที่เลือก (ถ้าคอร์สมีรอบ)
   const [ownerNationalId, setOwnerNationalId] = useState("")  // เลขบัตรเจ้าของ (ถ้า profile ไม่มี)
 
   // โรงเรียน autocomplete สำหรับสมาชิก
@@ -139,6 +140,16 @@ export default function RegisterPage() {
     if (course.require_portfolio && !portfolioUrl.trim()) {
       return setError("กรุณาแนบลิงก์ผลงานก่อนสมัคร")
     }
+    // เช็ครอบ (ถ้าคอร์สมีรอบ ต้องเลือก + รอบต้องยังว่าง)
+    const hasSessions = Array.isArray(course.sessions) && course.sessions.length > 0
+    if (hasSessions) {
+      if (!selectedSession) return setError("กรุณาเลือกรอบที่ต้องการสมัคร")
+      const sess = course.sessions.find((s) => s.id === selectedSession)
+      if (!sess) return setError("รอบที่เลือกไม่ถูกต้อง")
+      if ((sess.taken || 0) + teamCount > (sess.capacity || 0)) {
+        return setError(`รอบ "${sess.label}" เหลือที่ไม่พอ (เหลือ ${Math.max(0, (sess.capacity || 0) - (sess.taken || 0))} ที่)`)
+      }
+    }
 
     setSubmitting(true)
     try {
@@ -162,6 +173,11 @@ export default function RegisterPage() {
       // ── ขั้นตอนหลัก (ต้องสำเร็จ) ──
       // กันที่นั่งตามจำนวนสมาชิกจริง (ทีม 3 คน = กัน 3 ที่นั่ง)
       const regId = await holdSeat(courseId, email.trim(), teamCount)
+
+      // ถ้าคอร์สมีรอบ — บันทึกรอบที่เลือก + เพิ่ม taken ของรอบนั้น (fail ไม่ล้มการสมัคร)
+      if (hasSessions && selectedSession) {
+        try { await assignSession(courseId, regId, selectedSession, teamCount) } catch (_) {}
+      }
 
       // ผู้สมัครคนแรก = เจ้าของ profile
       const ownerPid = await addParticipant(regId, {
@@ -364,6 +380,46 @@ export default function RegisterPage() {
           <h1 className="text-2xl font-extrabold text-slate-900">{course.title}</h1>
           <h2 className="text-lg font-bold text-slate-700 mt-4">{t("reg.title")}</h2>
         </div>
+
+        {/* เลือกรอบ (ถ้าคอร์สมีรอบ) */}
+        {Array.isArray(course.sessions) && course.sessions.length > 0 && (
+          <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100">
+            <h3 className="text-base font-bold text-slate-800 flex items-center gap-2 pb-3 border-b border-slate-100 mb-4">
+              <span className="w-7 h-7 bg-[#F15A24] text-white rounded-xl flex items-center justify-center"><Ico.clock className="w-4 h-4" /></span>
+              เลือกรอบที่ต้องการ <span className="text-rose-500">*</span>
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {course.sessions.map((s) => {
+                const taken = s.taken || 0
+                const cap = s.capacity || 0
+                const left = Math.max(0, cap - taken)
+                const full = left <= 0
+                const active = selectedSession === s.id
+                return (
+                  <button key={s.id} type="button" disabled={full}
+                    onClick={() => setSelectedSession(s.id)}
+                    className={`text-left p-4 rounded-2xl border-2 transition ${
+                      full ? "border-slate-100 bg-slate-50 opacity-60 cursor-not-allowed"
+                      : active ? "border-[#F15A24] bg-orange-50 shadow-sm"
+                      : "border-slate-200 hover:border-orange-300 hover:bg-orange-50/40"}`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className={`font-bold text-sm ${active ? "text-[#F15A24]" : "text-slate-800"}`}>{s.label || "รอบ"}</span>
+                      {full ? (
+                        <span className="text-[10px] font-bold bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full">เต็ม</span>
+                      ) : active ? (
+                        <span className="w-5 h-5 rounded-full bg-[#F15A24] text-white flex items-center justify-center"><Ico.check className="w-3 h-3" /></span>
+                      ) : null}
+                    </div>
+                    {s.time && <div className="text-xs text-slate-500 mb-1.5">🕐 {s.time}</div>}
+                    <div className={`text-xs font-medium ${full ? "text-rose-500" : "text-emerald-600"}`}>
+                      {full ? "เต็มแล้ว" : `เหลือ ${left}/${cap} ที่`}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* ผู้สมัคร (จาก profile) */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100">

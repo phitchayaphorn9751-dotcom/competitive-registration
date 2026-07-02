@@ -947,3 +947,38 @@ export async function fetchCertificateRecipients(courseId) {
 export async function uploadCertificateTemplate(file) {
   return uploadCourseAsset(file, "certificates")
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// Session (รอบ) — จัดการโควตาแยกรอบ โดยไม่แตะ hold_seat RPC เดิม
+// ═══════════════════════════════════════════════════════════════════
+
+// บันทึกว่า registration นี้เลือกรอบไหน + เพิ่ม taken ของรอบนั้น
+// เรียกหลัง holdSeat สำเร็จ (ถ้าคอร์สมีรอบ)
+export async function assignSession(courseId, registrationId, sessionId, seats) {
+  // 1. บันทึก session_id ลง registration
+  const { error: e1 } = await supabase
+    .from("registrations")
+    .update({ session_id: sessionId })
+    .eq("id", registrationId)
+  if (e1) throw e1
+
+  // 2. เพิ่ม taken ของรอบใน courses.sessions (read-modify-write)
+  const { data: course, error: e2 } = await supabase
+    .from("courses").select("sessions").eq("id", courseId).single()
+  if (e2) throw e2
+  const sessions = (course?.sessions || []).map((s) =>
+    s.id === sessionId ? { ...s, taken: (s.taken || 0) + seats } : s
+  )
+  const { error: e3 } = await supabase
+    .from("courses").update({ sessions }).eq("id", courseId)
+  if (e3) throw e3
+  return sessions
+}
+
+// ดึง sessions ล่าสุดของคอร์ส (เช็คโควตารอบก่อนสมัคร)
+export async function fetchCourseSessions(courseId) {
+  const { data, error } = await supabase
+    .from("courses").select("sessions").eq("id", courseId).single()
+  if (error) throw error
+  return data?.sessions || []
+}

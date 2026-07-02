@@ -213,9 +213,10 @@ function CourseCard({ course, t, onDetail, onRegister }) {
   const type = course.course_types
   const taken = course.seats_taken || 0
   const cap = course.capacity || 0
+  const isUnlimited = course.seat_mode === "unlimited"
   const remaining = Math.max(0, cap - taken)
   const pct = cap > 0 ? Math.min((taken / cap) * 100, 100) : 0
-  const isFull = remaining <= 0
+  const isFull = !isUnlimited && cap > 0 && remaining <= 0
   const isClosed = course.is_open === false
   const isExternal = !!(course.external_url && course.external_url.trim())
   const isPaid = (course.price || 0) > 0
@@ -269,11 +270,15 @@ function CourseCard({ course, t, onDetail, onRegister }) {
           <div className="flex justify-between items-center text-xs mb-1.5">
             <span className="text-slate-500">{t("home.seats")}</span>
             <span className={`font-bold ${isFull ? "text-rose-500" : "text-emerald-600"}`}>
-              {isFull ? t("home.full") : `${taken}/${cap}`}
+              {isFull ? t("home.full") : isUnlimited ? `${taken} คน (ไม่จำกัด)` : `${taken}/${cap}`}
             </span>
           </div>
           <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-            <div className={`h-full rounded-full transition-all duration-500 ${pct >= 100 ? "bg-rose-500" : pct >= 75 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${pct}%` }} />
+            {isUnlimited ? (
+              <div className="h-full rounded-full bg-emerald-400/60" style={{ width: "100%" }} />
+            ) : (
+              <div className={`h-full rounded-full transition-all duration-500 ${pct >= 100 ? "bg-rose-500" : pct >= 75 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${pct}%` }} />
+            )}
           </div>
         </div>
 
@@ -433,9 +438,9 @@ function DetailModal({ course, t, onClose, onRegister }) {
           <button onClick={onClose} aria-label="ปิด" className="text-white/80 hover:text-white text-2xl leading-none transition shrink-0 w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10">×</button>
         </div>
 
-        <div className="overflow-y-auto flex-1 bg-[#fffbf8]">
+        <div className="overflow-y-auto flex-1 bg-slate-50">
           {/* รูปภาพ + carousel */}
-          {images.length > 0 && (
+          {images.length > 0 ? (
             <div className="relative h-56 sm:h-72 bg-slate-200">
               <img src={images[imgIdx]} className="w-full h-full object-cover" alt={course.title} />
               {images.length > 1 && (
@@ -453,18 +458,39 @@ function DetailModal({ course, t, onClose, onRegister }) {
                 </>
               )}
             </div>
+          ) : (
+            /* ไม่มีรูป → placeholder ลายจางเข้าธีม */
+            <div className="relative h-40 sm:h-48 bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center border-b border-orange-100">
+              <div className="text-orange-200"><Ico.cap className="w-16 h-16" /></div>
+            </div>
           )}
 
           <div className="p-5 space-y-4">
-            {/* 3 การ์ดข้อมูล */}
-            <div className="grid grid-cols-3 gap-3">
+            {/* ค่าลงทะเบียน — เด่น อยู่บนสุด */}
+            <div className="flex items-center justify-center">
+              {isPaid ? (
+                <div className="inline-flex items-center gap-2 bg-white px-5 py-2.5 rounded-2xl border border-emerald-100 shadow-sm">
+                  <span className="text-slate-400 text-xs font-medium">ค่าลงทะเบียน</span>
+                  <span className="text-2xl font-extrabold text-emerald-600">{course.price?.toLocaleString() || "-"}</span>
+                  <span className="text-sm text-emerald-600 font-bold">บาท</span>
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-600 px-5 py-2.5 rounded-2xl border border-emerald-100 shadow-sm">
+                  <Ico.gift className="w-5 h-5" />
+                  <span className="text-base font-extrabold">ไม่มีค่าลงทะเบียน (ฟรี)</span>
+                </div>
+              )}
+            </div>
+
+            {/* 3 การ์ดข้อมูล — เด่นด้วยพื้นสี */}
+            <div className="grid grid-cols-3 gap-2.5">
               {infoCards.map((c, i) => (
-                <div key={i} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3.5 text-center hover:border-orange-200 hover:shadow transition">
-                  <div className="w-9 h-9 mx-auto mb-2 rounded-full bg-orange-50 text-[#F15A24] flex items-center justify-center">
+                <div key={i} className="bg-gradient-to-br from-orange-50 to-amber-50/60 rounded-2xl border border-orange-100 p-3.5 text-center">
+                  <div className="w-9 h-9 mx-auto mb-2 rounded-xl bg-white text-[#F15A24] flex items-center justify-center shadow-sm">
                     <c.icon className="w-4 h-4" />
                   </div>
-                  <div className="text-[11px] text-slate-400">{c.label}</div>
-                  <div className="text-sm font-bold text-slate-800 mt-0.5">{c.value}</div>
+                  <div className="text-[10px] text-slate-500 font-medium">{c.label}</div>
+                  <div className="text-sm font-extrabold text-slate-900 mt-0.5 leading-tight">{c.value}</div>
                 </div>
               ))}
             </div>
@@ -480,6 +506,35 @@ function DetailModal({ course, t, onClose, onRegister }) {
                       <span className="text-slate-800 font-medium text-sm">{inst}</span>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* รอบ (session) — แสดงถ้าคอร์สมีรอบ */}
+            {Array.isArray(course.sessions) && course.sessions.length > 0 && (
+              <div className="bg-white p-4 rounded-2xl border border-orange-100 shadow-sm">
+                <h4 className="font-bold text-[#F15A24] text-base mb-3 flex items-center gap-2">
+                  <Ico.clock className="w-4 h-4" /> รอบที่เปิดรับ
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {course.sessions.map((s) => {
+                    const taken = s.taken || 0
+                    const cap = s.capacity || 0
+                    const left = Math.max(0, cap - taken)
+                    const full = left <= 0
+                    return (
+                      <div key={s.id} className={`p-3 rounded-xl border ${full ? "border-slate-100 bg-slate-50" : "border-orange-100 bg-orange-50/40"}`}>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className={`font-bold text-sm ${full ? "text-slate-400" : "text-slate-800"}`}>{s.label || "รอบ"}</span>
+                          {full && <span className="text-[10px] font-bold bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full">เต็ม</span>}
+                        </div>
+                        {s.time && <div className="text-xs text-slate-500 mb-1">🕐 {s.time}</div>}
+                        <div className={`text-xs font-medium ${full ? "text-rose-500" : "text-emerald-600"}`}>
+                          {full ? "เต็มแล้ว" : `เหลือ ${left}/${cap} ที่`}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             )}
@@ -509,21 +564,6 @@ function DetailModal({ course, t, onClose, onRegister }) {
                 ))}
               </div>
             )}
-
-            {/* ค่าเรียน เด่น */}
-            <div className="flex flex-col items-center py-5 border-t border-dashed border-orange-200">
-              {isPaid ? (
-                <>
-                  <p className="text-slate-400 text-xs mb-1">ค่าลงทะเบียน</p>
-                  <p className="text-4xl font-extrabold text-emerald-600">{course.price?.toLocaleString() || "-"} <span className="text-2xl">บาท</span></p>
-                </>
-              ) : (
-                <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-600 px-5 py-2.5 rounded-full border border-emerald-100">
-                  <Ico.gift className="w-5 h-5" />
-                  <span className="text-lg font-extrabold">ไม่มีค่าลงทะเบียน</span>
-                </div>
-              )}
-            </div>
           </div>
         </div>
 
