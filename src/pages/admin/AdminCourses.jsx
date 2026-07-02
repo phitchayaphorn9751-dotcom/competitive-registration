@@ -867,8 +867,7 @@ function CourseModal({ course, types, onSave, onClose }) {
 
             {/* 5.5 รูปรายละเอียด — แสดงขนาดจริงด้านล่าง popup (แยกจากรูปปก) */}
             <div className="bg-sky-50/50 border border-sky-100 rounded-xl p-4">
-              <label className="text-xs font-black text-sky-700 uppercase tracking-wide mb-1 flex items-center gap-1.5"><Ico.image className="w-4 h-4" /> รูปรายละเอียด (แสดงขนาดจริงในหน้ารายละเอียด)</label>
-              <p className="text-[11px] text-slate-400 mb-2.5">รูปชุดนี้แสดงด้านล่าง popup ตามขนาดจริง (ไม่ crop) — แยกจากรูปปก/สไลด์บนสุด</p>
+              <label className="text-xs font-black text-sky-700 uppercase tracking-wide mb-2.5 flex items-center gap-1.5"><Ico.image className="w-4 h-4" /> รูปรายละเอียด</label>
               <input type="file" multiple accept="image/*" onChange={handleDetailImageFiles} disabled={uploading}
                 className="block w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-sky-100 file:text-sky-700 hover:file:bg-sky-200 mb-3 disabled:opacity-50" />
               <div className="flex flex-wrap gap-2">
