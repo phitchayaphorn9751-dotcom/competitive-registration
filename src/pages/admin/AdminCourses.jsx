@@ -370,7 +370,7 @@ function CourseCardWide({ course, onEdit, onDelete, onToggle, onView }) {
                   </div>
                 ) : (
                   <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-full w-full rounded-full bg-emerald-200/70" />
+                    <div className="h-full rounded-full bg-emerald-400 transition-all duration-500" style={{ width: `${Math.min(85, Math.round(Math.log10(taken + 1) * 39))}%` }} />
                   </div>
                 )}
               </>
@@ -477,7 +477,7 @@ function CourseCardMobile({ course, onEdit, onDelete, onToggle, onView }) {
                 </div>
               ) : (
                 <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div className="h-full w-full rounded-full bg-emerald-200/70" />
+                  <div className="h-full rounded-full bg-emerald-400 transition-all duration-500" style={{ width: `${Math.min(85, Math.round(Math.log10(taken + 1) * 39))}%` }} />
                 </div>
               )}
             </>

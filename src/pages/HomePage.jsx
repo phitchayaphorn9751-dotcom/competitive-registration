@@ -306,9 +306,9 @@ function CourseCard({ course, t, onDetail, onRegister }) {
                 </span>
               </div>
               {isUnlimited ? (
-                /* ไม่จำกัด — แถบไล่สีมี ∞ ตรงกลาง แทนปรอท */
+                /* ไม่จำกัด — แถบค่อยๆ โตตามจำนวนคน (log scale, ไม่มีวันเต็ม) */
                 <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
-                  <div className="h-full w-full rounded-full bg-emerald-200/70" />
+                  <div className="h-full rounded-full bg-emerald-400 transition-all duration-500" style={{ width: `${Math.min(85, Math.round(Math.log10(taken + 1) * 39))}%` }} />
                 </div>
               ) : (
                 <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
