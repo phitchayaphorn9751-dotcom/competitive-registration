@@ -49,7 +49,7 @@ export default function AdminCourses() {
 
   const blank = {
     title: "", description: "", content: "", instructor_names: [], image_url: "",
-    image_urls: [], line_qr_url: "",
+    image_urls: [], detail_images: [], line_qr_url: "",
     type_id: types[0]?.id || "", count_mode: "person", team_size: 2,
     min_members: 1, max_members: 1,
     capacity: 30, price: 0, is_open: true,
@@ -605,6 +605,7 @@ function CourseModal({ course, types, onSave, onClose }) {
     pay_mode: initPayMode,
     count_choice: initCount,
     image_urls: course.image_urls || (course.image_url ? [course.image_url] : []),
+    detail_images: course.detail_images || [],
   })
   // เนื้อหาแบบหัวข้อย่อย — parse จาก content (รองรับข้อมูลเก่าที่เป็น text ธรรมดา)
   const [sections, setSections] = useState(() => {
@@ -658,6 +659,21 @@ function CourseModal({ course, types, onSave, onClose }) {
   }
   function removeImage(idx) {
     setF((prev) => ({ ...prev, image_urls: prev.image_urls.filter((_, i) => i !== idx) }))
+  }
+  // รูปรายละเอียด (แสดงขนาดจริงด้านล่าง popup — แยกจากรูปปก)
+  async function handleDetailImageFiles(e) {
+    const files = Array.from(e.target.files || [])
+    if (!files.length) return
+    setUploading(true)
+    try {
+      const urls = []
+      for (const file of files) urls.push(await uploadCourseAsset(file, "images"))
+      setF((prev) => ({ ...prev, detail_images: [...(prev.detail_images || []), ...urls] }))
+    } catch (err) { toast("อัปโหลดรูปไม่สำเร็จ: " + err.message, "error") }
+    finally { setUploading(false); e.target.value = "" }
+  }
+  function removeDetailImage(idx) {
+    setF((prev) => ({ ...prev, detail_images: (prev.detail_images || []).filter((_, i) => i !== idx) }))
   }
 
   function submit(e) {
@@ -844,6 +860,22 @@ function CourseModal({ course, types, onSave, onClose }) {
                     <img src={url} alt="" className="w-full h-full object-cover rounded-lg border border-slate-200" />
                     <button type="button" onClick={() => removeImage(idx)} className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] shadow hover:bg-rose-600">×</button>
                     {idx === 0 && <span className="absolute bottom-0 inset-x-0 bg-[#F15A24] text-white text-[8px] text-center rounded-b-lg">ปก</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 5.5 รูปรายละเอียด — แสดงขนาดจริงด้านล่าง popup (แยกจากรูปปก) */}
+            <div className="bg-sky-50/50 border border-sky-100 rounded-xl p-4">
+              <label className="text-xs font-black text-sky-700 uppercase tracking-wide mb-1 flex items-center gap-1.5"><Ico.image className="w-4 h-4" /> รูปรายละเอียด (แสดงขนาดจริงในหน้ารายละเอียด)</label>
+              <p className="text-[11px] text-slate-400 mb-2.5">รูปชุดนี้แสดงด้านล่าง popup ตามขนาดจริง (ไม่ crop) — แยกจากรูปปก/สไลด์บนสุด</p>
+              <input type="file" multiple accept="image/*" onChange={handleDetailImageFiles} disabled={uploading}
+                className="block w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-sky-100 file:text-sky-700 hover:file:bg-sky-200 mb-3 disabled:opacity-50" />
+              <div className="flex flex-wrap gap-2">
+                {(f.detail_images || []).map((url, idx) => (
+                  <div key={idx} className="relative w-16 h-16">
+                    <img src={url} alt="" className="w-full h-full object-cover rounded-lg border border-slate-200" />
+                    <button type="button" onClick={() => removeDetailImage(idx)} className="absolute -top-1.5 -right-1.5 bg-rose-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] shadow hover:bg-rose-600">×</button>
                   </div>
                 ))}
               </div>

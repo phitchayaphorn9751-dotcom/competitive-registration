@@ -579,19 +579,13 @@ function DetailModal({ course, t, onClose, onRegister }) {
             {/* กำหนดการ (timeline) — แสดงก่อนคำอธิบาย */}
             <CourseTimeline items={course.timeline} />
 
-            {/* รูปภาพ — แสดงตามขนาดจริงของรูป (ไม่ crop) เรียงลงมา */}
-            {images.length > 0 && (
-              <div className="bg-white p-4 rounded-2xl border border-orange-100 shadow-sm">
-                <h4 className="font-bold text-[#F15A24] text-base mb-3 flex items-center gap-2">
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-                  รูปภาพ
-                </h4>
-                <div className="space-y-3">
-                  {images.map((src, i) => (
-                    <img key={i} src={src} alt={`${course.title} ${i + 1}`}
-                      className="w-full h-auto rounded-xl border border-slate-100" />
-                  ))}
-                </div>
+            {/* รูปรายละเอียด — แสดงตามขนาดจริง (ไม่ crop) ไม่มีหัวข้อ (อยู่หมวดเดียวกับกำหนดการ) */}
+            {Array.isArray(course.detail_images) && course.detail_images.length > 0 && (
+              <div className="space-y-3">
+                {course.detail_images.map((src, i) => (
+                  <img key={i} src={src} alt={`${course.title} ${i + 1}`}
+                    className="w-full h-auto rounded-2xl border border-slate-100 shadow-sm" />
+                ))}
               </div>
             )}
 
