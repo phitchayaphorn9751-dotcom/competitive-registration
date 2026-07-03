@@ -904,7 +904,13 @@ function CourseModal({ course, types, onSave, onClose }) {
               <label className="text-xs font-black text-emerald-700 uppercase tracking-wide mb-2 flex items-center gap-1.5"><Ico.qr className="w-4 h-4" /> QR ไลน์กลุ่ม (ถ้ามี)</label>
               <input type="file" accept="image/*" onChange={handleQrFile} disabled={uploading}
                 className="block w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-100 file:text-emerald-700 disabled:opacity-50" />
-              {f.line_qr_url && <img src={f.line_qr_url} alt="QR" className="h-20 w-auto rounded-lg border border-emerald-300 mt-2" />}
+              {f.line_qr_url && (
+                <div className="relative inline-block mt-2">
+                  <img src={f.line_qr_url} alt="QR" className="h-20 w-auto rounded-lg border border-emerald-300" />
+                  <button type="button" onClick={() => set("line_qr_url", "")}
+                    className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm shadow hover:bg-rose-600" title="ลบ QR">×</button>
+                </div>
+              )}
             </div>
 
             {/* 6.5 ไฟล์แนบ PDF — ให้ผู้สมัครดาวน์โหลด */}

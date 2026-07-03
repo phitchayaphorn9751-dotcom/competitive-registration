@@ -394,15 +394,26 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
           <div className="md:w-1/2 p-5 space-y-1">
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">📝 ข้อมูลการสมัคร</p>
 
-            {/* บาร์โค้ด (เฉพาะยืนยันแล้ว) — รหัสในแถบส้ม + บาร์โค้ดใต้รหัส (จุดเดียว) */}
-            {isConfirmed && code && (
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 mb-3 flex flex-col items-center">
-                <div className="w-full bg-[#F15A24] text-white rounded-xl px-3 py-2 mb-2 text-center">
-                  <p className="text-[10px] text-orange-100">รหัสนักเรียน (ใช้เช็คอิน)</p>
-                  <p className="font-mono text-xl font-extrabold tracking-wider">{code}</p>
+            {/* QR กลุ่มไลน์ — แสดงบนสุด (ถ้าคอร์สแนบ QR + ยืนยันแล้ว) */}
+            {isConfirmed && reg.line_qr_url && (
+              <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 mb-3 flex flex-col items-center">
+                <p className="text-sm font-bold text-emerald-700 mb-1 flex items-center gap-1.5">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 5.94 2 10.8c0 4.36 3.6 8.01 8.47 8.7.33.07.78.22.89.5.1.26.07.66.03.92l-.14.87c-.04.26-.2 1.02.89.56 1.1-.46 5.9-3.48 8.05-5.95C21.6 14.7 22 12.85 22 10.8 22 5.94 17.52 2 12 2z"/></svg>
+                  เข้ากลุ่มไลน์ของคอร์ส
+                </p>
+                <p className="text-emerald-600 text-[11px] mb-3 text-center">สแกนเพื่อรับข่าวสาร/ประกาศจากผู้จัด</p>
+                <div className="bg-white p-3 rounded-2xl shadow-sm border border-emerald-200">
+                  <img src={reg.line_qr_url} alt="Line QR" className="h-40 w-auto object-contain" />
                 </div>
-                {barcodeUrl && <img src={barcodeUrl} alt="barcode" className="h-14 w-auto max-w-full object-contain" />}
               </div>
+            )}
+
+            {/* ปุ่มดูบาร์โค้ด (เจ้าของใบ) — เปิด popup ย่อยที่มีรหัส + บาร์โค้ด */}
+            {isConfirmed && code && (
+              <button onClick={() => setBarcodeMember({ participant_code: code, full_name: reg.course_title || "ผู้สมัคร" })}
+                className="w-full mb-3 flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 active:scale-[0.98] text-white font-semibold text-sm py-3 rounded-xl shadow-md transition">
+                <Ico.barcode className="w-4 h-4" style={{ color: "#fb923c" }} /> ดูบาร์โค้ดสำหรับเช็คอิน
+              </button>
             )}
 
             <Row label="รูปแบบการสมัคร" value={reg.count_mode === "team" ? "👥 ทีม" : reg.count_mode === "pair" ? "👯 คู่" : "👤 เดี่ยว"} />
@@ -626,27 +637,12 @@ function CheckinModal({ reg, t, onClose }) {
                 <img src={qrUrl} alt="barcode" className="h-24 w-auto max-w-full object-contain" />
               </div>
             )}
-            <p className="text-[11px] text-slate-400 text-center">สแกนบาร์โค้ด หรือแจ้งรหัสนักเรียนให้เจ้าหน้าที่</p>
-
-            {/* QR กลุ่มไลน์ — แสดงเฉพาะคอร์สที่แนบ QR (คนมี barcode = ยืนยันแล้ว) */}
-            {reg.line_qr_url && (
-              <div className="mt-5 pt-5 border-t-2 border-dashed border-slate-200 w-full flex flex-col items-center">
-                <p className="text-sm font-bold text-emerald-700 mb-1 flex items-center gap-1.5">
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 5.94 2 10.8c0 4.36 3.6 8.01 8.47 8.7.33.07.78.22.89.5.1.26.07.66.03.92l-.14.87c-.04.26-.2 1.02.89.56 1.1-.46 5.9-3.48 8.05-5.95C21.6 14.7 22 12.85 22 10.8 22 5.94 17.52 2 12 2z"/></svg>
-                  เข้ากลุ่มไลน์ของคอร์ส
-                </p>
-                <p className="text-emerald-600 text-[11px] mb-3 text-center">สแกนเพื่อรับข่าวสาร/ประกาศจากผู้จัด</p>
-                <div className="bg-white p-3 rounded-2xl shadow-sm border border-emerald-200">
-                  <img src={reg.line_qr_url} alt="Line QR" className="h-36 w-auto object-contain" />
-                </div>
-              </div>
-            )}
+            <p className="text-[11px] text-slate-400 text-center">กดปุ่ม "ดูบาร์โค้ดสำหรับเช็คอิน" ด้านบนเพื่อแสดงรหัสให้เจ้าหน้าที่</p>
           </div>
         </div>
 
         {/* Footer */}
         <div className="px-6 pb-6 bg-slate-50 flex gap-2">
-          {code && <button onClick={saveImage} className="flex-1 bg-slate-900 hover:bg-slate-800 text-white py-3 rounded-xl font-semibold transition text-sm flex items-center justify-center gap-2"><Ico.barcode className="w-4 h-4" style={{ color: "#fb923c" }} />💾 บันทึกภาพ</button>}
           <button onClick={onClose} className="flex-1 bg-white border border-slate-200 text-slate-600 py-3 rounded-xl font-semibold hover:bg-slate-100 transition text-sm">
             {t("myreg.closeWindow")}
           </button>
