@@ -408,14 +408,6 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
               </div>
             )}
 
-            {/* ปุ่มดูบาร์โค้ด (เจ้าของใบ) — เปิด popup ย่อยที่มีรหัส + บาร์โค้ด */}
-            {isConfirmed && code && (
-              <button onClick={() => setBarcodeMember({ participant_code: code, full_name: reg.course_title || "ผู้สมัคร" })}
-                className="w-full mb-3 flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 active:scale-[0.98] text-white font-semibold text-sm py-3 rounded-xl shadow-md transition">
-                <Ico.barcode className="w-4 h-4" style={{ color: "#fb923c" }} /> ดูบาร์โค้ดสำหรับเช็คอิน
-              </button>
-            )}
-
             <Row label="รูปแบบการสมัคร" value={reg.count_mode === "team" ? "👥 ทีม" : reg.count_mode === "pair" ? "👯 คู่" : "👤 เดี่ยว"} />
             <Row label="วันที่สมัคร" value={fmtDate(reg.created_at)} />
 
