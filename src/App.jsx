@@ -24,6 +24,7 @@ import AdminCheckIn from "./pages/admin/AdminCheckIn.jsx"
 import AdminSettings from "./pages/admin/AdminSettings.jsx"
 import AdminEvents from "./pages/admin/AdminEvents.jsx"
 import AdminImport from "./pages/admin/AdminImport.jsx"
+import AdminCertificate from "./pages/admin/AdminCertificate.jsx"
 
 export default function App() {
   const location = useLocation()
@@ -76,6 +77,7 @@ export default function App() {
         <Route path="attendance" element={<AdminAttendance />} />
         <Route path="checkin" element={<AdminCheckIn />} />
         <Route path="import" element={<AdminImport />} />
+        <Route path="certificate" element={<AdminCertificate />} />
         <Route path="settings" element={<AdminSettings />} />
       </Route>
     </Routes>
