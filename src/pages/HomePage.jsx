@@ -277,7 +277,7 @@ function CourseCard({ course, t, onDetail, onRegister }) {
         )}
         {isClosed ? (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
-            <span className="inline-flex items-center gap-1.5 bg-slate-700 text-white text-xs font-bold px-3 py-1 rounded-full"><Ico.lock className="w-3.5 h-3.5" /> ปิดรับสมัคร</span>
+            <span className="inline-flex items-center gap-1.5 bg-slate-700 text-white text-xs font-bold px-3 py-1 rounded-full"><Ico.lock className="w-3.5 h-3.5" /> ยังไม่เปิดรับสมัคร</span>
           </div>
         ) : isFull && (
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-10">
@@ -364,7 +364,7 @@ function CourseCard({ course, t, onDetail, onRegister }) {
             </button>
             {isClosed ? (
               <button disabled className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-slate-400 bg-slate-100 border border-slate-200 cursor-not-allowed">
-                ปิดรับสมัคร
+                ยังไม่เปิดรับสมัคร
               </button>
             ) : isExternal ? (
               <button onClick={onRegister}
@@ -672,7 +672,7 @@ function DetailModal({ course, t, onClose, onRegister }) {
           <button onClick={onClose} className="flex-1 sm:flex-none sm:px-8 py-3 rounded-xl font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition text-sm">ปิด</button>
           {isClosed ? (
             <button disabled className="flex-1 py-3 rounded-xl font-semibold text-slate-400 bg-slate-100 border border-slate-200 cursor-not-allowed text-sm flex items-center justify-center gap-2">
-              <Ico.lock className="w-4 h-4" /> ปิดรับสมัครแล้ว
+              <Ico.lock className="w-4 h-4" /> ยังไม่เปิดรับสมัคร
             </button>
           ) : isExternal ? (
             <button onClick={onRegister}
