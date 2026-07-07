@@ -49,14 +49,9 @@ export default function HomePage() {
         // โหลดชื่อเว็บ + ข้อความแจ้งเตือน ตามงานที่เปิด
         if (ev?.id) {
           const es = await fetchEventSettings(ev.id)
-          // ── DEBUG: ดูโครงสร้างข้อมูล es ที่ได้จาก Supabase ──
-          console.log("[HomePage] event settings (es):", es)
-          console.log("[HomePage] schedule_image_url:", es?.schedule_image_url, "| schedule_url:", es?.schedule_url)
-
           setNotice((es.home_notice || "").trim())
           setSiteTitle((es.site_title || "").trim())
           setHeroSub((es.hero_subtitle || "").trim())
-          // รองรับทั้ง schedule_image_url และ schedule_url (fallback) + trim กัน whitespace
           const rawSchedule = es.schedule_image_url ?? es.schedule_url ?? ""
           setScheduleUrl(String(rawSchedule).trim())
         }
@@ -155,6 +150,16 @@ export default function HomePage() {
             {t("home.foundCourses", { n: filtered.length })}
           </p>
 
+          {/* รูปตารางกิจกรรม — แสดงในแถบส้ม ก่อนแบนเนอร์แจ้งเตือน (คลิกดูเต็ม) */}
+          {scheduleUrl && (
+            <div className="mt-6 max-w-4xl mx-auto">
+              <button onClick={() => setShowSchedule(true)}
+                className="block w-full rounded-2xl overflow-hidden shadow-lg ring-1 ring-white/20 hover:ring-white/40 transition group">
+                <img src={scheduleUrl} alt="ตารางกิจกรรม" className="w-full h-auto group-hover:scale-[1.01] transition-transform" />
+              </button>
+            </div>
+          )}
+
           {/* แบนเนอร์แจ้งเตือน (แอดมินแก้ได้จากหน้าตั้งค่าเว็บ) */}
           {notice.trim() && (
             <div className="mt-6 max-w-4xl mx-auto bg-white/15 backdrop-blur-sm border border-white/25 rounded-2xl px-5 py-4 sm:px-6 sm:py-5 flex gap-3 sm:gap-4">
@@ -212,23 +217,6 @@ export default function HomePage() {
           </div>
         )}
       </div>
-
-      {/* ─── ตารางกิจกรรมทั้งงาน (รูป) ─── */}
-      {scheduleUrl && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="w-9 h-9 bg-gradient-to-br from-[#F15A24] to-amber-500 rounded-xl flex items-center justify-center shadow-sm shrink-0">
-              <Ico.calendar className="w-5 h-5 text-white" />
-            </div>
-            <h2 className="text-lg sm:text-xl font-bold text-slate-800">ตารางกิจกรรมทั้งงาน</h2>
-          </div>
-          <button onClick={() => setShowSchedule(true)}
-            className="block w-full rounded-2xl overflow-hidden border border-slate-200 shadow-sm hover:shadow-md transition group">
-            <img src={scheduleUrl} alt="ตารางกิจกรรม" className="w-full h-auto group-hover:scale-[1.01] transition-transform" />
-          </button>
-          <p className="text-center text-xs text-slate-400 mt-2">คลิกที่รูปเพื่อดูขนาดเต็ม</p>
-        </div>
-      )}
 
       {/* Modal ดูรูปตารางเต็ม */}
       {showSchedule && scheduleUrl && (
