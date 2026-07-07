@@ -215,13 +215,14 @@ export default function AdminCertificate() {
         </div>
 
         {loading && <p className="text-sm text-slate-400 text-center py-4">กำลังโหลดรายชื่อ…</p>}
-        {!loading && courseId && recipients.length === 0 && (
-          <p className="text-sm text-slate-400 text-center py-6">ยังไม่มีคนเช็คอินในคอร์สนี้ — เกียรติบัตรออกได้เฉพาะคนที่มางาน</p>
-        )}
 
-        {recipients.length > 0 && (
+        {!loading && courseId && (
           <>
-            <p className="text-xs text-slate-400">มีผู้เช็คอิน {recipients.length} คน · พิมพ์ชื่อรางวัล + ค้นหาผู้สมัคร · คนที่ไม่ได้จัด = ผู้เข้าร่วม</p>
+            <p className="text-xs text-slate-400">
+              {recipients.length > 0
+                ? `มีผู้เช็คอิน ${recipients.length} คน · พิมพ์ชื่อรางวัล + ค้นหาผู้สมัคร · คนที่ไม่ได้จัด = ผู้เข้าร่วม`
+                : "ตั้งชื่อรางวัลไว้ก่อนได้ · ช่องค้นหาผู้สมัครจะใช้ได้เมื่อมีคนเช็คอิน"}
+            </p>
 
             {/* แถวรางวัล */}
             <div className="space-y-2.5">
@@ -229,6 +230,7 @@ export default function AdminCertificate() {
                 <AwardRow key={row.id} idx={idx + 1} row={row}
                   members={row.members.map(pFind).filter(Boolean)}
                   pool={unassigned}
+                  hasRecipients={recipients.length > 0}
                   onLabel={(v) => setRowLabel(row.id, v)}
                   onAddMember={(pid) => addMember(row.id, pid)}
                   onRemoveMember={(pid) => removeMember(row.id, pid)}
@@ -243,28 +245,34 @@ export default function AdminCertificate() {
               <span className="text-lg leading-none">+</span> เพิ่มรางวัล
             </button>
 
-            {/* ผู้เข้าร่วม */}
-            <div className="border-t border-slate-100 pt-3">
-              <p className="text-xs font-bold text-slate-500 mb-2">{PARTICIPANT_LABEL} <span className="text-slate-400 font-normal">({unassigned.length} คน)</span></p>
-              {unassigned.length === 0 ? (
-                <p className="text-xs text-slate-400">ทุกคนถูกจัดรางวัลหมดแล้ว</p>
-              ) : (
-                <div className="flex flex-wrap gap-1.5">
-                  {unassigned.map((r) => (
-                    <span key={r.participant_id} className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs text-slate-600">
-                      {r.full_name}
-                      <button onClick={() => doPreview(r, PARTICIPANT_LABEL)} className="text-[#F15A24]" title="ดูตัวอย่าง"><Ico.eye className="w-3 h-3" /></button>
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
+            {/* ผู้เข้าร่วม — เฉพาะมีคนเช็คอิน */}
+            {recipients.length > 0 && (
+              <div className="border-t border-slate-100 pt-3">
+                <p className="text-xs font-bold text-slate-500 mb-2">{PARTICIPANT_LABEL} <span className="text-slate-400 font-normal">({unassigned.length} คน)</span></p>
+                {unassigned.length === 0 ? (
+                  <p className="text-xs text-slate-400">ทุกคนถูกจัดรางวัลหมดแล้ว</p>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    {unassigned.map((r) => (
+                      <span key={r.participant_id} className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs text-slate-600">
+                        {r.full_name}
+                        <button onClick={() => doPreview(r, PARTICIPANT_LABEL)} className="text-[#F15A24]" title="ดูตัวอย่าง"><Ico.eye className="w-3 h-3" /></button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {recipients.length === 0 && (
+              <p className="text-xs text-slate-400 text-center border-t border-slate-100 pt-3">ยังไม่มีคนเช็คอิน — เมื่อมีคนมางาน จะค้นหาเพิ่มเข้ารางวัลได้ที่นี่</p>
+            )}
           </>
         )}
       </div>
 
-      {/* ปุ่มบันทึก / โหลด / แจก */}
-      {recipients.length > 0 && (
+      {/* ปุ่มบันทึก / โหลด / แจก — เฉพาะมีคนเช็คอิน */}
+      {courseId && recipients.length > 0 && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col sm:flex-row gap-3">
           <button onClick={doSave} disabled={genning}
             className="flex-1 flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-3 rounded-xl text-sm font-bold transition disabled:opacity-50">
@@ -300,7 +308,7 @@ export default function AdminCertificate() {
 }
 
 // ── แถวรางวัล 1 แถว: ซ้าย = พิมพ์ชื่อรางวัล · ขวา = search + คนที่เพิ่ม ──
-function AwardRow({ idx, row, members, pool, onLabel, onAddMember, onRemoveMember, onRemoveRow, onPreview }) {
+function AwardRow({ idx, row, members, pool, hasRecipients, onLabel, onAddMember, onRemoveMember, onRemoveRow, onPreview }) {
   const [q, setQ] = useState("")
   const results = q.trim()
     ? pool.filter((r) =>
@@ -321,9 +329,9 @@ function AwardRow({ idx, row, members, pool, onLabel, onAddMember, onRemoveMembe
         {/* ขวา: search + คนที่เพิ่ม */}
         <div className="flex-1 min-w-0">
           <div className="relative">
-            <input value={q} onChange={(e) => setQ(e.target.value)}
-              placeholder="ค้นหาชื่อ/โรงเรียนผู้สมัคร…"
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#F15A24] focus:ring-1 focus:ring-[#F15A24]" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} disabled={!hasRecipients}
+              placeholder={hasRecipients ? "ค้นหาชื่อ/โรงเรียนผู้สมัคร…" : "รอคนเช็คอินก่อน…"}
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:border-[#F15A24] focus:ring-1 focus:ring-[#F15A24] disabled:bg-slate-100 disabled:cursor-not-allowed" />
             {results.length > 0 && (
               <div className="absolute z-10 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
                 {results.map((r) => (
