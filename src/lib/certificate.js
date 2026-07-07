@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════
 // ตัวสร้างเกียรติบัตร PDF — วาดข้อความ 3 จุด (ชื่อ/รางวัล/คอร์ส) ทับรูปพื้นหลัง
-// ใช้ jsPDF — แนวนอน (landscape) A4
-// ต้องติดตั้ง: npm install jspdf
+// ใช้ jsPDF จาก CDN (โหลดตอนใช้งาน — ไม่ต้อง npm install, ไม่พัง build)
+// แนวนอน (landscape) A4
 //
 // cert_config (เก็บใน event_settings):
 //   {
@@ -16,7 +16,23 @@
 //   x,y = เปอร์เซ็นต์ (0-100) ของความกว้าง/สูงใบ → ยืดหยุ่นกับทุกขนาดรูป
 // ═══════════════════════════════════════════════════════════════════
 
-import { jsPDF } from "jspdf"
+// โหลด jsPDF จาก CDN ครั้งเดียว (cache ไว้) — คืน constructor jsPDF
+let _jsPDFPromise = null
+function loadJsPDF() {
+  if (window.jspdf?.jsPDF) return Promise.resolve(window.jspdf.jsPDF)
+  if (_jsPDFPromise) return _jsPDFPromise
+  _jsPDFPromise = new Promise((resolve, reject) => {
+    const s = document.createElement("script")
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
+    s.onload = () => {
+      if (window.jspdf?.jsPDF) resolve(window.jspdf.jsPDF)
+      else reject(new Error("โหลด jsPDF ไม่สำเร็จ"))
+    }
+    s.onerror = () => reject(new Error("โหลด jsPDF จาก CDN ไม่สำเร็จ — ตรวจสอบอินเทอร์เน็ต"))
+    document.head.appendChild(s)
+  })
+  return _jsPDFPromise
+}
 
 // ค่า default ตำแหน่ง (อิงจากเทมเพลตตัวอย่าง CAMT) — admin ปรับได้ภายหลัง
 export const DEFAULT_CERT_FIELDS = {
@@ -83,6 +99,7 @@ export async function generateCertificatePDF({ templateUrl, recipients, fields, 
   if (!recipients?.length) throw new Error("ไม่มีรายชื่อผู้รับ")
 
   const bgImg = await loadImage(templateUrl)
+  const jsPDF = await loadJsPDF()
   const isLandscape = bgImg.naturalWidth >= bgImg.naturalHeight
   const doc = new jsPDF({
     orientation: isLandscape ? "landscape" : "portrait",
