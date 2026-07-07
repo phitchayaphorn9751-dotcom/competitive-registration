@@ -25,8 +25,6 @@ export default function AdminSettings() {
   const [types, setTypes] = useState([])
   const [typeModal, setTypeModal] = useState(null)
   const [uploadingSchedule, setUploadingSchedule] = useState(false)
-  const [uploadingCert, setUploadingCert] = useState(false)
-  const [newAward, setNewAward] = useState("")
 
   // โหลดค่ากลาง (Line/เบอร์) + ประเภทวิชา ครั้งเดียว
   useEffect(() => { loadAll() }, [])
@@ -99,31 +97,6 @@ export default function AdminSettings() {
   }
 
   // ── เกียรติบัตร: อัปโหลดพื้นหลัง + จัดการรายการรางวัล ──
-  async function handleCertUpload(e) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setUploadingCert(true)
-    try {
-      const url = await uploadCourseAsset(file, "certificates")
-      setForm((f) => ({ ...f, cert_template_url: url }))
-      toast("อัปโหลดพื้นหลังเกียรติบัตรแล้ว กดบันทึกเพื่อใช้งาน", "success")
-    } catch (err) { toast("อัปโหลดไม่สำเร็จ: " + err.message, "error") }
-    finally { setUploadingCert(false); e.target.value = "" }
-  }
-  function removeCert() {
-    setForm((f) => ({ ...f, cert_template_url: "" }))
-  }
-  function addAward() {
-    const a = newAward.trim()
-    if (!a) return
-    if ((Array.isArray(form.cert_awards) ? form.cert_awards : []).includes(a)) return toast("มีรางวัลนี้อยู่แล้ว", "error")
-    setForm((f) => ({ ...f, cert_awards: [...(Array.isArray(f.cert_awards) ? f.cert_awards : []), a] }))
-    setNewAward("")
-  }
-  function removeAward(a) {
-    setForm((f) => ({ ...f, cert_awards: (Array.isArray(f.cert_awards) ? f.cert_awards : []).filter((x) => x !== a) }))
-  }
-
   if (!form) return <div className="py-16 text-center text-slate-400">กำลังโหลด…</div>
   const set = (k, v) => setForm({ ...form, [k]: v })
 
@@ -197,54 +170,6 @@ export default function AdminSettings() {
             </label>
           )}
           <p className="text-[11px] text-slate-400">เว้นว่าง = ไม่แสดงกรอบตารางบนหน้าแรก · เปลี่ยนรูปใหม่ได้ทุกปี</p>
-        </div>
-      </SectionCard>
-
-      {/* ── การ์ด: เกียรติบัตร (เฉพาะงานนี้) ── */}
-      <SectionCard icon={Ico.cap} title="เกียรติบัตร (เฉพาะงานนี้)"
-        subtitle={event ? `${event.name} ${event.year} — พื้นหลัง + รายการรางวัล ใช้ออกใบให้คนที่เช็คอินแล้ว` : "เลือกงานก่อน"}>
-        <div className="space-y-5">
-          {/* พื้นหลัง */}
-          <div className="space-y-3">
-            <label className={labelCls}>รูปพื้นหลังเกียรติบัตร (ข้อความคงที่ฝังในรูป — ระบบใส่แค่ ชื่อ/รางวัล/คอร์ส)</label>
-            {form.cert_template_url ? (
-              <div className="relative inline-block">
-                <img src={form.cert_template_url} alt="พื้นหลังเกียรติบัตร" className="max-h-64 w-auto rounded-xl border border-slate-200 shadow-sm" />
-                <button onClick={removeCert} type="button"
-                  className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-rose-500 text-white flex items-center justify-center shadow-md hover:bg-rose-600 transition">
-                  <Ico.trash className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ) : (
-              <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed border-slate-200 rounded-xl py-8 cursor-pointer hover:border-[#F15A24] hover:bg-orange-50/40 transition ${uploadingCert ? "opacity-60 pointer-events-none" : ""}`}>
-                <div className="w-12 h-12 rounded-xl bg-orange-100 text-[#F15A24] flex items-center justify-center"><Ico.image className="w-6 h-6" /></div>
-                <span className="text-sm font-bold text-slate-600">{uploadingCert ? "กำลังอัปโหลด…" : "คลิกเพื่อเลือกรูปพื้นหลัง"}</span>
-                <span className="text-[11px] text-slate-400">แนวนอน (landscape) · ความละเอียดสูง · JPG / PNG</span>
-                <input type="file" accept="image/*" onChange={handleCertUpload} disabled={uploadingCert} className="hidden" />
-              </label>
-            )}
-          </div>
-
-          {/* รายการรางวัล */}
-          <div className="space-y-2">
-            <label className={labelCls}>รายการรางวัล (ใช้เป็นตัวเลือกตอนออกใบ)</label>
-            <div className="flex flex-wrap gap-2">
-              {(Array.isArray(form.cert_awards) ? form.cert_awards : []).map((a) => (
-                <span key={a} className="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-1.5 py-1.5 text-xs font-bold text-slate-700">
-                  {a}
-                  <button onClick={() => removeAward(a)} className="w-4 h-4 rounded-full bg-slate-200 hover:bg-rose-200 text-slate-500 hover:text-rose-600 flex items-center justify-center transition" title="ลบ">×</button>
-                </span>
-              ))}
-              {(Array.isArray(form.cert_awards) ? form.cert_awards : []).length === 0 && <p className="text-xs text-slate-400 py-1">ยังไม่มีรายการรางวัล</p>}
-            </div>
-            <div className="flex gap-2 pt-1">
-              <input value={newAward} onChange={(e) => setNewAward(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addAward()}
-                className={`${inputCls} flex-1`} placeholder="เช่น รางวัลขวัญใจกรรมการ" />
-              <button onClick={addAward} className="flex items-center gap-1 bg-[#F15A24] text-white px-3 py-2 rounded-xl text-xs font-bold hover:bg-[#c44215] transition active:scale-95 shrink-0"><Ico.plus className="w-3.5 h-3.5" /> เพิ่ม</button>
-            </div>
-          </div>
-
-          <p className="text-[11px] text-slate-400 inline-flex items-start gap-1"><Ico.alert className="w-3 h-3 shrink-0 mt-0.5 text-amber-400" /> ออกใบจริงที่เมนู "ออกเกียรติบัตร" — เลือกคอร์ส → ตั้งรางวัลให้แต่ละคน → โหลด PDF</p>
         </div>
       </SectionCard>
 

@@ -29,6 +29,7 @@ export default function AdminCertificate() {
   // เทมเพลต + รายการรางวัล จาก event_settings
   const [templateUrl, setTemplateUrl] = useState("")
   const [awards, setAwards] = useState(DEFAULT_AWARDS)
+  const [newAward, setNewAward] = useState("")
   const [fields, setFields] = useState(DEFAULT_CERT_FIELDS)
 
   useEffect(() => {
@@ -64,6 +65,23 @@ export default function AdminCertificate() {
       setTemplateUrl("")
       toast("ลบรูปพื้นหลังแล้ว", "success")
     } catch (err) { toast("ลบไม่สำเร็จ: " + err.message, "error") }
+  }
+
+  // ── จัดการรายการรางวัล (เพิ่ม/ลบชื่อรางวัล — บันทึกลง event_settings) ──
+  async function addAwardType() {
+    const a = newAward.trim()
+    if (!a) return
+    if ((Array.isArray(awards) ? awards : []).includes(a)) return toast("มีรางวัลนี้อยู่แล้ว", "error")
+    const next = [...(Array.isArray(awards) ? awards : []), a]
+    setAwards(next); setNewAward("")
+    try { await updateEventSettings(event.id, { cert_awards: next }) }
+    catch (e) { toast("บันทึกไม่สำเร็จ: " + e.message, "error") }
+  }
+  async function removeAwardType(a) {
+    const next = (Array.isArray(awards) ? awards : []).filter((x) => x !== a)
+    setAwards(next)
+    try { await updateEventSettings(event.id, { cert_awards: next }) }
+    catch (e) { toast("บันทึกไม่สำเร็จ: " + e.message, "error") }
   }
 
   // โหลดคน check-in เมื่อเลือกคอร์ส
@@ -155,6 +173,28 @@ export default function AdminCertificate() {
             <input type="file" accept="image/*" onChange={handleTemplateFile} disabled={uploading} className="hidden" />
           </label>
         )}
+      </div>
+
+      {/* จัดการรายการรางวัล */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+        <label className="text-sm font-bold text-slate-700 flex items-center gap-2 mb-1">
+          <Ico.cap className="w-4 h-4 text-[#F15A24]" /> รายการรางวัล
+        </label>
+        <p className="text-xs text-slate-400 mb-3">รางวัลที่ใช้จัดอันดับด้านล่าง — เพิ่ม/ลบได้ (ยกเว้น "ผู้เข้าร่วม" ระบบจัดให้อัตโนมัติ)</p>
+        <div className="flex flex-wrap gap-2 mb-3">
+          {(Array.isArray(awards) ? awards : []).filter((a) => a !== "ผู้เข้าร่วม").map((a) => (
+            <span key={a} className="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-1.5 py-1.5 text-xs font-bold text-slate-700">
+              {a}
+              <button onClick={() => removeAwardType(a)} className="w-4 h-4 rounded-full bg-slate-200 hover:bg-rose-200 text-slate-500 hover:text-rose-600 flex items-center justify-center transition" title="ลบ">×</button>
+            </span>
+          ))}
+          {(Array.isArray(awards) ? awards : []).filter((a) => a !== "ผู้เข้าร่วม").length === 0 && <p className="text-xs text-slate-400 py-1">ยังไม่มีรายการรางวัล</p>}
+        </div>
+        <div className="flex gap-2">
+          <input value={newAward} onChange={(e) => setNewAward(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addAwardType()}
+            className="flex-1 px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-[#F15A24] focus:ring-1 focus:ring-[#F15A24] text-sm" placeholder="เช่น รางวัลขวัญใจกรรมการ" />
+          <button onClick={addAwardType} className="flex items-center gap-1 bg-[#F15A24] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#c44215] transition active:scale-95 shrink-0"><Ico.cap className="w-3.5 h-3.5" /> เพิ่ม</button>
+        </div>
       </div>
 
       {/* เลือกคอร์ส */}
