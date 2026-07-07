@@ -31,6 +31,8 @@ export default function HomePage() {
   const [notice, setNotice] = useState("")
   const [siteTitle, setSiteTitle] = useState("")
   const [heroSub, setHeroSub] = useState("")
+  const [scheduleUrl, setScheduleUrl] = useState("")
+  const [showSchedule, setShowSchedule] = useState(false)
 
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState("All")
@@ -50,6 +52,7 @@ export default function HomePage() {
           setNotice(es.home_notice || "")
           setSiteTitle(es.site_title || "")
           setHeroSub(es.hero_subtitle || "")
+          setScheduleUrl(es.schedule_image_url || "")
         }
       } catch (e) {
         setError(e.message || "โหลดข้อมูลไม่สำเร็จ")
@@ -204,6 +207,34 @@ export default function HomePage() {
         )}
       </div>
 
+      {/* ─── ตารางกิจกรรมทั้งงาน (รูป) ─── */}
+      {scheduleUrl && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-9 h-9 bg-gradient-to-br from-[#F15A24] to-amber-500 rounded-xl flex items-center justify-center shadow-sm shrink-0">
+              <Ico.calendar className="w-5 h-5 text-white" />
+            </div>
+            <h2 className="text-lg sm:text-xl font-bold text-slate-800">ตารางกิจกรรมทั้งงาน</h2>
+          </div>
+          <button onClick={() => setShowSchedule(true)}
+            className="block w-full rounded-2xl overflow-hidden border border-slate-200 shadow-sm hover:shadow-md transition group">
+            <img src={scheduleUrl} alt="ตารางกิจกรรม" className="w-full h-auto group-hover:scale-[1.01] transition-transform" />
+          </button>
+          <p className="text-center text-xs text-slate-400 mt-2">คลิกที่รูปเพื่อดูขนาดเต็ม</p>
+        </div>
+      )}
+
+      {/* Modal ดูรูปตารางเต็ม */}
+      {showSchedule && scheduleUrl && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowSchedule(false)}>
+          <div className="relative max-w-5xl w-full max-h-[92vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setShowSchedule(false)}
+              className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 text-slate-700 flex items-center justify-center shadow-lg hover:bg-white z-10 text-xl">×</button>
+            <img src={scheduleUrl} alt="ตารางกิจกรรม" className="w-full h-auto rounded-2xl" />
+          </div>
+        </div>
+      )}
+
       {selected && <DetailModal course={selected} t={t} onClose={() => setSelected(null)} onRegister={() => { setSelected(null); navigate(`/register/${selected.id}`) }} />}
     </div>
   )
@@ -246,7 +277,7 @@ function CourseCard({ course, t, onDetail, onRegister }) {
         )}
         {isClosed ? (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
-            <span className="inline-flex items-center gap-1.5 bg-slate-700 text-white text-xs font-bold px-3 py-1 rounded-full"><Ico.lock className="w-3.5 h-3.5" /> ยังไม่เปิดรับสมัคร</span>
+            <span className="inline-flex items-center gap-1.5 bg-slate-700 text-white text-xs font-bold px-3 py-1 rounded-full"><Ico.lock className="w-3.5 h-3.5" /> ปิดรับสมัคร</span>
           </div>
         ) : isFull && (
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-10">
@@ -266,7 +297,7 @@ function CourseCard({ course, t, onDetail, onRegister }) {
           </div>
         )}
         <p className="text-slate-500 text-xs leading-relaxed mb-3 line-clamp-2 flex-1">
-          {course.description || "รายละเอียด"}
+          {course.description || "รายละเอียดวิชา…"}
         </p>
 
         {/* Seat progress */}
@@ -333,7 +364,7 @@ function CourseCard({ course, t, onDetail, onRegister }) {
             </button>
             {isClosed ? (
               <button disabled className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-slate-400 bg-slate-100 border border-slate-200 cursor-not-allowed">
-                ยังไม่เปิดรับสมัคร
+                ปิดรับสมัคร
               </button>
             ) : isExternal ? (
               <button onClick={onRegister}
@@ -594,7 +625,7 @@ function DetailModal({ course, t, onClose, onRegister }) {
               <div className="bg-white p-4 rounded-2xl border border-orange-100 shadow-sm">
                 <h4 className="font-bold text-[#F15A24] text-base mb-2 flex items-center gap-2">
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
-                  รายละเอียด
+                  รายละเอียดการแข่งขัน
                 </h4>
                 <p className="text-slate-700 text-sm leading-7 whitespace-pre-line">{course.description}</p>
               </div>
@@ -641,7 +672,7 @@ function DetailModal({ course, t, onClose, onRegister }) {
           <button onClick={onClose} className="flex-1 sm:flex-none sm:px-8 py-3 rounded-xl font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition text-sm">ปิด</button>
           {isClosed ? (
             <button disabled className="flex-1 py-3 rounded-xl font-semibold text-slate-400 bg-slate-100 border border-slate-200 cursor-not-allowed text-sm flex items-center justify-center gap-2">
-              <Ico.lock className="w-4 h-4" /> ยังไม่เปิดรับสมัคร
+              <Ico.lock className="w-4 h-4" /> ปิดรับสมัครแล้ว
             </button>
           ) : isExternal ? (
             <button onClick={onRegister}
