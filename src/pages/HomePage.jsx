@@ -333,7 +333,7 @@ function CourseCard({ course, t, onDetail, onRegister }) {
             </button>
             {isClosed ? (
               <button disabled className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-slate-400 bg-slate-100 border border-slate-200 cursor-not-allowed">
-                ปิดรับสมัคร
+                ยังไม่เปิดรับสมัคร
               </button>
             ) : isExternal ? (
               <button onClick={onRegister}
