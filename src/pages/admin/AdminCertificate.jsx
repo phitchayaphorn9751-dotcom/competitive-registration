@@ -41,6 +41,11 @@ export default function AdminCertificate() {
     fetchEventSettings(event.id).then((es) => {
       setTemplateUrl(es.cert_template_url || "")
       setFields(es.cert_fields || DEFAULT_CERT_FIELDS)
+      // โหลดชื่อรางวัลที่บันทึกไว้ (ทั้งงาน) → เติมเป็นแถว
+      const saved = (Array.isArray(es.cert_awards) ? es.cert_awards : []).filter((a) => a && a !== PARTICIPANT_LABEL)
+      if (saved.length > 0) {
+        setRows(saved.map((label, i) => ({ id: "r" + i, label, members: [] })))
+      }
     }).catch(() => {})
   }, [event?.id])
 
@@ -67,10 +72,10 @@ export default function AdminCertificate() {
     } catch (err) { toast("ลบไม่สำเร็จ: " + err.message, "error") }
   }
 
-  // ── โหลดคนเช็คอิน ──
+  // ── โหลดคนเช็คอิน (คงชื่อรางวัลไว้ ล้างแค่คนที่ assign) ──
   async function loadRecipients(cid) {
     setCourseId(cid); setRecipients([]); setPreviewUrl("")
-    setRows([{ id: "r1", label: "", members: [] }, { id: "r2", label: "", members: [] }])
+    setRows((rs) => rs.map((r) => ({ ...r, members: [] })))  // ล้างคน คงชื่อรางวัล
     if (!cid) return
     setLoading(true)
     try {
@@ -78,6 +83,15 @@ export default function AdminCertificate() {
       setRecipients(list)
     } catch (e) { toast("โหลดรายชื่อไม่สำเร็จ: " + e.message, "error") }
     finally { setLoading(false) }
+  }
+
+  // ── บันทึกชื่อรายการรางวัล (ทั้งงาน) ──
+  async function saveAwardNames() {
+    const names = rows.map((r) => r.label.trim()).filter(Boolean)
+    try {
+      await updateEventSettings(event.id, { cert_awards: names })
+      toast("บันทึกรายการรางวัลแล้ว", "success")
+    } catch (e) { toast("บันทึกไม่สำเร็จ: " + e.message, "error") }
   }
 
   // ── จัดการแถวรางวัล ──
@@ -203,10 +217,19 @@ export default function AdminCertificate() {
         )}
       </div>
 
-      {/* เลือกคอร์ส + จัดรางวัล */}
+      {/* รายการรางวัล — ตั้งได้ตลอด (บันทึกทั้งงาน) */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <label className="text-sm font-bold text-slate-700">รายการรางวัล</label>
+          <button onClick={saveAwardNames}
+            className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold transition">
+            <Ico.download className="w-3.5 h-3.5" /> บันทึกรายการรางวัล
+          </button>
+        </div>
+
+        {/* เลือกคอร์ส */}
         <div>
-          <label className="text-xs font-bold text-slate-500 block mb-1.5">เลือกคอร์ส</label>
+          <label className="text-xs font-bold text-slate-500 block mb-1.5">เลือกคอร์ส (เพื่อจับคู่ผู้สมัคร)</label>
           <select value={courseId} onChange={(e) => loadRecipients(e.target.value)}
             className="w-full px-3 py-2.5 border border-slate-200 rounded-xl outline-none focus:border-[#F15A24] focus:ring-1 focus:ring-[#F15A24] text-sm bg-white">
             <option value="">— เลือกคอร์ส —</option>
@@ -214,64 +237,55 @@ export default function AdminCertificate() {
           </select>
         </div>
 
-        {loading && <p className="text-sm text-slate-400 text-center py-4">กำลังโหลดรายชื่อ…</p>}
+        {loading && <p className="text-sm text-slate-400 text-center py-2">กำลังโหลดรายชื่อ…</p>}
+        <p className="text-xs text-slate-400">
+          {!courseId ? "พิมพ์ชื่อรางวัลแล้วกดบันทึก · เลือกคอร์สเพื่อจับคู่ผู้สมัคร"
+            : recipients.length > 0 ? `มีผู้เช็คอิน ${recipients.length} คน · ค้นหาเพิ่มเข้ารางวัล · คนที่ไม่ได้จัด = ผู้เข้าร่วม`
+            : "ยังไม่มีคนเช็คอินในคอร์สนี้ · ตั้งชื่อรางวัลไว้ก่อนได้"}
+        </p>
 
-        {!loading && courseId && (
-          <>
-            <p className="text-xs text-slate-400">
-              {recipients.length > 0
-                ? `มีผู้เช็คอิน ${recipients.length} คน · พิมพ์ชื่อรางวัล + ค้นหาผู้สมัคร · คนที่ไม่ได้จัด = ผู้เข้าร่วม`
-                : "ตั้งชื่อรางวัลไว้ก่อนได้ · ช่องค้นหาผู้สมัครจะใช้ได้เมื่อมีคนเช็คอิน"}
-            </p>
+        {/* แถวรางวัล — ขึ้นตลอด */}
+        <div className="space-y-2.5">
+          {rows.map((row, idx) => (
+            <AwardRow key={row.id} idx={idx + 1} row={row}
+              members={row.members.map(pFind).filter(Boolean)}
+              pool={unassigned}
+              hasRecipients={recipients.length > 0}
+              onLabel={(v) => setRowLabel(row.id, v)}
+              onAddMember={(pid) => addMember(row.id, pid)}
+              onRemoveMember={(pid) => removeMember(row.id, pid)}
+              onRemoveRow={rows.length > 1 ? () => removeRow(row.id) : null}
+              onPreview={(r) => doPreview(r, row.label.trim() || "รางวัล")} />
+          ))}
+        </div>
 
-            {/* แถวรางวัล */}
-            <div className="space-y-2.5">
-              {rows.map((row, idx) => (
-                <AwardRow key={row.id} idx={idx + 1} row={row}
-                  members={row.members.map(pFind).filter(Boolean)}
-                  pool={unassigned}
-                  hasRecipients={recipients.length > 0}
-                  onLabel={(v) => setRowLabel(row.id, v)}
-                  onAddMember={(pid) => addMember(row.id, pid)}
-                  onRemoveMember={(pid) => removeMember(row.id, pid)}
-                  onRemoveRow={rows.length > 1 ? () => removeRow(row.id) : null}
-                  onPreview={(r) => doPreview(r, row.label.trim() || "รางวัล")} />
-              ))}
-            </div>
+        {/* ปุ่มเพิ่มแถว */}
+        <button onClick={addRow}
+          className="flex items-center gap-1.5 border-2 border-dashed border-slate-200 hover:border-[#F15A24] text-slate-500 hover:text-[#F15A24] rounded-xl px-4 py-2.5 text-sm font-bold transition w-full justify-center">
+          <span className="text-lg leading-none">+</span> เพิ่มรางวัล
+        </button>
 
-            {/* ปุ่มเพิ่มแถว */}
-            <button onClick={addRow}
-              className="flex items-center gap-1.5 border-2 border-dashed border-slate-200 hover:border-[#F15A24] text-slate-500 hover:text-[#F15A24] rounded-xl px-4 py-2.5 text-sm font-bold transition w-full justify-center">
-              <span className="text-lg leading-none">+</span> เพิ่มรางวัล
-            </button>
-
-            {/* ผู้เข้าร่วม — เฉพาะมีคนเช็คอิน */}
-            {recipients.length > 0 && (
-              <div className="border-t border-slate-100 pt-3">
-                <p className="text-xs font-bold text-slate-500 mb-2">{PARTICIPANT_LABEL} <span className="text-slate-400 font-normal">({unassigned.length} คน)</span></p>
-                {unassigned.length === 0 ? (
-                  <p className="text-xs text-slate-400">ทุกคนถูกจัดรางวัลหมดแล้ว</p>
-                ) : (
-                  <div className="flex flex-wrap gap-1.5">
-                    {unassigned.map((r) => (
-                      <span key={r.participant_id} className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs text-slate-600">
-                        {r.full_name}
-                        <button onClick={() => doPreview(r, PARTICIPANT_LABEL)} className="text-[#F15A24]" title="ดูตัวอย่าง"><Ico.eye className="w-3 h-3" /></button>
-                      </span>
-                    ))}
-                  </div>
-                )}
+        {/* ผู้เข้าร่วม — เฉพาะมีคนเช็คอิน */}
+        {recipients.length > 0 && (
+          <div className="border-t border-slate-100 pt-3">
+            <p className="text-xs font-bold text-slate-500 mb-2">{PARTICIPANT_LABEL} <span className="text-slate-400 font-normal">({unassigned.length} คน)</span></p>
+            {unassigned.length === 0 ? (
+              <p className="text-xs text-slate-400">ทุกคนถูกจัดรางวัลหมดแล้ว</p>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {unassigned.map((r) => (
+                  <span key={r.participant_id} className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs text-slate-600">
+                    {r.full_name}
+                    <button onClick={() => doPreview(r, PARTICIPANT_LABEL)} className="text-[#F15A24]" title="ดูตัวอย่าง"><Ico.eye className="w-3 h-3" /></button>
+                  </span>
+                ))}
               </div>
             )}
-
-            {recipients.length === 0 && (
-              <p className="text-xs text-slate-400 text-center border-t border-slate-100 pt-3">ยังไม่มีคนเช็คอิน — เมื่อมีคนมางาน จะค้นหาเพิ่มเข้ารางวัลได้ที่นี่</p>
-            )}
-          </>
+          </div>
         )}
       </div>
 
-      {/* ปุ่มบันทึก / โหลด / แจก — เฉพาะมีคนเช็คอิน */}
+      {/* ปุ่มบันทึกผล / โหลด / แจก — เฉพาะมีคนเช็คอิน */}
       {courseId && recipients.length > 0 && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col sm:flex-row gap-3">
           <button onClick={doSave} disabled={genning}
@@ -284,7 +298,7 @@ export default function AdminCertificate() {
           </button>
           <button onClick={doPublish} disabled={genning}
             className="flex-1 flex items-center justify-center gap-2 bg-[#F15A24] hover:bg-[#c44215] text-white px-4 py-3 rounded-xl text-sm font-bold transition disabled:opacity-50">
-            <Ico.cap className="w-4 h-4" /> แจกเกียรติบัตร
+            <Ico.cap className="w-4 h-4" /> ส่งเกียรติบัตร
           </button>
         </div>
       )}
