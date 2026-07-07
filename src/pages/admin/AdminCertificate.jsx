@@ -222,8 +222,8 @@ export default function AdminCertificate() {
         <div className="flex items-center justify-between">
           <label className="text-sm font-bold text-slate-700">รายการรางวัล</label>
           <button onClick={saveAwardNames}
-            className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold transition">
-            <Ico.download className="w-3.5 h-3.5" /> บันทึกรายการรางวัล
+            className="flex items-center gap-2 bg-gradient-to-r from-[#F15A24] to-amber-500 hover:from-[#c44215] hover:to-amber-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-orange-500/20 transition active:scale-95">
+            <Ico.download className="w-4 h-4" /> บันทึกรายการรางวัล
           </button>
         </div>
 
