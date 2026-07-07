@@ -44,7 +44,7 @@ export default function AdminSettings() {
         home_notice: es.home_notice || "",
         schedule_image_url: es.schedule_image_url || "",
         cert_template_url: es.cert_template_url || "",
-        cert_awards: es.cert_awards?.length ? es.cert_awards : ["รางวัลชนะเลิศ", "รางวัลรองชนะเลิศอันดับ 1", "รางวัลรองชนะเลิศอันดับ 2", "รางวัลชมเชย", "เข้าร่วมกิจกรรม"],
+        cert_awards: (Array.isArray(es.cert_awards) && es.cert_awards.length) ? es.cert_awards : ["รางวัลชนะเลิศ", "รางวัลรองชนะเลิศอันดับ 1", "รางวัลรองชนะเลิศอันดับ 2", "รางวัลชมเชย", "เข้าร่วมกิจกรรม"],
       })
       setTypes(await fetchCourseTypes(event?.id) || [])
     } catch (e) { toast("โหลดไม่สำเร็จ: " + e.message, "error") }
@@ -52,7 +52,7 @@ export default function AdminSettings() {
   async function loadEventPart() {
     try {
       const es = await fetchEventSettings(event.id)
-      setForm((f) => ({ ...(f || { line_id: "", phone: "" }), site_title: es.site_title || "", hero_subtitle: es.hero_subtitle || "", home_notice: es.home_notice || "", schedule_image_url: es.schedule_image_url || "", cert_template_url: es.cert_template_url || "", cert_awards: es.cert_awards?.length ? es.cert_awards : ["รางวัลชนะเลิศ", "รางวัลรองชนะเลิศอันดับ 1", "รางวัลรองชนะเลิศอันดับ 2", "รางวัลชมเชย", "เข้าร่วมกิจกรรม"] }))
+      setForm((f) => ({ ...(f || { line_id: "", phone: "" }), site_title: es.site_title || "", hero_subtitle: es.hero_subtitle || "", home_notice: es.home_notice || "", schedule_image_url: es.schedule_image_url || "", cert_template_url: es.cert_template_url || "", cert_awards: (Array.isArray(es.cert_awards) && es.cert_awards.length) ? es.cert_awards : ["รางวัลชนะเลิศ", "รางวัลรองชนะเลิศอันดับ 1", "รางวัลรองชนะเลิศอันดับ 2", "รางวัลชมเชย", "เข้าร่วมกิจกรรม"] }))
       setTypes(await fetchCourseTypes(event.id) || [])
     } catch (e) { toast("โหลดไม่สำเร็จ: " + e.message, "error") }
   }
@@ -116,12 +116,12 @@ export default function AdminSettings() {
   function addAward() {
     const a = newAward.trim()
     if (!a) return
-    if ((form.cert_awards || []).includes(a)) return toast("มีรางวัลนี้อยู่แล้ว", "error")
-    setForm((f) => ({ ...f, cert_awards: [...(f.cert_awards || []), a] }))
+    if ((Array.isArray(form.cert_awards) ? form.cert_awards : []).includes(a)) return toast("มีรางวัลนี้อยู่แล้ว", "error")
+    setForm((f) => ({ ...f, cert_awards: [...(Array.isArray(f.cert_awards) ? f.cert_awards : []), a] }))
     setNewAward("")
   }
   function removeAward(a) {
-    setForm((f) => ({ ...f, cert_awards: (f.cert_awards || []).filter((x) => x !== a) }))
+    setForm((f) => ({ ...f, cert_awards: (Array.isArray(f.cert_awards) ? f.cert_awards : []).filter((x) => x !== a) }))
   }
 
   if (!form) return <div className="py-16 text-center text-slate-400">กำลังโหลด…</div>
@@ -229,13 +229,13 @@ export default function AdminSettings() {
           <div className="space-y-2">
             <label className={labelCls}>รายการรางวัล (ใช้เป็นตัวเลือกตอนออกใบ)</label>
             <div className="flex flex-wrap gap-2">
-              {(form.cert_awards || []).map((a) => (
+              {(Array.isArray(form.cert_awards) ? form.cert_awards : []).map((a) => (
                 <span key={a} className="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-1.5 py-1.5 text-xs font-bold text-slate-700">
                   {a}
                   <button onClick={() => removeAward(a)} className="w-4 h-4 rounded-full bg-slate-200 hover:bg-rose-200 text-slate-500 hover:text-rose-600 flex items-center justify-center transition" title="ลบ">×</button>
                 </span>
               ))}
-              {(form.cert_awards || []).length === 0 && <p className="text-xs text-slate-400 py-1">ยังไม่มีรายการรางวัล</p>}
+              {(Array.isArray(form.cert_awards) ? form.cert_awards : []).length === 0 && <p className="text-xs text-slate-400 py-1">ยังไม่มีรายการรางวัล</p>}
             </div>
             <div className="flex gap-2 pt-1">
               <input value={newAward} onChange={(e) => setNewAward(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addAward()}
