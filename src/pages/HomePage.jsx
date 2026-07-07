@@ -149,26 +149,28 @@ export default function HomePage() {
           <p className="text-center text-white/70 text-sm mt-4">
             {t("home.foundCourses", { n: filtered.length })}
           </p>
+        </div>
+      </div>
 
-          {/* รูปตารางกิจกรรม — แสดงในแถบส้ม ก่อนแบนเนอร์แจ้งเตือน (คลิกดูเต็ม) */}
+      {/* ─── รูปตาราง + แบนเนอร์แจ้งเตือน (ใต้ Hero ก่อนคอร์ส) ─── */}
+      {(scheduleUrl || notice.trim()) && (
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 space-y-4">
+          {/* รูปตารางกิจกรรม (คลิกดูเต็ม) */}
           {scheduleUrl && (
-            <div className="mt-6 max-w-4xl mx-auto">
-              <button onClick={() => setShowSchedule(true)}
-                className="block w-full rounded-2xl overflow-hidden shadow-lg ring-1 ring-white/20 hover:ring-white/40 transition group">
-                <img src={scheduleUrl} alt="ตารางกิจกรรม" className="w-full h-auto group-hover:scale-[1.01] transition-transform" />
-              </button>
-            </div>
+            <button onClick={() => setShowSchedule(true)}
+              className="block w-full rounded-2xl overflow-hidden border border-slate-200 shadow-sm hover:shadow-md transition group">
+              <img src={scheduleUrl} alt="ตารางกิจกรรม" className="w-full h-auto group-hover:scale-[1.01] transition-transform" />
+            </button>
           )}
-
-          {/* แบนเนอร์แจ้งเตือน (แอดมินแก้ได้จากหน้าตั้งค่าเว็บ) */}
+          {/* แบนเนอร์แจ้งเตือน */}
           {notice.trim() && (
-            <div className="mt-6 max-w-4xl mx-auto bg-white/15 backdrop-blur-sm border border-white/25 rounded-2xl px-5 py-4 sm:px-6 sm:py-5 flex gap-3 sm:gap-4">
+            <div className="bg-orange-50 border border-orange-100 rounded-2xl px-5 py-4 sm:px-6 sm:py-5 flex gap-3 sm:gap-4">
               <span className="text-2xl sm:text-3xl shrink-0 leading-none">📷</span>
-              <p className="text-white text-sm sm:text-[15px] leading-relaxed whitespace-pre-line">{notice}</p>
+              <p className="text-slate-700 text-sm sm:text-[15px] leading-relaxed whitespace-pre-line">{notice}</p>
             </div>
           )}
         </div>
-      </div>
+      )}
 
       {/* ─── Course Grid ─── */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
