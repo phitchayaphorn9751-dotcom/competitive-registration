@@ -1019,3 +1019,9 @@ export async function publishCertificates(participantIds) {
     .from("participants").update({ cert_published: true }).in("id", participantIds)
   if (error) throw error
 }
+
+// บันทึกแบบสอบถาม (PDPA + เคยร่วมกิจกรรม + ประชาสัมพันธ์) — ตอบครั้งเดียว
+export async function saveSurvey(survey) {
+  const { error } = await supabase.rpc("save_survey", { p: survey })
+  if (error) throw error
+}

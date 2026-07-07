@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { getSession, isAdminUser, fetchMyProfile, saveProfile, searchSchools, fetchAllSchools, searchThaiAddress } from "../lib/supabase.js"
+import SurveyModal from "./SurveyModal.jsx"
 import { useLang } from "../lib/i18n.jsx"
 
 const TITLES = ["เด็กชาย", "เด็กหญิง", "นาย", "นางสาว", "นาง"]
@@ -59,6 +60,8 @@ export default function ProfilePage() {
   const [gradeGroup, setGradeGroup] = useState("")
   const [gradeDetail, setGradeDetail] = useState("")
   const [customGrade, setCustomGrade] = useState(false)
+  const [showSurvey, setShowSurvey] = useState(false)
+  const [rawProfile, setRawProfile] = useState(null)  // เก็บ field ดิบ (survey)
   const [schoolOptions, setSchoolOptions] = useState([])
   const [allSchools, setAllSchools] = useState([])
   const [showSchoolDD, setShowSchoolDD] = useState(false)
@@ -81,6 +84,7 @@ export default function ProfilePage() {
       try {
         const p = await fetchMyProfile()
         if (p) {
+          setRawProfile(p)
           setF({ ...BLANK, ...cleanNulls(p) })
           const gl = p.grade_level || ""
           const grp = GRADE_GROUPS.find((g) => gl.startsWith(g) && g !== "อื่นๆ")
@@ -397,12 +401,31 @@ export default function ProfilePage() {
             </div>
           )}
 
+          {/* แบบสอบถาม (ตอบครั้งเดียวตอนสมัคร — ดูได้ แก้ไม่ได้) */}
+          {rawProfile?.survey_done && (
+            <div className="bg-slate-50 rounded-2xl border border-slate-200 p-5 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-slate-600">แบบสอบถามก่อนสมัคร</p>
+                <p className="text-xs text-slate-400 mt-0.5">PDPA · เคยร่วมกิจกรรม · ประชาสัมพันธ์ (ตอบแล้ว แก้ไขไม่ได้)</p>
+              </div>
+              <button type="button" onClick={() => setShowSurvey(true)}
+                className="shrink-0 text-sm font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-100 px-4 py-2 rounded-xl transition">
+                ดูข้อมูล
+              </button>
+            </div>
+          )}
+
           <button onClick={handleSave} disabled={saving}
             className="w-full bg-[#F15A24] hover:bg-[#c44215] disabled:bg-slate-300 text-white font-bold py-4 rounded-2xl shadow-lg shadow-orange-500/20 transition-all active:scale-95 text-sm">
             {saving ? t("profile.saving") : t("profile.saveAndContinue")}
           </button>
         </div>
       </div>
+
+      {/* ดูแบบสอบถาม (อ่านอย่างเดียว) */}
+      {showSurvey && (
+        <SurveyModal mode="readonly" initial={rawProfile} onClose={() => setShowSurvey(false)} />
+      )}
     </div>
   )
 }
