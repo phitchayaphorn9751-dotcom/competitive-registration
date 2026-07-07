@@ -49,10 +49,16 @@ export default function HomePage() {
         // โหลดชื่อเว็บ + ข้อความแจ้งเตือน ตามงานที่เปิด
         if (ev?.id) {
           const es = await fetchEventSettings(ev.id)
-          setNotice(es.home_notice || "")
-          setSiteTitle(es.site_title || "")
-          setHeroSub(es.hero_subtitle || "")
-          setScheduleUrl(es.schedule_image_url || "")
+          // ── DEBUG: ดูโครงสร้างข้อมูล es ที่ได้จาก Supabase ──
+          console.log("[HomePage] event settings (es):", es)
+          console.log("[HomePage] schedule_image_url:", es?.schedule_image_url, "| schedule_url:", es?.schedule_url)
+
+          setNotice((es.home_notice || "").trim())
+          setSiteTitle((es.site_title || "").trim())
+          setHeroSub((es.hero_subtitle || "").trim())
+          // รองรับทั้ง schedule_image_url และ schedule_url (fallback) + trim กัน whitespace
+          const rawSchedule = es.schedule_image_url ?? es.schedule_url ?? ""
+          setScheduleUrl(String(rawSchedule).trim())
         }
       } catch (e) {
         setError(e.message || "โหลดข้อมูลไม่สำเร็จ")
