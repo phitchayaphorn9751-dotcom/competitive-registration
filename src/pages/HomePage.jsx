@@ -641,7 +641,7 @@ function DetailModal({ course, t, onClose, onRegister }) {
           <button onClick={onClose} className="flex-1 sm:flex-none sm:px-8 py-3 rounded-xl font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition text-sm">ปิด</button>
           {isClosed ? (
             <button disabled className="flex-1 py-3 rounded-xl font-semibold text-slate-400 bg-slate-100 border border-slate-200 cursor-not-allowed text-sm flex items-center justify-center gap-2">
-              <Ico.lock className="w-4 h-4" /> ปิดรับสมัครแล้ว
+              <Ico.lock className="w-4 h-4" /> ยังไม่เปิดรับสมัคร
             </button>
           ) : isExternal ? (
             <button onClick={onRegister}
