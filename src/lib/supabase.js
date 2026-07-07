@@ -919,7 +919,7 @@ export async function registerExternal(courseId) {
 export async function fetchCertificateRecipients(courseId) {
   const { data, error } = await supabase
     .from("registrations")
-    .select("id, status, theme_name, course_id, courses!inner(title, event_id, course_types:type_id(label)), participants(id, full_name, school, grade_level, checkins(id, scanned_at))")
+    .select("id, status, theme_name, course_id, courses!inner(title, event_id, course_types:type_id(label)), participants(id, full_name, school, grade_level, award, cert_published, checkins(id, scanned_at))")
     .eq("course_id", courseId)
     .order("created_at", { ascending: true })
   if (error) throw error
@@ -934,6 +934,8 @@ export async function fetchCertificateRecipients(courseId) {
         participant_id: p.id,
         registration_id: reg.id,
         full_name: p.full_name || "",
+        award: p.award || "",
+        cert_published: !!p.cert_published,
         school: p.school || "",
         grade_level: p.grade_level || "",
         theme_name: reg.theme_name || "",
@@ -991,4 +993,29 @@ export async function fetchMyRegistrationStatus(registrationId) {
     .from("registrations").select("status").eq("id", registrationId).single()
   if (error) throw error
   return data?.status || null
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// เกียรติบัตร — บันทึก/ดึงผลรางวัล (เก็บที่ participants.award)
+// ═══════════════════════════════════════════════════════════════════
+
+// บันทึกรางวัลของผู้รับหลายคน — assignments = [{participant_id, award}]
+export async function saveCertAwards(assignments) {
+  if (!Array.isArray(assignments) || !assignments.length) return
+  // อัปเดตทีละคน (Supabase ไม่มี bulk update ต่างค่า) — Promise.all ให้เร็ว
+  const results = await Promise.all(
+    assignments.map((a) =>
+      supabase.from("participants").update({ award: a.award }).eq("id", a.participant_id)
+    )
+  )
+  const err = results.find((r) => r.error)
+  if (err?.error) throw err.error
+}
+
+// แจกเกียรติบัตร (mark cert_published = true) ให้ผู้รับที่ระบุ
+export async function publishCertificates(participantIds) {
+  if (!Array.isArray(participantIds) || !participantIds.length) return
+  const { error } = await supabase
+    .from("participants").update({ cert_published: true }).in("id", participantIds)
+  if (error) throw error
 }

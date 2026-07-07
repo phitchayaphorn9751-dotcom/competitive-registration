@@ -3,6 +3,7 @@ import { useOutletContext } from "react-router-dom"
 import {
   fetchCoursesAdmin, fetchCertificateRecipients,
   fetchEventSettings, uploadCertificateTemplate, updateEventSettings,
+  saveCertAwards, publishCertificates,
 } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
 import { Ico } from "../../lib/icons.jsx"
@@ -15,7 +16,7 @@ const FONT = "'Sarabun', sans-serif"
 
 export default function AdminCertificate() {
   const { event } = useOutletContext()
-  const { toast } = useDialog()
+  const { toast, confirm } = useDialog()
   const [courses, setCourses] = useState([])
   const [courseId, setCourseId] = useState("")
   const [recipients, setRecipients] = useState([])   // [{participant_id, full_name, course_title, award}]
@@ -156,80 +157,68 @@ export default function AdminCertificate() {
         )}
       </div>
 
-      {/* เลือกคอร์ส + รางวัล default */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs font-bold text-slate-500 block mb-1.5">เลือกคอร์ส</label>
-            <select value={courseId} onChange={(e) => loadRecipients(e.target.value)}
-              className="w-full px-3 py-2.5 border border-slate-200 rounded-xl outline-none focus:border-[#F15A24] focus:ring-1 focus:ring-[#F15A24] text-sm bg-white">
-              <option value="">— เลือกคอร์ส —</option>
-              {(Array.isArray(courses)?courses:[]).map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="text-xs font-bold text-slate-500 block mb-1.5">รางวัลเริ่มต้น (ทั้งคอร์ส)</label>
-            <select value={defaultAward} onChange={(e) => applyDefaultAward(e.target.value)} disabled={recipients.length === 0}
-              className="w-full px-3 py-2.5 border border-slate-200 rounded-xl outline-none focus:border-[#F15A24] focus:ring-1 focus:ring-[#F15A24] text-sm bg-white disabled:opacity-50">
-              {(Array.isArray(awards)?awards:[]).map((a) => <option key={a} value={a}>{a}</option>)}
-            </select>
-          </div>
-        </div>
-
+      {/* เลือกคอร์ส */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+        <label className="text-xs font-bold text-slate-500 block mb-1.5">1. เลือกคอร์ส</label>
+        <select value={courseId} onChange={(e) => loadRecipients(e.target.value)}
+          className="w-full px-3 py-2.5 border border-slate-200 rounded-xl outline-none focus:border-[#F15A24] focus:ring-1 focus:ring-[#F15A24] text-sm bg-white">
+          <option value="">— เลือกคอร์ส —</option>
+          {(Array.isArray(courses)?courses:[]).map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+        </select>
         {loading && <p className="text-sm text-slate-400 text-center py-4">กำลังโหลดรายชื่อ…</p>}
-
         {!loading && courseId && recipients.length === 0 && (
           <p className="text-sm text-slate-400 text-center py-6">ยังไม่มีคนที่เช็คอินในคอร์สนี้ — เกียรติบัตรออกได้เฉพาะคนที่มางาน (เช็คอินแล้ว)</p>
         )}
-
         {recipients.length > 0 && (
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500">{recipients.length} คนเช็คอินแล้ว · ปรับรางวัลรายคนได้ด้านล่าง</span>
-            <button onClick={doGenerate} disabled={genning}
-              className="flex items-center gap-1.5 bg-[#F15A24] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#c44215] transition active:scale-95 disabled:opacity-50">
-              <Ico.download className="w-4 h-4" /> {genning ? "กำลังสร้าง…" : "ออกเกียรติบัตรทั้งคอร์ส (PDF)"}
-            </button>
-          </div>
+          <p className="text-xs text-slate-400 mt-2">มีผู้เช็คอิน {recipients.length} คน · จัดรางวัลด้านล่าง คนที่ไม่ได้จัด = ผู้เข้าร่วม</p>
         )}
       </div>
 
-      {/* ตารางรายชื่อ + รางวัลรายคน */}
+      {/* จัดรางวัลตามอันดับ */}
       {recipients.length > 0 && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-400 text-[10px] uppercase border-b border-slate-100">
-                <tr>
-                  <th className="px-4 py-3 text-center w-10">#</th>
-                  <th className="px-4 py-3 text-left">ชื่อ-นามสกุล</th>
-                  <th className="px-4 py-3 text-left">โรงเรียน</th>
-                  <th className="px-4 py-3 text-left w-56">รางวัล</th>
-                  <th className="px-4 py-3 text-center w-20">ดูตัวอย่าง</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {(Array.isArray(recipients)?recipients:[]).map((r, i) => (
-                  <tr key={r.participant_id} className="hover:bg-orange-50/40 transition">
-                    <td className="px-4 py-2.5 text-center text-slate-300 font-bold">{i + 1}</td>
-                    <td className="px-4 py-2.5 font-medium text-slate-800">{r.full_name}</td>
-                    <td className="px-4 py-2.5 text-slate-500 text-xs">{r.school || "-"}</td>
-                    <td className="px-4 py-2.5">
-                      <select value={r.award} onChange={(e) => setOneAward(r.participant_id, e.target.value)}
-                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-white outline-none focus:border-[#F15A24] focus:ring-1 focus:ring-[#F15A24]">
-                        {(Array.isArray(awards)?awards:[]).map((a) => <option key={a} value={a}>{a}</option>)}
-                      </select>
-                    </td>
-                    <td className="px-4 py-2.5 text-center">
-                      <button onClick={() => doPreview(r)} className="text-[#F15A24] hover:bg-orange-50 p-1.5 rounded-lg transition" title="ดูตัวอย่าง">
-                        <Ico.eye className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
+        <>
+          {namedAwards.map((award, idx) => (
+            <AwardSlot key={award} rank={idx + 2} award={award}
+              assigned={byAward(award)} pool={unassigned}
+              onAdd={(pid) => assignAward(pid, award)} onRemove={unassign} onPreview={doPreview} />
+          ))}
+
+          {/* ผู้เข้าร่วม (คนที่เหลือ) */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="w-6 h-6 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-black">–</span>
+              <h3 className="font-bold text-slate-700 text-sm">{PARTICIPANT_LABEL} <span className="text-slate-400 font-normal">({unassigned.length} คน)</span></h3>
+            </div>
+            {unassigned.length === 0 ? (
+              <p className="text-xs text-slate-400">ทุกคนถูกจัดรางวัลหมดแล้ว</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {unassigned.map((r) => (
+                  <span key={r.participant_id} className="inline-flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-600">
+                    {r.full_name}
+                    <button onClick={() => doPreview({ ...r, award: PARTICIPANT_LABEL })} className="text-[#F15A24] hover:text-[#c44215]" title="ดูตัวอย่าง"><Ico.eye className="w-3.5 h-3.5" /></button>
+                  </span>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            )}
           </div>
-        </div>
+
+          {/* ปุ่มบันทึก + แจก + โหลด PDF */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col sm:flex-row gap-3">
+            <button onClick={doSave} disabled={genning}
+              className="flex-1 flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-3 rounded-xl text-sm font-bold transition disabled:opacity-50">
+              <Ico.download className="w-4 h-4" /> บันทึกผลรางวัล
+            </button>
+            <button onClick={doGenerate} disabled={genning || !templateUrl}
+              className="flex-1 flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-3 rounded-xl text-sm font-bold transition disabled:opacity-50">
+              <Ico.download className="w-4 h-4" /> {genning ? "กำลังสร้าง…" : "โหลด PDF ทั้งหมด"}
+            </button>
+            <button onClick={doPublish} disabled={genning}
+              className="flex-1 flex items-center justify-center gap-2 bg-[#F15A24] hover:bg-[#c44215] text-white px-4 py-3 rounded-xl text-sm font-bold transition disabled:opacity-50">
+              <Ico.cap className="w-4 h-4" /> แจกเกียรติบัตร
+            </button>
+          </div>
+        </>
       )}
 
       {/* Preview modal */}
@@ -246,6 +235,62 @@ export default function AdminCertificate() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ── ช่องรางวัล 1 อันดับ — search เพิ่มคน (ได้หลายคน) + แสดงคนที่เพิ่ม ──
+function AwardSlot({ rank, award, assigned, pool, onAdd, onRemove, onPreview }) {
+  const [q, setQ] = useState("")
+  const results = q.trim()
+    ? pool.filter((r) =>
+        (r.full_name || "").toLowerCase().includes(q.toLowerCase()) ||
+        (r.school || "").toLowerCase().includes(q.toLowerCase()))
+      .slice(0, 6)
+    : []
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="w-6 h-6 rounded-full bg-[#F15A24] text-white flex items-center justify-center text-xs font-black">{rank - 1}</span>
+        <h3 className="font-bold text-slate-700 text-sm">{award} <span className="text-slate-400 font-normal">({assigned.length} คน)</span></h3>
+      </div>
+
+      {/* คนที่ได้รางวัลนี้ */}
+      {assigned.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-3">
+          {assigned.map((r) => (
+            <span key={r.participant_id} className="inline-flex items-center gap-1.5 bg-orange-50 border border-orange-200 rounded-lg pl-3 pr-1.5 py-1.5 text-xs font-bold text-[#F15A24]">
+              {r.full_name}
+              <button onClick={() => onPreview({ ...r, award })} className="text-[#F15A24]/70 hover:text-[#F15A24]" title="ดูตัวอย่าง"><Ico.eye className="w-3.5 h-3.5" /></button>
+              <button onClick={() => onRemove(r.participant_id)} className="w-4 h-4 rounded-full bg-orange-200 hover:bg-rose-200 text-[#F15A24] hover:text-rose-600 flex items-center justify-center" title="เอาออก">×</button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* search เพิ่มคน */}
+      <div className="relative">
+        <input value={q} onChange={(e) => setQ(e.target.value)}
+          placeholder="พิมพ์ชื่อหรือโรงเรียนเพื่อเพิ่มคน…"
+          className="w-full px-3 py-2 border border-slate-200 rounded-xl outline-none focus:border-[#F15A24] focus:ring-1 focus:ring-[#F15A24] text-sm" />
+        {results.length > 0 && (
+          <div className="absolute z-10 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+            {results.map((r) => (
+              <button key={r.participant_id} onClick={() => { onAdd(r.participant_id); setQ("") }}
+                className="w-full text-left px-3 py-2 hover:bg-orange-50 text-sm border-b border-slate-50 last:border-0">
+                <span className="font-medium text-slate-800">{r.full_name}</span>
+                {r.school && <span className="text-slate-400 text-xs ml-2">{r.school}</span>}
+              </button>
+            ))}
+          </div>
+        )}
+        {q.trim() && results.length === 0 && (
+          <div className="absolute z-10 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg px-3 py-2 text-xs text-slate-400">
+            ไม่พบ (อาจถูกจัดรางวัลอื่นแล้ว)
+          </div>
+        )}
+      </div>
     </div>
   )
 }
