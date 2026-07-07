@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { useOutletContext } from "react-router-dom"
 import {
   fetchCoursesAdmin, fetchCertificateRecipients,
-  fetchEventSettings,
+  fetchEventSettings, uploadCertificateTemplate, updateEventSettings,
 } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
 import { Ico } from "../../lib/icons.jsx"
@@ -23,6 +23,7 @@ export default function AdminCertificate() {
   const [defaultAward, setDefaultAward] = useState("")
   const [genning, setGenning] = useState(false)
   const [previewUrl, setPreviewUrl] = useState("")
+  const [uploading, setUploading] = useState(false)
 
   // เทมเพลต + รายการรางวัล จาก event_settings
   const [templateUrl, setTemplateUrl] = useState("")
@@ -39,6 +40,30 @@ export default function AdminCertificate() {
       setDefaultAward(((Array.isArray(es.cert_awards) && es.cert_awards.length) ? es.cert_awards : DEFAULT_AWARDS)[0] || "")
     }).catch(() => {})
   }, [event?.id])
+
+  // อัปโหลดรูปพื้นหลังเกียรติบัตร (บันทึกลง event_settings ทันที)
+  async function handleTemplateFile(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!event?.id) return toast("ยังไม่ได้เลือกงาน", "error")
+    setUploading(true)
+    try {
+      const url = await uploadCertificateTemplate(file)
+      await updateEventSettings(event.id, { cert_template_url: url })
+      setTemplateUrl(url)
+      toast("ตั้งรูปพื้นหลังเรียบร้อย", "success")
+    } catch (err) {
+      toast("อัปโหลดไม่สำเร็จ: " + err.message, "error")
+    } finally { setUploading(false); e.target.value = "" }
+  }
+  async function removeTemplate() {
+    if (!event?.id) return
+    try {
+      await updateEventSettings(event.id, { cert_template_url: "" })
+      setTemplateUrl("")
+      toast("ลบรูปพื้นหลังแล้ว", "success")
+    } catch (err) { toast("ลบไม่สำเร็จ: " + err.message, "error") }
+  }
 
   // โหลดคน check-in เมื่อเลือกคอร์ส
   async function loadRecipients(cid) {
@@ -66,7 +91,7 @@ export default function AdminCertificate() {
   }
 
   async function doPreview(r) {
-    if (!templateUrl) return toast("ยังไม่ได้ตั้งรูปพื้นหลังในหน้าตั้งค่าเว็บ", "error")
+    if (!templateUrl) return toast("กรุณาอัปโหลดรูปพื้นหลังด้านบนก่อน", "error")
     try {
       const url = await previewCertificate({ templateUrl, recipient: r, fields, fontFamily: FONT })
       setPreviewUrl(url)
@@ -74,7 +99,7 @@ export default function AdminCertificate() {
   }
 
   async function doGenerate() {
-    if (!templateUrl) return toast("ยังไม่ได้ตั้งรูปพื้นหลังในหน้าตั้งค่าเว็บ", "error")
+    if (!templateUrl) return toast("กรุณาอัปโหลดรูปพื้นหลังด้านบนก่อน", "error")
     if (recipients.length === 0) return toast("ไม่มีรายชื่อผู้รับ (ต้องมีคน check-in ก่อน)", "error")
     setGenning(true)
     try {
@@ -102,13 +127,34 @@ export default function AdminCertificate() {
         </div>
       </div>
 
-      {/* เตือนถ้ายังไม่มีเทมเพลต */}
-      {!templateUrl && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 flex items-start gap-2 text-sm text-amber-700">
-          <Ico.alert className="w-4 h-4 shrink-0 mt-0.5" />
-          <span>ยังไม่ได้ตั้งรูปพื้นหลังเกียรติบัตร — ไปที่ <b>ตั้งค่าเว็บ → เกียรติบัตร</b> เพื่ออัปโหลดเทมเพลตก่อน</span>
-        </div>
-      )}
+      {/* การ์ดตั้งรูปพื้นหลังเกียรติบัตร */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+        <label className="text-sm font-bold text-slate-700 flex items-center gap-2 mb-1">
+          <Ico.cap className="w-4 h-4 text-[#F15A24]" /> รูปพื้นหลังเกียรติบัตร
+        </label>
+        <p className="text-xs text-slate-400 mb-3">อัปโหลดรูปเทมเพลต (แนวนอน) — ระบบจะวางชื่อ/รางวัล/คอร์ส ทับบนรูปนี้</p>
+
+        {templateUrl ? (
+          <div className="flex flex-col sm:flex-row gap-4 items-start">
+            <img src={templateUrl} alt="template" className="w-full sm:w-64 rounded-xl border border-slate-200" />
+            <div className="flex flex-col gap-2">
+              <label className="cursor-pointer inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl text-sm font-bold transition">
+                <Ico.cap className="w-4 h-4" /> เปลี่ยนรูป
+                <input type="file" accept="image/*" onChange={handleTemplateFile} disabled={uploading} className="hidden" />
+              </label>
+              <button onClick={removeTemplate} className="inline-flex items-center gap-2 text-rose-500 hover:bg-rose-50 px-4 py-2 rounded-xl text-sm font-bold transition">
+                <Ico.alert className="w-4 h-4" /> ลบรูป
+              </button>
+            </div>
+          </div>
+        ) : (
+          <label className="cursor-pointer block border-2 border-dashed border-slate-200 rounded-xl px-4 py-8 text-center hover:border-[#F15A24] hover:bg-orange-50/40 transition">
+            <Ico.cap className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+            <span className="text-sm font-bold text-slate-600">{uploading ? "กำลังอัปโหลด…" : "คลิกเพื่ออัปโหลดรูปพื้นหลัง"}</span>
+            <input type="file" accept="image/*" onChange={handleTemplateFile} disabled={uploading} className="hidden" />
+          </label>
+        )}
+      </div>
 
       {/* เลือกคอร์ส + รางวัล default */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
