@@ -7,7 +7,6 @@ import {
   registerExternal,
   fetchAllSchools, searchSchools,
 } from "../lib/supabase.js"
-import SurveyModal from "./SurveyModal.jsx"
 import { useLang } from "../lib/i18n.jsx"
 import { catColor } from "../lib/categoryColors.js"
 
@@ -40,7 +39,6 @@ export default function RegisterPage() {
 
   const [course, setCourse] = useState(null)
   const [profile, setProfile] = useState(null)
-  const [showSurvey, setShowSurvey] = useState(false)
   const [email, setEmail] = useState("")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -126,10 +124,9 @@ export default function RegisterPage() {
     if (!profile?.first_name) {
       return setError("กรุณากรอกประวัติให้ครบก่อนสมัคร")
     }
-    // gate: ต้องตอบแบบสอบถามก่อนสมัครคอร์สแรก
+    // gate: ต้องกรอกประวัติ + แบบสอบถามให้ครบก่อน (section 4)
     if (!profile?.survey_done) {
-      setShowSurvey(true)
-      return
+      return setError("กรุณากรอกประวัติสมาชิกให้ครบทุกส่วน (รวมแบบสอบถาม) ก่อนสมัคร")
     }
     for (const m of extraMembers) {
       if (!m.full_name.trim()) return setError(t("reg.needName"))
@@ -577,16 +574,6 @@ export default function RegisterPage() {
         </button>
       </div>
 
-      {/* แบบสอบถามครั้งเดียวก่อนสมัคร (gate) */}
-      {showSurvey && (
-        <SurveyModal mode="gate"
-          onDone={() => {
-            setShowSurvey(false)
-            setProfile((p) => ({ ...p, survey_done: true }))
-            handleConfirm()  // สมัครต่อทันทีหลังตอบ
-          }}
-          onClose={() => setShowSurvey(false)} />
-      )}
     </div>
   )
 }

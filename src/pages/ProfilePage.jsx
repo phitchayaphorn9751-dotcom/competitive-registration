@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { getSession, isAdminUser, fetchMyProfile, saveProfile, searchSchools, fetchAllSchools, searchThaiAddress } from "../lib/supabase.js"
-import SurveyModal from "./SurveyModal.jsx"
 import { useLang } from "../lib/i18n.jsx"
 
 const TITLES = ["เด็กชาย", "เด็กหญิง", "นาย", "นางสาว", "นาง"]
@@ -21,7 +20,20 @@ const BLANK = {
   school: "", phone: "", line_id: "",
   parent_title: "", parent_full_name: "", parent_relationship: "", parent_phone: "",
   address: "", subdistrict: "", district: "", province: "", zipcode: "",
+  pdpa_consent: null, past_activities: [], past_activities_other: "", pr_channels: [], pr_channels_other: "",
 }
+
+// ตัวเลือกแบบสอบถาม (section 4)
+const PAST_ACTIVITIES = [
+  "ไม่เคย", "ค่าย Game Academy", "ค่าย Animation Academy 2D", "ค่าย Animation Academy 3D",
+  "ค่าย DII", "ค่าย Robot conquer", "ค่าย Micro:bit", "ค่าย Generative AI for Web Development",
+  "ค่าย Gifted School 2023 - 2024", "โครงการ Alpha Academy ของโรงเรียน อบรมร่วมกับโรงเรียน", "กิจกรรม Open House",
+]
+const PR_CHANNELS = [
+  "Facebook CAMT CMU", "เว็บไซต์ www.camt.cmu.ac.th", "คุณครูที่โรงเรียนแนะนำ", "ผู้ปกครองแนะนำ",
+  "เพื่อนแนะนำ", "มีเจ้าหน้าที่ไป Road Show ที่โรงเรียน", "จาก @LINE CAMTCMU", "จาก IG", "จาก Twitter",
+]
+const PDPA_CONSENT_TEXT = "ข้าพเจ้ายินยอมให้หน่วยงาน/สถานศึกษา เก็บรวบรวม ใช้ และประมวลผลข้อมูลส่วนบุคคลของข้าพเจ้า เพื่อวัตถุประสงค์ในการวิเคราะห์ข้อมูลด้านการศึกษาต่อ การแนะแนว การพัฒนาหลักสูตร และการจัดทำสถิติหรือรายงานเชิงวิชาการ ตามพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA)"
 
 function checkThaiID(id) {
   if (!/^\d{13}$/.test(id)) return false
@@ -159,6 +171,17 @@ export default function ProfilePage() {
     if (f.school && !schoolVerified && !customSchool)
       return setError("กรุณาเลือกโรงเรียนจากรายการ หากไม่พบให้กด 'ไม่พบโรงเรียนของฉัน'")
 
+    // แบบสอบถาม section 4 — บังคับตอบครั้งแรก (ถ้ายังไม่เคยตอบ)
+    if (!rawProfile?.survey_done) {
+      if (f.pdpa_consent === null || f.pdpa_consent === undefined)
+        return setError("กรุณาเลือกยินยอม/ไม่ยินยอม ในแบบสอบถาม (ส่วนที่ 4)")
+      if (f.pdpa_consent === false)
+        return setError("ต้องยินยอมข้อตกลง PDPA ก่อนจึงจะลงทะเบียนได้")
+      const acts = Array.isArray(f.past_activities) ? f.past_activities : []
+      if (acts.length === 0 && !f.past_activities_other?.trim())
+        return setError("กรุณาตอบข้อ 'เคยร่วมกิจกรรม' ในแบบสอบถาม (ส่วนที่ 4)")
+    }
+
     setSaving(true)
     try { await saveProfile(f); navigate("/") }
     catch (e) { setError("บันทึกไม่สำเร็จ: " + e.message) }
@@ -199,7 +222,7 @@ export default function ProfilePage() {
 
           {/* Step dots */}
           <div className="flex items-center justify-center gap-3 sm:gap-6 mt-8">
-            {[t("profile.step1"), t("profile.step2"), t("profile.step3")].map((label, i) => (
+            {[t("profile.step1"), t("profile.step2"), t("profile.step3"), "แบบสอบถาม"].map((label, i) => (
               <div key={i} className="flex items-center gap-3 sm:gap-6">
                 <div className={`flex flex-col sm:flex-row items-center gap-2 text-xs font-bold transition-all ${activeSection === i + 1 ? "text-[#F15A24]" : "text-slate-400"}`}>
                   <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all ${
@@ -210,7 +233,7 @@ export default function ProfilePage() {
                   </span>
                   <span className="mt-1 sm:mt-0">{label}</span>
                 </div>
-                {i < 2 && <div className={`hidden sm:block w-8 sm:w-12 h-[2px] rounded-full transition-colors ${activeSection > i + 1 ? "bg-[#F15A24]" : "bg-slate-100"}`} />}
+                {i < 3 && <div className={`hidden sm:block w-8 sm:w-12 h-[2px] rounded-full transition-colors ${activeSection > i + 1 ? "bg-[#F15A24]" : "bg-slate-100"}`} />}
               </div>
             ))}
           </div>
@@ -395,23 +418,91 @@ export default function ProfilePage() {
             </div>
           </div>
 
+          {/* ══ Section 4: แบบสอบถาม (ตอบครั้งเดียว — ถ้าตอบแล้วแก้ไม่ได้) ══ */}
+          <div className={sectionCls(4)} onClick={() => setActiveSection(4)}>
+            <SectionHeader number="4" title="แบบสอบถาม" />
+            {rawProfile?.survey_done && (
+              <div className="mb-4 flex items-center gap-2 bg-slate-100 text-slate-500 rounded-xl px-3 py-2 text-xs">
+                <Ico.check className="w-4 h-4" /> ตอบแบบสอบถามแล้ว — ส่วนนี้แก้ไขไม่ได้
+              </div>
+            )}
+
+            {(() => {
+              const locked = !!rawProfile?.survey_done
+              const acts = Array.isArray(f.past_activities) ? f.past_activities : []
+              const prs = Array.isArray(f.pr_channels) ? f.pr_channels : []
+              const toggleAct = (a) => { if (locked) return; set("past_activities", acts.includes(a) ? acts.filter((x) => x !== a) : [...acts, a]) }
+              const togglePr = (a) => { if (locked) return; set("pr_channels", prs.includes(a) ? prs.filter((x) => x !== a) : [...prs, a]) }
+              const box = (checked, on) => (
+                <span onClick={on} className={`mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition ${locked ? "cursor-default" : "cursor-pointer"} ${checked ? "bg-[#F15A24] border-[#F15A24]" : "border-slate-300"}`}>
+                  {checked && <Ico.check className="w-3 h-3 text-white" />}
+                </span>
+              )
+              return (
+                <div className={`space-y-6 ${locked ? "opacity-70" : ""}`}>
+                  {/* PDPA */}
+                  <div>
+                    <p className="text-sm font-bold text-slate-700 mb-2">ข้อตกลงและความยินยอม (PDPA)</p>
+                    <div className="bg-slate-50 rounded-xl p-3.5 text-xs text-slate-600 leading-relaxed mb-3">{PDPA_CONSENT_TEXT}</div>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${f.pdpa_consent === true ? "border-[#F15A24]" : "border-slate-300"}`}>
+                          {f.pdpa_consent === true && <span className="w-2.5 h-2.5 rounded-full bg-[#F15A24]" />}
+                        </span>
+                        <input type="radio" checked={f.pdpa_consent === true} onChange={() => !locked && set("pdpa_consent", true)} className="hidden" />
+                        <span className="text-sm font-medium text-slate-700">ยินยอม</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${f.pdpa_consent === false ? "border-rose-500" : "border-slate-300"}`}>
+                          {f.pdpa_consent === false && <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />}
+                        </span>
+                        <input type="radio" checked={f.pdpa_consent === false} onChange={() => !locked && set("pdpa_consent", false)} className="hidden" />
+                        <span className="text-sm font-medium text-slate-700">ไม่ยินยอม</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* เคยร่วมกิจกรรม */}
+                  <div>
+                    <p className="text-sm font-bold text-slate-700 mb-2">เคยร่วมโครงการที่วิทยาลัยฯ จัดกิจกรรมใดบ้าง</p>
+                    <div className="space-y-1">
+                      {PAST_ACTIVITIES.map((a) => (
+                        <label key={a} className={`flex items-start gap-2.5 py-1 ${locked ? "" : "cursor-pointer"}`}>
+                          {box(acts.includes(a), () => toggleAct(a))}
+                          <span className="text-sm text-slate-700">{a}</span>
+                        </label>
+                      ))}
+                      <div className="pt-1">
+                        <Label>อื่น ๆ โปรดระบุ</Label>
+                        <input className={locked ? readonlyCls : inputCls} readOnly={locked} value={f.past_activities_other} onChange={(e) => set("past_activities_other", e.target.value)} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ประชาสัมพันธ์ */}
+                  <div>
+                    <p className="text-sm font-bold text-slate-700 mb-2">รับทราบข้อมูลการประชาสัมพันธ์จากช่องทางไหน</p>
+                    <div className="space-y-1">
+                      {PR_CHANNELS.map((a) => (
+                        <label key={a} className={`flex items-start gap-2.5 py-1 ${locked ? "" : "cursor-pointer"}`}>
+                          {box(prs.includes(a), () => togglePr(a))}
+                          <span className="text-sm text-slate-700">{a}</span>
+                        </label>
+                      ))}
+                      <div className="pt-1">
+                        <Label>อื่น ๆ</Label>
+                        <input className={locked ? readonlyCls : inputCls} readOnly={locked} value={f.pr_channels_other} onChange={(e) => set("pr_channels_other", e.target.value)} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
+          </div>
+
           {error && (
             <div className="flex items-start gap-3 bg-rose-50 border border-rose-100 text-rose-700 rounded-2xl px-4 py-3.5 text-sm">
               <Ico.warn className="w-4 h-4 shrink-0 mt-0.5" /><span className="font-medium">{error}</span>
-            </div>
-          )}
-
-          {/* แบบสอบถาม (ตอบครั้งเดียวตอนสมัคร — ดูได้ แก้ไม่ได้) */}
-          {rawProfile?.survey_done && (
-            <div className="bg-slate-50 rounded-2xl border border-slate-200 p-5 flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-slate-600">แบบสอบถามก่อนสมัคร</p>
-                <p className="text-xs text-slate-400 mt-0.5">PDPA · เคยร่วมกิจกรรม · ประชาสัมพันธ์ (ตอบแล้ว แก้ไขไม่ได้)</p>
-              </div>
-              <button type="button" onClick={() => setShowSurvey(true)}
-                className="shrink-0 text-sm font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-100 px-4 py-2 rounded-xl transition">
-                ดูข้อมูล
-              </button>
             </div>
           )}
 
@@ -422,10 +513,6 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* ดูแบบสอบถาม (อ่านอย่างเดียว) */}
-      {showSurvey && (
-        <SurveyModal mode="readonly" initial={rawProfile} onClose={() => setShowSurvey(false)} />
-      )}
     </div>
   )
 }
