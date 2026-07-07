@@ -246,7 +246,7 @@ function CourseCard({ course, t, onDetail, onRegister }) {
         )}
         {isClosed ? (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
-            <span className="inline-flex items-center gap-1.5 bg-slate-700 text-white text-xs font-bold px-3 py-1 rounded-full"><Ico.lock className="w-3.5 h-3.5" /> ปิดรับสมัคร</span>
+            <span className="inline-flex items-center gap-1.5 bg-slate-700 text-white text-xs font-bold px-3 py-1 rounded-full"><Ico.lock className="w-3.5 h-3.5" /> ยังไม่เปิดรับสมัคร</span>
           </div>
         ) : isFull && (
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-10">
