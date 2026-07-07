@@ -34,9 +34,9 @@ export default function AdminCertificate() {
     fetchCoursesAdmin(event.id).then((d) => setCourses(d || [])).catch(() => {})
     fetchEventSettings(event.id).then((es) => {
       setTemplateUrl(es.cert_template_url || "")
-      setAwards(es.cert_awards?.length ? es.cert_awards : DEFAULT_AWARDS)
+      setAwards((Array.isArray(es.cert_awards) && es.cert_awards.length) ? es.cert_awards : DEFAULT_AWARDS)
       setFields(es.cert_fields || DEFAULT_CERT_FIELDS)
-      setDefaultAward((es.cert_awards?.length ? es.cert_awards : DEFAULT_AWARDS)[0] || "")
+      setDefaultAward(((Array.isArray(es.cert_awards) && es.cert_awards.length) ? es.cert_awards : DEFAULT_AWARDS)[0] || "")
     }).catch(() => {})
   }, [event?.id])
 
@@ -118,14 +118,14 @@ export default function AdminCertificate() {
             <select value={courseId} onChange={(e) => loadRecipients(e.target.value)}
               className="w-full px-3 py-2.5 border border-slate-200 rounded-xl outline-none focus:border-[#F15A24] focus:ring-1 focus:ring-[#F15A24] text-sm bg-white">
               <option value="">— เลือกคอร์ส —</option>
-              {courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+              {(Array.isArray(courses)?courses:[]).map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
             </select>
           </div>
           <div>
             <label className="text-xs font-bold text-slate-500 block mb-1.5">รางวัลเริ่มต้น (ทั้งคอร์ส)</label>
             <select value={defaultAward} onChange={(e) => applyDefaultAward(e.target.value)} disabled={recipients.length === 0}
               className="w-full px-3 py-2.5 border border-slate-200 rounded-xl outline-none focus:border-[#F15A24] focus:ring-1 focus:ring-[#F15A24] text-sm bg-white disabled:opacity-50">
-              {awards.map((a) => <option key={a} value={a}>{a}</option>)}
+              {(Array.isArray(awards)?awards:[]).map((a) => <option key={a} value={a}>{a}</option>)}
             </select>
           </div>
         </div>
@@ -162,7 +162,7 @@ export default function AdminCertificate() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {recipients.map((r, i) => (
+                {(Array.isArray(recipients)?recipients:[]).map((r, i) => (
                   <tr key={r.participant_id} className="hover:bg-orange-50/40 transition">
                     <td className="px-4 py-2.5 text-center text-slate-300 font-bold">{i + 1}</td>
                     <td className="px-4 py-2.5 font-medium text-slate-800">{r.full_name}</td>
@@ -170,7 +170,7 @@ export default function AdminCertificate() {
                     <td className="px-4 py-2.5">
                       <select value={r.award} onChange={(e) => setOneAward(r.participant_id, e.target.value)}
                         className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-white outline-none focus:border-[#F15A24] focus:ring-1 focus:ring-[#F15A24]">
-                        {awards.map((a) => <option key={a} value={a}>{a}</option>)}
+                        {(Array.isArray(awards)?awards:[]).map((a) => <option key={a} value={a}>{a}</option>)}
                       </select>
                     </td>
                     <td className="px-4 py-2.5 text-center">
