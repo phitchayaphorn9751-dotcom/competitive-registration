@@ -294,21 +294,30 @@ export default function RegisterPage() {
 
   // ── หน้าผลลัพธ์หลังกันที่นั่ง ──
   if (result) {
-    if (result.isWaitlist) return <ResultScreen iconKey="list" color="slate" title={t("reg.waitlistTitle")} msg={t("reg.waitlistMsg")} t={t} navigate={navigate} />
+    if (result.isWaitlist) return <ResultScreen iconKey="list" color="slate"
+      title="สมัครเรียบร้อย อยู่ในรายชื่อสำรอง"
+      msg="ที่นั่งเต็ม ระบบได้เพิ่มคุณในรายชื่อสำรองแล้ว — หากมีที่ว่างจะเลื่อนให้อัตโนมัติ เมื่อดำเนินการสำเร็จ คุณจะได้รับ QR Code เข้ากลุ่มไลน์ และ Barcode ประจำการสมัครสำหรับเช็คอิน · ติดตามสถานะได้ที่ 'ใบสมัครของฉัน'"
+      t={t} navigate={navigate} />
     if (result.requiresPayment) return <PaymentScreen course={course} regId={result.regId} t={t} navigate={navigate} />
     // ฟรี + แนบผลงาน → รอแอดมินอนุมัติ
     if (result.hasPortfolio || result.status === "submitted")
-      return <ResultScreen iconKey="clock" color="orange" title="ส่งใบสมัครแล้ว รอการอนุมัติ" msg="ใบสมัครของคุณถูกส่งให้แอดมินพิจารณาผลงานแล้ว เมื่อได้รับอนุมัติจะกันที่นั่งให้ — ติดตามสถานะได้ที่ 'ใบสมัครของฉัน'" t={t} navigate={navigate} />
+      return <ResultScreen iconKey="clock" color="orange"
+        title="สมัครเรียบร้อย รอดำเนินการ"
+        msg="ระบบได้รับใบสมัครและผลงานของคุณแล้ว อยู่ระหว่างพิจารณา — เมื่อดำเนินการสำเร็จ คุณจะได้รับ QR Code เข้ากลุ่มไลน์ และ Barcode ประจำการสมัครสำหรับเช็คอิน · ติดตามสถานะได้ที่ 'ใบสมัครของฉัน'"
+        t={t} navigate={navigate} />
     // ฟรี + ไม่แนบผลงาน → ยืนยัน/กันที่นั่งเลย
-    return <ResultScreen iconKey="check" color="emerald" title={t("reg.successFreeTitle")} msg={t("reg.successFreeMsg")} t={t} navigate={navigate} />
+    return <ResultScreen iconKey="check" color="emerald"
+      title="สมัครเรียบร้อย รอดำเนินการ"
+      msg="ระบบได้รับใบสมัครของคุณแล้ว อยู่ระหว่างดำเนินการ — เมื่อดำเนินการสำเร็จ คุณจะได้รับ QR Code เข้ากลุ่มไลน์ และ Barcode ประจำการสมัครสำหรับเช็คอิน · ติดตามสถานะได้ที่ 'ใบสมัครของฉัน'"
+      t={t} navigate={navigate} />
   }
 
   // ── โหมดสมัครผ่านลิงก์นอก ──
   const isExternalCourse = !!(course.external_url && course.external_url.trim())
   if (isExternalCourse) {
     if (extDone) {
-      return <ResultScreen iconKey="clock" color="orange" title="บันทึกการสมัครแล้ว รอพิจารณา"
-        msg="ระบบบันทึกว่าคุณสมัครคอร์สนี้แล้ว สถานะ 'รอพิจารณา' — เมื่อเจ้าหน้าที่ตรวจสอบรายชื่อจากระบบที่คุณสมัครแล้ว จะเปลี่ยนเป็น 'ยืนยันแล้ว' · ติดตามได้ที่ 'ใบสมัครของฉัน'"
+      return <ResultScreen iconKey="clock" color="orange" title="สมัครเรียบร้อย รอดำเนินการ"
+        msg="ระบบบันทึกว่าคุณสมัครคอร์สนี้แล้ว อยู่ระหว่างตรวจสอบรายชื่อ — เมื่อดำเนินการสำเร็จ คุณจะได้รับ QR Code เข้ากลุ่มไลน์ และ Barcode ประจำการสมัครสำหรับเช็คอิน · ติดตามสถานะได้ที่ 'ใบสมัครของฉัน'"
         t={t} navigate={navigate} />
     }
     return (
@@ -686,7 +695,10 @@ export function PaymentScreen({ course, regId, t, navigate, deadline, isRejected
     finally { setUploading(false) }
   }
 
-  if (done) return <ResultScreen iconKey="check" color="emerald" title={t("pay.successTitle")} msg={t("pay.successWait")} t={t} navigate={navigate} />
+  if (done) return <ResultScreen iconKey="check" color="emerald"
+    title="ส่งสลิปเรียบร้อย รอดำเนินการ"
+    msg="ระบบได้รับสลิปการชำระเงินแล้ว อยู่ระหว่างตรวจสอบ — เมื่อดำเนินการสำเร็จ คุณจะได้รับ QR Code เข้ากลุ่มไลน์ และ Barcode ประจำการสมัครสำหรับเช็คอิน · ติดตามสถานะได้ที่ 'ใบสมัครของฉัน'"
+    t={t} navigate={navigate} />
 
   return (
     <div className="min-h-screen bg-slate-50 py-6 px-4">
