@@ -296,19 +296,19 @@ export default function RegisterPage() {
   if (result) {
     if (result.isWaitlist) return <ResultScreen iconKey="list" color="slate"
       title="สมัครเรียบร้อย อยู่ในรายชื่อสำรอง"
-      msg="ที่นั่งเต็ม ระบบได้เพิ่มคุณในรายชื่อสำรองแล้ว — หากมีที่ว่างจะเลื่อนให้อัตโนมัติ เมื่อดำเนินการสำเร็จ คุณจะได้รับ QR Code เข้ากลุ่มไลน์ และ Barcode ประจำการสมัครสำหรับเช็คอิน · ติดตามสถานะได้ที่ 'ใบสมัครของฉัน'"
+      msg={<SuccessMsg />}
       t={t} navigate={navigate} />
     if (result.requiresPayment) return <PaymentScreen course={course} regId={result.regId} t={t} navigate={navigate} />
     // ฟรี + แนบผลงาน → รอแอดมินอนุมัติ
     if (result.hasPortfolio || result.status === "submitted")
       return <ResultScreen iconKey="clock" color="orange"
         title="สมัครเรียบร้อย รอดำเนินการ"
-        msg="ระบบได้รับใบสมัครและผลงานของคุณแล้ว อยู่ระหว่างพิจารณา — เมื่อดำเนินการสำเร็จ คุณจะได้รับ QR Code เข้ากลุ่มไลน์ และ Barcode ประจำการสมัครสำหรับเช็คอิน · ติดตามสถานะได้ที่ 'ใบสมัครของฉัน'"
+        msg={<SuccessMsg />}
         t={t} navigate={navigate} />
     // ฟรี + ไม่แนบผลงาน → ยืนยัน/กันที่นั่งเลย
     return <ResultScreen iconKey="check" color="emerald"
       title="สมัครเรียบร้อย รอดำเนินการ"
-      msg="ระบบได้รับใบสมัครของคุณแล้ว อยู่ระหว่างดำเนินการ — เมื่อดำเนินการสำเร็จ คุณจะได้รับ QR Code เข้ากลุ่มไลน์ และ Barcode ประจำการสมัครสำหรับเช็คอิน · ติดตามสถานะได้ที่ 'ใบสมัครของฉัน'"
+      msg={<SuccessMsg />}
       t={t} navigate={navigate} />
   }
 
@@ -317,7 +317,7 @@ export default function RegisterPage() {
   if (isExternalCourse) {
     if (extDone) {
       return <ResultScreen iconKey="clock" color="orange" title="สมัครเรียบร้อย รอดำเนินการ"
-        msg="ระบบบันทึกว่าคุณสมัครคอร์สนี้แล้ว อยู่ระหว่างตรวจสอบรายชื่อ — เมื่อดำเนินการสำเร็จ คุณจะได้รับ QR Code เข้ากลุ่มไลน์ และ Barcode ประจำการสมัครสำหรับเช็คอิน · ติดตามสถานะได้ที่ 'ใบสมัครของฉัน'"
+        msg={<SuccessMsg />}
         t={t} navigate={navigate} />
     }
     return (
@@ -697,7 +697,7 @@ export function PaymentScreen({ course, regId, t, navigate, deadline, isRejected
 
   if (done) return <ResultScreen iconKey="check" color="emerald"
     title="ส่งสลิปเรียบร้อย รอดำเนินการ"
-    msg="ระบบได้รับสลิปการชำระเงินแล้ว อยู่ระหว่างตรวจสอบ — เมื่อดำเนินการสำเร็จ คุณจะได้รับ QR Code เข้ากลุ่มไลน์ และ Barcode ประจำการสมัครสำหรับเช็คอิน · ติดตามสถานะได้ที่ 'ใบสมัครของฉัน'"
+    msg={<SuccessMsg />}
     t={t} navigate={navigate} />
 
   return (
@@ -810,12 +810,21 @@ function ResultScreen({ iconKey, color, title, msg, t, navigate }) {
           <Icon className="w-9 h-9" />
         </div>
         <h3 className="text-2xl font-extrabold text-slate-800 mb-2">{title}</h3>
-        <p className="text-slate-500 text-sm mb-6">{msg}</p>
+        <div className="text-slate-500 text-sm mb-6">{msg}</div>
         <button onClick={() => navigate("/")} className="w-full bg-[#F15A24] hover:bg-[#c44215] text-white py-3.5 rounded-xl font-bold shadow-md shadow-orange-500/20 transition text-sm">
           {t("pay.backHome")}
         </button>
       </div>
     </div>
+  )
+}
+
+// ข้อความสำเร็จมาตรฐาน — เน้นส่วน QR/Barcode ให้เด่น
+function SuccessMsg() {
+  return (
+    <>
+      เมื่อดำเนินการสำเร็จ <span className="font-bold text-[#F15A24]">คุณจะได้รับ QR Code เข้ากลุ่มไลน์ และ Barcode ประจำการสมัครสำหรับเช็คอิน</span> · ติดตามสถานะได้ที่ 'ใบสมัครของฉัน'
+    </>
   )
 }
 

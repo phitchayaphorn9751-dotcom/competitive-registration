@@ -169,6 +169,18 @@ export default function MyRegistrationPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 mt-5 sm:mt-6">
         {error && <div className="bg-rose-50 border border-rose-100 text-rose-700 rounded-2xl p-4 mb-6 text-sm">{error}</div>}
 
+        {/* แบนเนอร์ประกาศ — แจ้งเรื่อง QR + Barcode (แสดงเมื่อมีรายการ) */}
+        {regs.length > 0 && (
+          <div className="bg-orange-50 border border-orange-100 rounded-2xl px-4 py-3.5 mb-5 flex items-start gap-3">
+            <span className="w-9 h-9 bg-gradient-to-br from-[#F15A24] to-amber-500 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
+              <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+            </span>
+            <p className="text-sm text-slate-700 leading-relaxed pt-0.5">
+              เมื่อดำเนินการสำเร็จ <span className="font-bold text-[#F15A24]">คุณจะได้รับ QR Code เข้ากลุ่มไลน์ และ Barcode ประจำการสมัครสำหรับเช็คอิน</span>
+            </p>
+          </div>
+        )}
+
         {regs.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-2xl shadow-sm border border-slate-100">
             <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mx-auto mb-4">
@@ -406,6 +418,14 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
                   <img src={reg.line_qr_url} alt="Line QR" className="h-40 w-auto object-contain" />
                 </div>
               </div>
+            )}
+
+            {/* ปุ่มดูบาร์โค้ด (เจ้าของใบ) — เปิด popup ย่อยที่มีรหัส + บาร์โค้ด */}
+            {isConfirmed && code && (
+              <button onClick={() => setBarcodeMember({ participant_code: code, full_name: reg.course_title || "ผู้สมัคร" })}
+                className="w-full mb-3 flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 active:scale-[0.98] text-white font-semibold text-sm py-3 rounded-xl shadow-md transition">
+                <Ico.barcode className="w-4 h-4" style={{ color: "#fb923c" }} /> ดูบาร์โค้ดสำหรับเช็คอิน
+              </button>
             )}
 
             <Row label="รูปแบบการสมัคร" value={reg.count_mode === "team" ? "👥 ทีม" : reg.count_mode === "pair" ? "👯 คู่" : "👤 เดี่ยว"} />
