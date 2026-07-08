@@ -220,7 +220,7 @@ export default function MyRegistrationPage() {
                         </span>
                         <h3 className="font-semibold text-slate-800 text-sm sm:text-[15px] leading-snug flex items-start gap-2 flex-wrap">
                           <span className="flex-1 min-w-0">{reg.course_title}</span>
-                          {reg.is_team_member && <span className="text-[10px] font-bold bg-orange-50 text-[#F15A24] border border-orange-200 px-2 py-0.5 rounded-full shrink-0">👥 เพื่อนสมัครให้</span>}
+                          {reg.is_team_member && <span className="text-[10px] font-bold bg-orange-50 text-[#F15A24] border border-orange-200 px-2 py-0.5 rounded-full shrink-0 inline-flex items-center gap-1"><Ico.users className="w-2.5 h-2.5" /> เพื่อนสมัครให้</span>}
                         </h3>
                       </div>
 
@@ -411,7 +411,7 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
               <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 mb-3 flex flex-col items-center">
                 <p className="text-sm font-bold text-emerald-700 mb-1 flex items-center gap-1.5">
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 5.94 2 10.8c0 4.36 3.6 8.01 8.47 8.7.33.07.78.22.89.5.1.26.07.66.03.92l-.14.87c-.04.26-.2 1.02.89.56 1.1-.46 5.9-3.48 8.05-5.95C21.6 14.7 22 12.85 22 10.8 22 5.94 17.52 2 12 2z"/></svg>
-                  เข้ากลุ่มไลน์ของคอร์ส
+                  เข้ากลุ่มไลน์
                 </p>
                 <p className="text-emerald-600 text-[11px] mb-3 text-center">สแกนเพื่อรับข่าวสาร/ประกาศจากผู้จัด</p>
                 <div className="bg-white p-3 rounded-2xl shadow-sm border border-emerald-200">
@@ -428,17 +428,24 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
               </button>
             )}
 
-            <Row label="รูปแบบการสมัคร" value={reg.count_mode === "team" ? "👥 ทีม" : reg.count_mode === "pair" ? "👯 คู่" : "👤 เดี่ยว"} />
+            <Row label="รูปแบบการสมัคร" value={reg.count_mode === "team" ? "ทีม" : reg.count_mode === "pair" ? "คู่" : "เดี่ยว"} />
             <Row label="วันที่สมัคร" value={fmtDate(reg.created_at)} />
 
             {/* ชื่อทีม/ธีม + สมาชิก (แต่ละคนมีบาร์โค้ดของตัวเอง) */}
             {(reg.theme_name || members.length > 0) && (
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 my-2">
                 {reg.theme_name && (
-                  <p className="text-sm mb-2.5"><span className="text-xs font-bold text-[#F15A24]">🎯 ชื่อทีม/ธีม:</span> <span className="font-bold text-slate-700">{reg.theme_name}</span></p>
+                  <p className="text-sm mb-2.5 flex items-center gap-1.5">
+                    <Ico.tag className="w-3.5 h-3.5 text-[#F15A24] shrink-0" />
+                    <span className="text-xs font-bold text-[#F15A24]">ชื่อทีม/ธีม:</span>
+                    <span className="font-bold text-slate-700">{reg.theme_name}</span>
+                  </p>
                 )}
                 {members.length > 0 && (
-                  <p className="text-xs font-bold text-slate-500 mb-2">👥 {reg.count_mode === "team" ? "สมาชิกในทีม" : "ผู้สมัคร"} ({members.length} คน)</p>
+                  <p className="text-xs font-bold text-slate-500 mb-2 flex items-center gap-1.5">
+                    <Ico.users className="w-3.5 h-3.5 shrink-0" />
+                    {reg.count_mode === "team" ? "สมาชิกในทีม" : "ผู้สมัคร"} ({members.length} คน)
+                  </p>
                 )}
                 <div className="space-y-2">
                   {members.map((m, i) => (
@@ -448,9 +455,9 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
                         <span className="font-bold text-slate-700 text-sm flex-1 min-w-0 truncate">{m.full_name}</span>
                         {m.participant_code && <span className="font-mono text-[10px] text-[#F15A24] bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded shrink-0">{m.participant_code}</span>}
                       </div>
-                      <div className="ml-7 space-y-0.5 mb-1.5">
-                        {m.email && <p className="text-[11px] text-slate-500 truncate">✉️ {m.email}</p>}
-                        {m.phone && <p className="text-[11px] text-slate-500">📞 {m.phone}</p>}
+                      <div className="ml-7 space-y-1 mb-1.5">
+                        {m.email && <p className="text-[11px] text-slate-500 truncate flex items-center gap-1.5"><Ico.mail className="w-3 h-3 shrink-0 text-slate-400" /> {m.email}</p>}
+                        {m.phone && <p className="text-[11px] text-slate-500 flex items-center gap-1.5"><Ico.phone className="w-3 h-3 shrink-0 text-slate-400" /> {m.phone}</p>}
                       </div>
                       {isConfirmed && m.participant_code && (
                         <div className="ml-7">
@@ -469,10 +476,10 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
             {/* ครูที่ปรึกษา */}
             {reg.advisor_name && (
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 my-2">
-                <p className="text-xs font-bold text-[#F15A24] mb-1">👨‍🏫 ครูที่ปรึกษา</p>
+                <p className="text-xs font-bold text-[#F15A24] mb-1 flex items-center gap-1.5"><Ico.cap className="w-3.5 h-3.5 shrink-0" /> ครูที่ปรึกษา</p>
                 <p className="text-sm text-slate-700 font-bold">{reg.advisor_name}</p>
-                {reg.advisor_phone && <p className="text-xs text-slate-500">📞 {reg.advisor_phone}</p>}
-                {reg.advisor_email && <p className="text-xs text-slate-500">✉️ {reg.advisor_email}</p>}
+                {reg.advisor_phone && <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5"><Ico.phone className="w-3 h-3 shrink-0 text-slate-400" /> {reg.advisor_phone}</p>}
+                {reg.advisor_email && <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5"><Ico.mail className="w-3 h-3 shrink-0 text-slate-400" /> {reg.advisor_email}</p>}
               </div>
             )}
 
@@ -510,9 +517,6 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
           )}
           {d === "rejected" && isPaid && (
             <button onClick={() => navigate(`/pay/${reg.id}`)} className="flex-1 bg-[#F15A24] text-white py-3 rounded-xl font-semibold text-sm hover:bg-orange-600 transition flex items-center justify-center gap-2"><Ico.upload className="w-4 h-4" />ส่งสลิปใหม่</button>
-          )}
-          {isConfirmed && code && (
-            <button onClick={() => setShowBarcode(true)} className="flex-1 bg-slate-900 hover:bg-slate-800 text-white py-3 rounded-xl font-semibold text-sm transition flex items-center justify-center gap-2"><Ico.barcode className="w-4 h-4" style={{ color: "#fb923c" }} /> ดูบาร์โค้ด</button>
           )}
           <button onClick={onClose} className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-semibold text-sm hover:bg-slate-200 transition">ปิด</button>
         </div>
