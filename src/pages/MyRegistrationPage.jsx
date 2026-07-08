@@ -459,8 +459,8 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
                       {isConfirmed && m.participant_code && (
                         <div style={{ paddingLeft: "2.375rem" }}>
                           <button onClick={() => setBarcodeMember(m)}
-                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 active:scale-95 px-3 py-1.5 rounded-lg transition">
-                            <Ico.barcode className="w-3.5 h-3.5" style={{ color: "#F15A24" }} /> ดูบาร์โค้ด
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 active:scale-95 px-3 py-1.5 rounded-lg shadow-md shadow-slate-900/10 transition">
+                            <Ico.barcode className="w-3.5 h-3.5" style={{ color: "#fb923c" }} /> ดูบาร์โค้ด
                           </button>
                         </div>
                       )}
@@ -472,11 +472,22 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
 
             {/* ครูที่ปรึกษา */}
             {reg.advisor_name && (
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 my-2">
-                <p className="text-xs font-bold text-[#F15A24] mb-1 flex items-center gap-1.5"><Ico.cap className="w-3.5 h-3.5 shrink-0" /> ครูที่ปรึกษา</p>
-                <p className="text-sm text-slate-700 font-bold">{reg.advisor_name}</p>
-                {reg.advisor_phone && <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5"><Ico.phone className="w-3 h-3 shrink-0 text-slate-400" /> {reg.advisor_phone}</p>}
-                {reg.advisor_email && <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-0.5"><Ico.mail className="w-3 h-3 shrink-0 text-slate-400" /> {reg.advisor_email}</p>}
+              <div className="bg-gradient-to-br from-orange-50/60 to-amber-50/40 border border-orange-100 rounded-2xl p-4 my-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#F15A24] to-amber-500 flex items-center justify-center shrink-0 shadow-sm">
+                    <Ico.cap className="w-4 h-4 text-white" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold text-[#F15A24] uppercase tracking-wide">ครูที่ปรึกษา</p>
+                    <p className="font-bold text-slate-800 text-sm truncate">{reg.advisor_name}</p>
+                  </div>
+                </div>
+                {(reg.advisor_phone || reg.advisor_email) && (
+                  <div className="mt-2.5 pt-2.5 border-t border-orange-100 space-y-1" style={{ paddingLeft: "2.625rem" }}>
+                    {reg.advisor_phone && <p className="text-[11px] text-slate-500 flex items-center gap-1.5"><Ico.phone className="w-3 h-3 shrink-0 text-slate-400" /> {reg.advisor_phone}</p>}
+                    {reg.advisor_email && <p className="text-[11px] text-slate-500 truncate flex items-center gap-1.5"><Ico.mail className="w-3 h-3 shrink-0 text-slate-400" /> {reg.advisor_email}</p>}
+                  </div>
+                )}
               </div>
             )}
 
