@@ -959,24 +959,15 @@ export async function uploadCertificateTemplate(file) {
 // บันทึกว่า registration นี้เลือกรอบไหน + เพิ่ม taken ของรอบนั้น
 // เรียกหลัง holdSeat สำเร็จ (ถ้าคอร์สมีรอบ)
 export async function assignSession(courseId, registrationId, sessionId, seats) {
-  // 1. บันทึก session_id ลง registration
-  const { error: e1 } = await supabase
-    .from("registrations")
-    .update({ session_id: sessionId })
-    .eq("id", registrationId)
-  if (e1) throw e1
-
-  // 2. เพิ่ม taken ของรอบใน courses.sessions (read-modify-write)
-  const { data: course, error: e2 } = await supabase
-    .from("courses").select("sessions").eq("id", courseId).single()
-  if (e2) throw e2
-  const sessions = (course?.sessions || []).map((s) =>
-    s.id === sessionId ? { ...s, taken: (s.taken || 0) + seats } : s
-  )
-  const { error: e3 } = await supabase
-    .from("courses").update({ sessions }).eq("id", courseId)
-  if (e3) throw e3
-  return sessions
+  // ใช้ RPC (SECURITY DEFINER) ข้าม RLS — user update registrations/courses ตรงๆ ไม่ได้
+  const { data, error } = await supabase.rpc("assign_session", {
+    p_course_id: courseId,
+    p_registration_id: registrationId,
+    p_session_id: sessionId,
+    p_seats: seats,
+  })
+  if (error) throw error
+  return data
 }
 
 // ดึง sessions ล่าสุดของคอร์ส (เช็คโควตารอบก่อนสมัคร)

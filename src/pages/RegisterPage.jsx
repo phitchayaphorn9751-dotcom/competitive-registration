@@ -191,9 +191,14 @@ export default function RegisterPage() {
       // กันที่นั่งตามจำนวนสมาชิกจริง (ทีม 3 คน = กัน 3 ที่นั่ง)
       const regId = await holdSeat(courseId, email.trim(), teamCount)
 
-      // ถ้าคอร์สมีรอบ — บันทึกรอบที่เลือก + เพิ่ม taken ของรอบนั้น (fail ไม่ล้มการสมัคร)
+      // ถ้าคอร์สมีรอบ — บันทึกรอบที่เลือก + เพิ่ม taken ของรอบนั้น
       if (hasSessions && selectedSession) {
-        try { await assignSession(courseId, regId, selectedSession, teamCount) } catch (_) {}
+        try {
+          await assignSession(courseId, regId, selectedSession, teamCount)
+        } catch (err) {
+          console.error("assignSession failed:", err)
+          // ไม่ล้มการสมัคร แต่ log ไว้ดู (session_id สำคัญต่อการเช็คเวลาชน)
+        }
       }
 
       // ผู้สมัครคนแรก = เจ้าของ profile
