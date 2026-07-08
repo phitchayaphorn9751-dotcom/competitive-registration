@@ -523,21 +523,20 @@ function UserImportSection() {
     setFileName(file.name); setResult(null)
     try {
       const ext = file.name.split(".").pop().toLowerCase()
-      let parsedRows = []
-      if (ext === "csv") {
-        const Papa = (await import("papaparse")).default
-        const text = await file.text()
-        const res = Papa.parse(text, { header: true, skipEmptyLines: true })
-        parsedRows = res.data
-      } else if (ext === "xlsx" || ext === "xls") {
-        const XLSX = await import("xlsx")
-        const buf = await file.arrayBuffer()
-        const wb = XLSX.read(buf, { type: "array" })
-        const ws = wb.Sheets[wb.SheetNames[0]]
-        parsedRows = XLSX.utils.sheet_to_json(ws, { defval: "" })
-      } else {
-        toast("รองรับเฉพาะ .csv, .xlsx", "error"); return
+      if (ext !== "csv") {
+        toast("รองรับเฉพาะไฟล์ .csv — ถ้าเป็น Excel ให้ Save As เป็น CSV ก่อน", "error"); return
       }
+      // อ่าน CSV ด้วย parser ในไฟล์ (splitLine) — ไม่พึ่ง library
+      const text = await file.text()
+      const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n").filter((l) => l.trim() !== "")
+      if (lines.length < 2) { toast("ไฟล์ว่างหรือไม่มีข้อมูล", "error"); return }
+      const headers = splitLine(lines[0])
+      const parsedRows = lines.slice(1).map((line) => {
+        const vals = splitLine(line)
+        const obj = {}
+        headers.forEach((h, i) => { obj[h] = vals[i] || "" })
+        return obj
+      })
       // แปลงหัวคอลัมน์ → field
       const out = parsedRows.map((r) => {
         const obj = {}
@@ -577,7 +576,7 @@ function UserImportSection() {
         <span className="w-6 h-6 rounded-lg bg-violet-500 text-white flex items-center justify-center shrink-0"><Ico.users className="w-3.5 h-3.5" /></span>
         <div>
           <h2 className="text-sm font-bold text-slate-700">นำเข้าข้อมูล User (โปรไฟล์ล่วงหน้า)</h2>
-          <p className="text-[11px] text-slate-400">อัปโหลดข้อมูลจาก Google Form (CSV/Excel) — user กด Google login ด้วยอีเมลนั้น จะได้โปรไฟล์อัตโนมัติ</p>
+          <p className="text-[11px] text-slate-400">อัปโหลดข้อมูลจาก Google Form (CSV) — user กด Google login ด้วยอีเมลนั้น จะได้โปรไฟล์อัตโนมัติ</p>
         </div>
       </div>
 
@@ -589,8 +588,8 @@ function UserImportSection() {
       {/* อัปโหลด */}
       <label className="cursor-pointer flex items-center justify-center gap-2 border-2 border-dashed border-slate-200 hover:border-violet-400 hover:bg-violet-50/40 rounded-xl px-4 py-6 transition">
         <Ico.upload className="w-5 h-5 text-slate-400" />
-        <span className="text-sm font-bold text-slate-600">{fileName || "คลิกเพื่ออัปโหลด CSV / Excel"}</span>
-        <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFile} className="hidden" />
+        <span className="text-sm font-bold text-slate-600">{fileName || "คลิกเพื่ออัปโหลด CSV"}</span>
+        <input type="file" accept=".csv" onChange={handleFile} className="hidden" />
       </label>
 
       {/* preview + ปุ่ม import */}
