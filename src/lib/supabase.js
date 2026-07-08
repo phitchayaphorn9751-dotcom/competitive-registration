@@ -286,7 +286,7 @@ export async function signInWithGoogle() {
 // ส่งอีเมลรีเซ็ตรหัสผ่าน
 export async function resetPassword(email) {
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin + "/login",
+    redirectTo: window.location.origin + "/reset-password",
   })
   if (error) throw error
 }
@@ -1023,5 +1023,11 @@ export async function publishCertificates(participantIds) {
 // บันทึกแบบสอบถาม (PDPA + เคยร่วมกิจกรรม + ประชาสัมพันธ์) — ตอบครั้งเดียว
 export async function saveSurvey(survey) {
   const { error } = await supabase.rpc("save_survey", { p: survey })
+  if (error) throw error
+}
+
+// ตั้งรหัสผ่านใหม่ (หลังกดลิงก์รีเซ็ตจากอีเมล)
+export async function updatePassword(newPassword) {
+  const { error } = await supabase.auth.updateUser({ password: newPassword })
   if (error) throw error
 }

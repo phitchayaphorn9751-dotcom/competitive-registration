@@ -9,6 +9,7 @@ import ProfilePage from "./pages/ProfilePage.jsx"
 import RegisterPage from "./pages/RegisterPage.jsx"
 import PayPage from "./pages/PayPage.jsx"
 import MyRegistrationPage from "./pages/MyRegistrationPage.jsx"
+import ResetPasswordPage from "./pages/ResetPasswordPage.jsx"
 import CheckInPage from "./pages/CheckInPage.jsx"
 
 // Admin
@@ -54,6 +55,7 @@ export default function App() {
       <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/signup" element={<SignUpPage />} />
       <Route path="/profile" element={<ProfilePage />} />
       <Route path="/register/:courseId" element={<RegisterPage />} />
