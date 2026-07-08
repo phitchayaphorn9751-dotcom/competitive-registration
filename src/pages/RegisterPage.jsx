@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react"
 import { useParams, useNavigate, Link } from "react-router-dom"
 import {
-  fetchCourse, fetchMyProfile, getSession, fetchMyRegistrationStatus,
+  fetchCourse, fetchMyProfile, getSession, fetchMyRegistrationStatus, fetchMyRegistrations,
   holdSeat, finalizeRegistration, setPaymentDeadline, fetchRegistrationDeadline, addParticipant, addAdvisor, uploadSlip, attachSlip, savePortfolioUrl,
   checkDuplicateRegistration, assignParticipantCode, assignCodesForRegistration, saveRegistrationTheme, assignSession,
   registerExternal,
@@ -32,6 +32,16 @@ const Ico = {
   list:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>),
 }
 
+// แปลงเวลา session → ช่วง (เช้า/บ่าย) จากเวลาเริ่ม เช่น "09:00-12:00" → เช้า
+function periodOf(time) {
+  if (!time) return ""
+  const m = String(time).match(/(\d{1,2})[:.]?(\d{2})?/)
+  if (!m) return ""
+  const hour = parseInt(m[1], 10)
+  if (isNaN(hour)) return ""
+  return hour < 12 ? "เช้า" : "บ่าย"
+}
+
 export default function RegisterPage() {
   const { courseId } = useParams()
   const navigate = useNavigate()
@@ -50,6 +60,7 @@ export default function RegisterPage() {
   const [portfolioUrl, setPortfolioUrl] = useState("")
   const [themeName, setThemeName] = useState("")        // ชื่อธีม (ข้อ 2.4)
   const [selectedSession, setSelectedSession] = useState("")  // รอบที่เลือก (ถ้าคอร์สมีรอบ)
+  const [myRegs, setMyRegs] = useState([])  // ใบสมัครที่มีอยู่ — เช็คเวลาชน
   const [ownerNationalId, setOwnerNationalId] = useState("")  // เลขบัตรเจ้าของ (ถ้า profile ไม่มี)
 
   // โรงเรียน autocomplete สำหรับสมาชิก
@@ -86,6 +97,8 @@ export default function RegisterPage() {
         setCourse(c)
         setProfile(p)
         setOwnerNationalId(p?.national_id || "")
+        // โหลดใบสมัครที่มีอยู่ (เช็คเวลาชน) — ไม่ให้ fail ทั้งหน้า
+        try { setMyRegs(await fetchMyRegistrations() || []) } catch (_) {}
         // team: เตรียมช่องสมาชิกเพิ่มตามจำนวนขั้นต่ำ (คนแรกคือเจ้าของ profile)
         if (c.count_mode === "team") {
           const minM = c.min_members || c.team_size || 1
@@ -409,7 +422,25 @@ export default function RegisterPage() {
                 const active = selectedSession === s.id
                 return (
                   <button key={s.id} type="button" disabled={full}
-                    onClick={() => setSelectedSession(s.id)}
+                    onClick={() => {
+                      // เช็คเวลาชน: สมัครช่วงเดียวกัน (เช้า/บ่าย) วันเดียวกันไปแล้วหรือยัง
+                      const period = periodOf(s.time)
+                      const startDate = course.start_date || ""
+                      if (period && startDate) {
+                        const clash = myRegs.find((r) =>
+                          r.course_id !== course.id &&
+                          ["submitted", "confirmed", "approved", "pending_payment", "waitlist"].includes(r.status) &&
+                          r.course_start_date === startDate &&
+                          periodOf(r.session_time) === period
+                        )
+                        if (clash) {
+                          setError(`ไม่สามารถสมัครได้ — คุณสมัคร workshop ช่วง${period}ในวันเดียวกันไปแล้ว (${clash.course_title}) เนื่องจากเวลาชนกัน`)
+                          return
+                        }
+                      }
+                      setError(null)
+                      setSelectedSession(s.id)
+                    }}
                     className={`text-left p-4 rounded-2xl border-2 transition ${
                       full ? "border-slate-100 bg-slate-50 opacity-60 cursor-not-allowed"
                       : active ? "border-[#F15A24] bg-orange-50 shadow-sm"
