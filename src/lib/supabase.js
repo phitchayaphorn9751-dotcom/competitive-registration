@@ -1050,3 +1050,59 @@ export async function claimPendingProfile() {
   if (error) return false
   return data === true
 }
+
+// ═══ เฟส 1: นำเข้า user (โปรไฟล์ล่วงหน้า) ═══
+// admin import users (batch) → เก็บลง pending_profiles (match ด้วย email)
+// user กด Google login ด้วย email เดียวกัน → claim_pending_profile() ดึงมาเป็น profile จริง
+// (ไม่ใช้ Edge Function แล้ว — insert ตรงผ่าน RLS ที่อนุญาตเฉพาะ admin)
+export async function importUsersBatch(users) {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error("ยังไม่ได้ login")
+
+  // ฟิลด์ที่ตรงกับตาราง pending_profiles เท่านั้น (กันคอลัมน์แปลกปลอม)
+  const ALLOWED = [
+    "email", "nationality", "national_id", "passport_no", "title",
+    "first_name", "last_name", "nickname", "age", "grade_level", "school",
+    "phone", "line_id", "parent_title", "parent_full_name",
+    "parent_relationship", "parent_phone", "address", "subdistrict",
+    "district", "province", "zipcode", "pdpa_consent",
+  ]
+
+  const rows = []
+  const errors = []
+  const seen = new Set()
+
+  for (const u of users) {
+    const email = String(u.email || "").trim().toLowerCase()
+    if (!email) { errors.push("ไม่มีอีเมล"); continue }
+    if (seen.has(email)) { continue }   // กันซ้ำในไฟล์เดียวกัน
+    seen.add(email)
+
+    const row = {}
+    for (const k of ALLOWED) {
+      if (u[k] !== undefined && u[k] !== "") row[k] = u[k]
+    }
+    row.email = email
+    if (row.age !== undefined) {
+      const n = parseInt(row.age, 10)
+      row.age = Number.isNaN(n) ? null : n
+    }
+    if (row.pdpa_consent !== undefined) {
+      row.pdpa_consent = row.pdpa_consent === true || row.pdpa_consent === "true" || row.pdpa_consent === "1"
+    }
+    rows.push(row)
+  }
+
+  if (rows.length === 0) {
+    return { ok: 0, fail: errors.length, errors }
+  }
+
+  // upsert เข้า pending_profiles (email เป็น primary key → นำเข้าซ้ำได้ทับของเดิม)
+  const { error } = await supabase
+    .from("pending_profiles")
+    .upsert(rows, { onConflict: "email" })
+
+  if (error) throw new Error(error.message)
+
+  return { ok: rows.length, fail: errors.length, errors }
+}
