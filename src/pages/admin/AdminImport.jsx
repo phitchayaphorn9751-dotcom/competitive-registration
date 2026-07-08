@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { useOutletContext } from "react-router-dom"
 import {
   fetchCoursesAdmin, importExternalParticipant, fetchCourseParticipants,
-  deleteImportedParticipant, deleteImportedByCourse, importUserProfile,
+  deleteImportedParticipant, deleteImportedByCourse, importUsersBatch,
 } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
 import { Ico } from "../../lib/icons.jsx"
@@ -559,15 +559,13 @@ function UserImportSection() {
   async function doImport() {
     if (mapped.length === 0) return toast("ยังไม่มีข้อมูล", "error")
     setImporting(true)
-    let ok = 0, fail = 0
-    const errors = []
-    for (const p of mapped) {
-      try { await importUserProfile(p); ok++ }
-      catch (e) { fail++; errors.push(`${p.email}: ${e.message}`) }
-    }
-    setResult({ ok, fail, errors })
-    setImporting(false)
-    toast(`นำเข้าเสร็จ — สำเร็จ ${ok} คน${fail ? ` · ผิดพลาด ${fail}` : ""}`, fail ? "error" : "success")
+    try {
+      const res = await importUsersBatch(mapped)  // สร้าง auth + profiles จริง
+      setResult(res)
+      toast(`นำเข้าเสร็จ — สำเร็จ ${res.ok} คน${res.fail ? ` · ผิดพลาด ${res.fail}` : ""}`, res.fail ? "error" : "success")
+    } catch (e) {
+      toast("นำเข้าไม่สำเร็จ: " + e.message, "error")
+    } finally { setImporting(false) }
   }
 
   return (
@@ -576,7 +574,7 @@ function UserImportSection() {
         <span className="w-6 h-6 rounded-lg bg-violet-500 text-white flex items-center justify-center shrink-0"><Ico.users className="w-3.5 h-3.5" /></span>
         <div>
           <h2 className="text-sm font-bold text-slate-700">นำเข้าข้อมูล User (โปรไฟล์ล่วงหน้า)</h2>
-          <p className="text-[11px] text-slate-400">อัปโหลดข้อมูลจาก Google Form (CSV) — user กด Google login ด้วยอีเมลนั้น จะได้โปรไฟล์อัตโนมัติ</p>
+          <p className="text-[11px] text-slate-400">อัปโหลดข้อมูลจาก Google Form (CSV) — สร้าง account จริง โชว์ในจัดการนักเรียนทันที · user กด Google login เข้าได้เลย</p>
         </div>
       </div>
 
