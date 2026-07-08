@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { useOutletContext } from "react-router-dom"
 import {
   fetchCoursesAdmin, importExternalParticipant, fetchCourseParticipants,
-  deleteImportedParticipant, deleteImportedByCourse,
+  deleteImportedParticipant, deleteImportedByCourse, importUserProfile,
 } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
 import { Ico } from "../../lib/icons.jsx"
@@ -240,6 +240,9 @@ export default function AdminImport() {
         </div>
       </div>
 
+      {/* ═══════ SECTION: นำเข้า USER (โปรไฟล์ล่วงหน้า) ═══════ */}
+      <UserImportSection />
+
       {/* ═══════ SECTION 1: ขั้นตอนการใช้งาน ═══════ */}
       <section className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 sm:p-5">
         <div className="flex items-center gap-2 mb-4">
@@ -464,5 +467,171 @@ export default function AdminImport() {
         )}
       </section>
     </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SECTION: นำเข้า user (โปรไฟล์ล่วงหน้า) — จาก CSV/Excel (Google Form)
+// admin import → pending_profiles → user กด Google login ดึงมาผูก
+// ═══════════════════════════════════════════════════════════════════
+
+// map หัวคอลัมน์ (ไทย/อังกฤษ) → field ในระบบ
+const USER_HEADER_MAP = {
+  // จำเป็น
+  "email": "email", "อีเมล": "email", "gmail": "email", "e-mail": "email",
+  // section 1 ส่วนตัว
+  "คำนำหน้า": "title", "title": "title",
+  "ชื่อ": "first_name", "first_name": "first_name", "firstname": "first_name", "ชื่อจริง": "first_name",
+  "นามสกุล": "last_name", "last_name": "last_name", "lastname": "last_name", "สกุล": "last_name",
+  "ชื่อเล่น": "nickname", "nickname": "nickname",
+  "อายุ": "age", "age": "age",
+  "ระดับชั้น": "grade_level", "grade": "grade_level", "grade_level": "grade_level", "ชั้น": "grade_level",
+  "โรงเรียน": "school", "school": "school",
+  "เบอร์โทร": "phone", "phone": "phone", "เบอร์": "phone", "โทรศัพท์": "phone",
+  "line": "line_id", "line_id": "line_id", "ไลน์": "line_id", "line id": "line_id",
+  "เลขบัตร": "national_id", "national_id": "national_id", "บัตรประชาชน": "national_id", "เลขบัตรประชาชน": "national_id",
+  "passport": "passport_no", "passport_no": "passport_no", "พาสปอร์ต": "passport_no",
+  "สัญชาติ": "nationality", "nationality": "nationality",
+  // section 2 ผู้ปกครอง
+  "คำนำหน้าผู้ปกครอง": "parent_title", "parent_title": "parent_title",
+  "ชื่อผู้ปกครอง": "parent_full_name", "parent_name": "parent_full_name", "parent_full_name": "parent_full_name",
+  "ความสัมพันธ์": "parent_relationship", "parent_relationship": "parent_relationship",
+  "เบอร์ผู้ปกครอง": "parent_phone", "parent_phone": "parent_phone",
+  // section 3 ที่อยู่
+  "ที่อยู่": "address", "address": "address",
+  "ตำบล": "subdistrict", "subdistrict": "subdistrict", "แขวง": "subdistrict",
+  "อำเภอ": "district", "district": "district", "เขต": "district",
+  "จังหวัด": "province", "province": "province",
+  "รหัสไปรษณีย์": "zipcode", "zipcode": "zipcode", "ไปรษณีย์": "zipcode",
+}
+
+function normalizeHeader(h) {
+  return String(h || "").trim().toLowerCase()
+}
+
+function UserImportSection() {
+  const { toast } = useDialog()
+  const [rows, setRows] = useState([])       // แถวดิบจากไฟล์
+  const [mapped, setMapped] = useState([])   // แปลงเป็น profile object แล้ว
+  const [fileName, setFileName] = useState("")
+  const [importing, setImporting] = useState(false)
+  const [result, setResult] = useState(null) // {ok, fail, errors}
+
+  async function handleFile(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setFileName(file.name); setResult(null)
+    try {
+      const ext = file.name.split(".").pop().toLowerCase()
+      let parsedRows = []
+      if (ext === "csv") {
+        const Papa = (await import("papaparse")).default
+        const text = await file.text()
+        const res = Papa.parse(text, { header: true, skipEmptyLines: true })
+        parsedRows = res.data
+      } else if (ext === "xlsx" || ext === "xls") {
+        const XLSX = await import("xlsx")
+        const buf = await file.arrayBuffer()
+        const wb = XLSX.read(buf, { type: "array" })
+        const ws = wb.Sheets[wb.SheetNames[0]]
+        parsedRows = XLSX.utils.sheet_to_json(ws, { defval: "" })
+      } else {
+        toast("รองรับเฉพาะ .csv, .xlsx", "error"); return
+      }
+      // แปลงหัวคอลัมน์ → field
+      const out = parsedRows.map((r) => {
+        const obj = {}
+        for (const [k, v] of Object.entries(r)) {
+          const field = USER_HEADER_MAP[normalizeHeader(k)]
+          if (field) obj[field] = String(v ?? "").trim()
+        }
+        return obj
+      }).filter((o) => o.email)  // ต้องมี email
+
+      setRows(parsedRows)
+      setMapped(out)
+      if (out.length === 0) toast("ไม่พบข้อมูล หรือไม่มีคอลัมน์อีเมล", "error")
+      else toast(`อ่านไฟล์สำเร็จ ${out.length} คน`, "success")
+    } catch (err) {
+      toast("อ่านไฟล์ไม่สำเร็จ: " + err.message, "error")
+    } finally { e.target.value = "" }
+  }
+
+  async function doImport() {
+    if (mapped.length === 0) return toast("ยังไม่มีข้อมูล", "error")
+    setImporting(true)
+    let ok = 0, fail = 0
+    const errors = []
+    for (const p of mapped) {
+      try { await importUserProfile(p); ok++ }
+      catch (e) { fail++; errors.push(`${p.email}: ${e.message}`) }
+    }
+    setResult({ ok, fail, errors })
+    setImporting(false)
+    toast(`นำเข้าเสร็จ — สำเร็จ ${ok} คน${fail ? ` · ผิดพลาด ${fail}` : ""}`, fail ? "error" : "success")
+  }
+
+  return (
+    <section className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 sm:p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="w-6 h-6 rounded-lg bg-violet-500 text-white flex items-center justify-center shrink-0"><Ico.users className="w-3.5 h-3.5" /></span>
+        <div>
+          <h2 className="text-sm font-bold text-slate-700">นำเข้าข้อมูล User (โปรไฟล์ล่วงหน้า)</h2>
+          <p className="text-[11px] text-slate-400">อัปโหลดข้อมูลจาก Google Form (CSV/Excel) — user กด Google login ด้วยอีเมลนั้น จะได้โปรไฟล์อัตโนมัติ</p>
+        </div>
+      </div>
+
+      {/* คำอธิบายคอลัมน์ */}
+      <div className="bg-violet-50/60 border border-violet-100 rounded-xl p-3 mb-3 text-[11px] text-slate-600 leading-relaxed">
+        <span className="font-bold text-violet-700">คอลัมน์ที่รองรับ:</span> ต้องมี <span className="font-bold">อีเมล/email</span> (จำเป็น) · ชื่อ · นามสกุล · ชื่อเล่น · อายุ · ระดับชั้น · โรงเรียน · เบอร์โทร · เลขบัตร · ที่อยู่ · ตำบล · อำเภอ · จังหวัด · รหัสไปรษณีย์ · ชื่อผู้ปกครอง · เบอร์ผู้ปกครอง ฯลฯ (หัวคอลัมน์ไทยหรืออังกฤษก็ได้)
+      </div>
+
+      {/* อัปโหลด */}
+      <label className="cursor-pointer flex items-center justify-center gap-2 border-2 border-dashed border-slate-200 hover:border-violet-400 hover:bg-violet-50/40 rounded-xl px-4 py-6 transition">
+        <Ico.upload className="w-5 h-5 text-slate-400" />
+        <span className="text-sm font-bold text-slate-600">{fileName || "คลิกเพื่ออัปโหลด CSV / Excel"}</span>
+        <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFile} className="hidden" />
+      </label>
+
+      {/* preview + ปุ่ม import */}
+      {mapped.length > 0 && (
+        <div className="mt-3">
+          <p className="text-xs text-slate-500 mb-2">พบ <span className="font-bold text-slate-700">{mapped.length}</span> คน (มีอีเมล) — ตัวอย่าง 3 คนแรก:</p>
+          <div className="overflow-x-auto rounded-xl border border-slate-100 mb-3">
+            <table className="w-full text-xs">
+              <thead className="bg-slate-50 text-slate-500">
+                <tr><th className="px-2 py-1.5 text-left">อีเมล</th><th className="px-2 py-1.5 text-left">ชื่อ</th><th className="px-2 py-1.5 text-left">นามสกุล</th><th className="px-2 py-1.5 text-left">โรงเรียน</th></tr>
+              </thead>
+              <tbody>
+                {mapped.slice(0, 3).map((p, i) => (
+                  <tr key={i} className="border-t border-slate-50">
+                    <td className="px-2 py-1.5 font-mono text-violet-600">{p.email}</td>
+                    <td className="px-2 py-1.5">{p.first_name || "-"}</td>
+                    <td className="px-2 py-1.5">{p.last_name || "-"}</td>
+                    <td className="px-2 py-1.5">{p.school || "-"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <button onClick={doImport} disabled={importing}
+            className="w-full bg-violet-500 hover:bg-violet-600 text-white font-bold py-3 rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2">
+            <Ico.users className="w-4 h-4" /> {importing ? "กำลังนำเข้า…" : `นำเข้า ${mapped.length} คน`}
+          </button>
+        </div>
+      )}
+
+      {/* ผลลัพธ์ */}
+      {result && (
+        <div className={`mt-3 rounded-xl border p-3 text-sm ${result.fail ? "border-amber-200 bg-amber-50" : "border-emerald-200 bg-emerald-50"}`}>
+          <p className="font-bold text-slate-700">นำเข้าสำเร็จ {result.ok} คน{result.fail ? ` · ผิดพลาด ${result.fail} คน` : ""}</p>
+          {result.errors?.length > 0 && (
+            <ul className="mt-1.5 text-[11px] text-rose-600 space-y-0.5 max-h-32 overflow-y-auto">
+              {result.errors.slice(0, 10).map((e, i) => <li key={i}>• {e}</li>)}
+            </ul>
+          )}
+        </div>
+      )}
+    </section>
   )
 }

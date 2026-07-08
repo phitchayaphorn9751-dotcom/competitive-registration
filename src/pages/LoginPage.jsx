@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { useNavigate, Link } from "react-router-dom"
 import {
   signIn, signUp, signInWithGoogle, getSession,
-  isAdminUser, fetchSettings, resetPassword, fetchMyProfile,
+  isAdminUser, fetchSettings, resetPassword, fetchMyProfile, claimPendingProfile,
   fetchOpenEvent, fetchEventSettings,
 } from "../lib/supabase.js"
 import { useLang, LangToggle } from "../lib/i18n.jsx"
@@ -98,7 +98,7 @@ export default function LoginPage() {
         </div>
         <div className="relative z-10 flex-1 flex flex-col justify-center text-white">
           <h1 className="text-4xl lg:text-5xl xl:text-6xl font-extrabold tracking-tight leading-[1.1] mb-6">
-            {siteTitle || " "}
+            {siteTitle || "CAMT SUMMER COURSE 2026"}
           </h1>
           <p className="text-lg text-orange-100/90 font-medium max-w-md leading-relaxed">{heroSub || t("login.heroSub")}</p>
         </div>
@@ -218,7 +218,16 @@ function ResetModal({ onClose, t }) {
     if (!resetEmail) { toast(t("login.resetEmailLabel"), "error"); return }
     setSending(true)
     try { await resetPassword(resetEmail); setResetSent(true) }
-    catch (e) { toast("เกิดข้อผิดพลาด: " + e.message, "error") }
+    catch (e) {
+      const msg = (e.message || "").toLowerCase()
+      if (msg.includes("rate limit") || msg.includes("too many") || msg.includes("429") || msg.includes("security purposes")) {
+        toast("ส่งอีเมลบ่อยเกินไป กรุณารอสักครู่ (ประมาณ 1 นาที) แล้วลองใหม่", "error")
+      } else if (msg.includes("not found") || msg.includes("invalid")) {
+        toast("ไม่พบอีเมลนี้ในระบบ กรุณาตรวจสอบอีกครั้ง", "error")
+      } else {
+        toast("ส่งอีเมลไม่สำเร็จ: " + e.message, "error")
+      }
+    }
     finally { setSending(false) }
   }
 
@@ -283,6 +292,8 @@ function Spinner() {
 // หลัง login: admin → panel, อีเมลอื่น → หน้าลงทะเบียน
 export async function routeAfterAuth(navigate) {
   if (await isAdminUser()) { navigate("/admin/dashboard"); return }
+  // เฟส 1: เช็คว่ามีโปรไฟล์ที่ admin import ไว้ล่วงหน้าไหม (ผูกด้วย email) → ดึงมาผูก
+  try { await claimPendingProfile() } catch (_) {}
   try {
     const p = await fetchMyProfile()
     if (p && p.is_complete) { navigate("/"); return }

@@ -1022,3 +1022,18 @@ export async function updatePassword(newPassword) {
   const { error } = await supabase.auth.updateUser({ password: newPassword })
   if (error) throw error
 }
+
+// ═══ เฟส 1: นำเข้า user (โปรไฟล์ล่วงหน้า) ═══
+// admin import โปรไฟล์ 1 คน (เรียกวนตอน import หลายคน)
+export async function importUserProfile(profile) {
+  const { data, error } = await supabase.rpc("import_user_profile", { p: profile })
+  if (error) throw error
+  return data
+}
+
+// user เรียกหลัง login ครั้งแรก — ดึง pending profile มาผูก (ถ้ามี)
+export async function claimPendingProfile() {
+  const { data, error } = await supabase.rpc("claim_pending_profile")
+  if (error) return false
+  return data === true
+}
