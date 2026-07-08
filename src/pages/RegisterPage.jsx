@@ -811,8 +811,8 @@ function ResultScreen({ iconKey, color, title, msg, t, navigate }) {
         </div>
         <h3 className="text-2xl font-extrabold text-slate-800 mb-2">{title}</h3>
         <div className="text-slate-500 text-sm mb-6">{msg}</div>
-        <button onClick={() => navigate("/")} className="w-full bg-[#F15A24] hover:bg-[#c44215] text-white py-3.5 rounded-xl font-bold shadow-md shadow-orange-500/20 transition text-sm">
-          {t("pay.backHome")}
+        <button onClick={() => navigate("/my-registration")} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-3.5 rounded-xl font-bold shadow-md shadow-emerald-500/20 transition text-sm">
+          ไปหน้ารายการสมัครของฉัน
         </button>
       </div>
     </div>
