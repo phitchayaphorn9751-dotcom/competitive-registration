@@ -620,6 +620,16 @@ function CourseModal({ course, types, onSave, onClose }) {
   function addSection() { setSections((prev) => [...prev, { heading: "", body: "" }]) }
   function removeSection(idx) { setSections((prev) => prev.filter((_, i) => i !== idx)) }
   function updateSection(idx, key, val) { setSections((prev) => prev.map((s, i) => i === idx ? { ...s, [key]: val } : s)) }
+  // ย้ายหัวข้อขึ้น/ลง (สลับตำแหน่ง)
+  function moveSection(idx, dir) {
+    setSections((prev) => {
+      const next = [...prev]
+      const target = idx + dir
+      if (target < 0 || target >= next.length) return prev
+      ;[next[idx], next[target]] = [next[target], next[idx]]
+      return next
+    })
+  }
 
   const [uploading, setUploading] = useState(false)
   const set = (k, v) => setF((prev) => ({ ...prev, [k]: v }))
@@ -943,18 +953,32 @@ function CourseModal({ course, types, onSave, onClose }) {
               <div className="space-y-3">
                 {sections.map((sec, idx) => (
                   <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl p-3 relative">
-                    {sections.length > 1 && (
-                      <button type="button" onClick={() => removeSection(idx)}
-                        className="absolute top-2 right-2 w-6 h-6 rounded-lg bg-rose-50 text-rose-500 border border-rose-200 flex items-center justify-center text-xs hover:bg-rose-100">×</button>
-                    )}
-                    <input className={`${inputCls} font-bold mb-2`} placeholder={`หัวข้อ ${idx + 1} (เช่น รายละเอียดวิชา / ประโยชน์ / กิจกรรม)`}
-                      value={sec.heading} onChange={(e) => updateSection(idx, "heading", e.target.value)} />
+                    {/* ปุ่มควบคุม: ย้ายขึ้น/ลง + ลบ */}
+                    <div className="absolute top-2 right-2 flex items-center gap-1">
+                      <button type="button" onClick={() => moveSection(idx, -1)} disabled={idx === 0}
+                        className="w-6 h-6 rounded-lg bg-white text-slate-500 border border-slate-200 flex items-center justify-center hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition" title="ย้ายขึ้น">
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+                      </button>
+                      <button type="button" onClick={() => moveSection(idx, 1)} disabled={idx === sections.length - 1}
+                        className="w-6 h-6 rounded-lg bg-white text-slate-500 border border-slate-200 flex items-center justify-center hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition" title="ย้ายลง">
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                      </button>
+                      {sections.length > 1 && (
+                        <button type="button" onClick={() => removeSection(idx)}
+                          className="w-6 h-6 rounded-lg bg-rose-50 text-rose-500 border border-rose-200 flex items-center justify-center text-xs hover:bg-rose-100 transition" title="ลบหัวข้อ">×</button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 mb-2 pr-24">
+                      <span className="w-5 h-5 rounded-md bg-[#F15A24] text-white text-[10px] font-bold flex items-center justify-center shrink-0">{idx + 1}</span>
+                      <input className={`${inputCls} font-bold !mb-0`} placeholder={`หัวข้อ ${idx + 1} (เช่น รายละเอียดวิชา / ประโยชน์ / กิจกรรม)`}
+                        value={sec.heading} onChange={(e) => updateSection(idx, "heading", e.target.value)} />
+                    </div>
                     <textarea rows="3" className={`${inputCls} resize-none`} placeholder="รายละเอียดของหัวข้อนี้…"
                       value={sec.body} onChange={(e) => updateSection(idx, "body", e.target.value)} />
                   </div>
                 ))}
               </div>
-              <p className="text-[11px] text-slate-400 mt-1.5 inline-flex items-start gap-1"><Ico.alert className="w-3 h-3 shrink-0 mt-0.5 text-amber-400" /> เว้นว่างได้ถ้าไม่ต้องการ · หัวข้อจะแสดงเป็นหมวดในหน้ารายละเอียดวิชา</p>
+              <p className="text-[11px] text-slate-400 mt-1.5 inline-flex items-start gap-1"><Ico.alert className="w-3 h-3 shrink-0 mt-0.5 text-amber-400" /> เว้นว่างได้ถ้าไม่ต้องการ · ใช้ปุ่ม ▲▼ ย้ายสลับลำดับหัวข้อ · หัวข้อจะแสดงเป็นหมวดในหน้ารายละเอียดวิชา</p>
             </div>
 
             {/* สมัครผ่านลิงก์นอก */}
