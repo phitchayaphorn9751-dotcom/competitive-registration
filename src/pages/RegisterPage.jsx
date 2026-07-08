@@ -436,9 +436,11 @@ export default function RegisterPage() {
                       const period = periodOf(s.time)
                       const startDate = course.start_date || ""
                       if (period && startDate) {
+                        // เตือนทุกสถานะที่ยัง active (ยกเว้นที่ยกเลิก/ปฏิเสธ/หมดอายุไปแล้ว)
+                        const dead = ["cancelled", "canceled", "rejected", "expired", "declined", "refunded"]
                         const clash = myRegs.find((r) =>
                           r.course_id !== course.id &&
-                          ["submitted", "confirmed", "approved", "pending_payment", "waitlist"].includes(r.status) &&
+                          !dead.includes((r.status || "").toLowerCase()) &&
                           r.course_start_date === startDate &&
                           periodOf(r.session_time) === period
                         )
