@@ -1024,34 +1024,6 @@ export async function updatePassword(newPassword) {
 }
 
 // ═══ เฟส 1: นำเข้า user (โปรไฟล์ล่วงหน้า) ═══
-// admin import users (batch) ผ่าน Edge Function — สร้าง auth + profiles จริง
-export async function importUsersBatch(users) {
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) throw new Error("ยังไม่ได้ login")
-  const res = await fetch(
-    `${url}/functions/v1/import-users`,
-    {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${session.access_token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ users }),
-    }
-  )
-  const result = await res.json()
-  if (!res.ok) throw new Error(result.error || "import ไม่สำเร็จ")
-  return result  // { ok, fail, errors }
-}
-
-// user เรียกหลัง login ครั้งแรก — ดึง pending profile มาผูก (ถ้ามี)
-export async function claimPendingProfile() {
-  const { data, error } = await supabase.rpc("claim_pending_profile")
-  if (error) return false
-  return data === true
-}
-
-// ═══ เฟส 1: นำเข้า user (โปรไฟล์ล่วงหน้า) ═══
 // admin import users (batch) → เก็บลง pending_profiles (match ด้วย email)
 // user กด Google login ด้วย email เดียวกัน → claim_pending_profile() ดึงมาเป็น profile จริง
 // (ไม่ใช้ Edge Function แล้ว — insert ตรงผ่าน RLS ที่อนุญาตเฉพาะ admin)
@@ -1105,4 +1077,11 @@ export async function importUsersBatch(users) {
   if (error) throw new Error(error.message)
 
   return { ok: rows.length, fail: errors.length, errors }
+}
+
+// user เรียกหลัง login ครั้งแรก — ดึง pending profile มาผูก (ถ้ามี)
+export async function claimPendingProfile() {
+  const { data, error } = await supabase.rpc("claim_pending_profile")
+  if (error) return false
+  return data === true
 }
