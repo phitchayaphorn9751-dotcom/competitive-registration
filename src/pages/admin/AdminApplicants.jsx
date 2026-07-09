@@ -28,6 +28,19 @@ function StatusBadge({ status }) {
   )
 }
 
+// รวมชื่อรอบ (label) + เวลา (time) ของรอบที่เลือก จาก courses.sessions โดย match ด้วย session_id
+// เช่น "รอบเช้า · 09:00-11:30"
+function sessionText(r) {
+  if (!r.session_id) return ""
+  const sessions = r.courses?.sessions || []
+  const s = Array.isArray(sessions) ? sessions.find((x) => x.id === r.session_id) : null
+  if (!s) return ""
+  const label = (s.label || "").trim()
+  const time = (s.time || "").trim()
+  if (label && time) return `${label} · ${time}`
+  return label || time || ""
+}
+
 // pills: key + label + สี
 // สถานะรวม 4 แบบ (ไม่แยกมีค่าใช้จ่าย/ไม่มี)
 const FILTERS = [
@@ -151,11 +164,12 @@ export default function AdminApplicants() {
   }
 
   function exportCsv() {
-    const headers = ["วิชา", "ชื่อ-สกุล", "โรงเรียน", "เบอร์โทร", "อีเมลผู้สมัคร", "สถานะ", "วันที่สมัคร"]
+    const headers = ["วิชา", "รอบ", "ชื่อ-สกุล", "โรงเรียน", "เบอร์โทร", "อีเมลผู้สมัคร", "สถานะ", "วันที่สมัคร"]
     const lines = [headers.join(",")]
     filtered.forEach((r) => {
+      const sess = sessionText(r)
       ;(r.participants || [{}]).forEach((p) => {
-        const vals = [r.courses?.title || "", p.full_name || "", p.school || "", p.phone || r.submitter_phone || "", r.submitter_email || "", r.status, fmtDate(r.created_at)]
+        const vals = [r.courses?.title || "", sess, p.full_name || "", p.school || "", p.phone || r.submitter_phone || "", r.submitter_email || "", r.status, fmtDate(r.created_at)]
           .map((v) => `"${String(v).replace(/"/g, '""')}"`)
         lines.push(vals.join(","))
       })
@@ -246,6 +260,7 @@ export default function AdminApplicants() {
         <div className="grid grid-cols-1 gap-3">
           {pageItems.map((r) => {
             const teamCount = r.participants?.length || 0
+            const sess = sessionText(r)
             return (
               <div key={r.id} onClick={() => goVerify(r.id)}
                 className="group bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md hover:border-orange-200 transition-all duration-300 cursor-pointer">
@@ -255,6 +270,12 @@ export default function AdminApplicants() {
                     <div className="flex-1 min-w-0 space-y-1">
                       <span className="text-[10px] text-slate-400 font-medium block">สมัครเมื่อ {fmtDate(r.created_at)}</span>
                       <h3 className="font-bold text-[#F15A24] text-sm sm:text-[15px] leading-snug line-clamp-2">{r.courses?.title || "-"}</h3>
+                      {/* ───── รอบที่เลือก (session) ───── */}
+                      {sess && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#F15A24] bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-md">
+                          <Ico.clock className="w-3 h-3 shrink-0" /> {sess}
+                        </span>
+                      )}
                     </div>
                     <div className="shrink-0">
                       <StatusBadge status={unifyStatus(r)} />

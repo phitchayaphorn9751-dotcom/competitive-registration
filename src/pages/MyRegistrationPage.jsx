@@ -19,6 +19,14 @@ const STATUS_CFG = {
 
 // สีหมวดหมู่ใช้จาก lib กลาง (categoryColors.js)
 
+// รวมชื่อรอบ (label) + เวลา (time) เป็นข้อความเดียว เช่น "รอบเช้า · 09:00-11:30"
+function sessionText(reg) {
+  const label = (reg.session_label || "").trim()
+  const time = (reg.session_time || "").trim()
+  if (label && time) return `${label} · ${time}`
+  return label || time || ""
+}
+
 // แปลงสถานะดิบ (รวม payment) → key เดียวสำหรับแสดงผล
 function displayStatus(r) {
   if (r.status === "waitlist") return "waitlist"
@@ -206,6 +214,7 @@ export default function MyRegistrationPage() {
               const d = displayStatus(reg)
               const cfg = STATUS_CFG[d] || STATUS_CFG.held
               const isPaid = (reg.price || 0) > 0
+              const sess = sessionText(reg)
               const hasAction = d === "pending_payment" || (d === "rejected" && (reg.price || 0) > 0) || d === "expired" || (d === "confirmed" && (reg.participant_code || reg.my_qr_token || reg.qr_token))
               return (
                 <div key={reg.id} onClick={() => setDetailReg(reg)}
@@ -222,6 +231,12 @@ export default function MyRegistrationPage() {
                           <span className="flex-1 min-w-0">{reg.course_title}</span>
                           {reg.is_team_member && <span className="text-[10px] font-bold bg-orange-50 text-[#F15A24] border border-orange-200 px-2 py-0.5 rounded-full shrink-0 inline-flex items-center gap-1"><Ico.users className="w-2.5 h-2.5" /> เพื่อนสมัครให้</span>}
                         </h3>
+                        {/* ───── รอบที่เลือก (session) ───── */}
+                        {sess && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#F15A24] bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-md mt-1">
+                            <Ico.clock className="w-3 h-3 shrink-0" /> {sess}
+                          </span>
+                        )}
                       </div>
 
                       {/* ───── ฝั่งขวา: สถานะ (dot + pill) ───── */}
@@ -315,6 +330,7 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
   const isConfirmed = d === "confirmed"
   const code = reg.participant_code || ""
   const barcodeUrl = code ? `https://barcodeapi.org/api/128/${encodeURIComponent(code)}` : null
+  const sess = sessionText(reg)
   const [course, setCourse] = useState(null)
   const [members, setMembers] = useState([])
   const [imgIdx, setImgIdx] = useState(0)
@@ -340,10 +356,18 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
           <div className="pr-4 min-w-0">
             <p className="text-xs text-orange-100 mb-0.5 font-bold tracking-widest uppercase">{reg.course_type || "วิชา"}</p>
             <h3 className="font-extrabold text-lg sm:text-xl leading-tight">{reg.course_title}</h3>
-            <span className="inline-flex items-center gap-1.5 mt-2 text-xs font-bold px-3 py-1 rounded-full bg-white/20 backdrop-blur">
-              <span className={`w-1.5 h-1.5 rounded-full bg-white ${cfg.pulse ? "animate-pulse" : ""}`} />
-              {t(cfg.key)}{d === "waitlist" && reg.waitlist_pos ? ` — คิวที่ ${reg.waitlist_pos}` : ""}
-            </span>
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full bg-white/20 backdrop-blur">
+                <span className={`w-1.5 h-1.5 rounded-full bg-white ${cfg.pulse ? "animate-pulse" : ""}`} />
+                {t(cfg.key)}{d === "waitlist" && reg.waitlist_pos ? ` — คิวที่ ${reg.waitlist_pos}` : ""}
+              </span>
+              {/* ───── รอบที่เลือก (session) ───── */}
+              {sess && (
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full bg-white/20 backdrop-blur">
+                  <Ico.clock className="w-3.5 h-3.5" /> {sess}
+                </span>
+              )}
+            </div>
           </div>
           <button onClick={onClose} aria-label="ปิด" className="text-white/80 hover:text-white text-2xl leading-none shrink-0 w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 transition">×</button>
         </div>
@@ -421,6 +445,8 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
             )}
 
             <Row label="รูปแบบการสมัคร" value={reg.count_mode === "team" ? "ทีม" : reg.count_mode === "pair" ? "คู่" : "เดี่ยว"} />
+            {/* ───── รอบที่เลือก (session) ───── */}
+            {sess && <Row label="รอบที่เลือก" value={sess} />}
             <Row label="วันที่สมัคร" value={fmtDate(reg.created_at)} />
 
             {/* ชื่อทีม/ธีม + สมาชิก (แต่ละคนมีบาร์โค้ดของตัวเอง) */}
