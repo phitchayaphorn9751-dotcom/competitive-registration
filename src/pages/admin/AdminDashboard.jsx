@@ -63,6 +63,7 @@ export default function AdminDashboard() {
   const [drillCourse, setDrillCourse] = useState("All")
   const [selectedUser, setSelectedUser] = useState(null)
   const [courseDetail, setCourseDetail] = useState(null)
+  const [schoolSort, setSchoolSort] = useState("people") // people | courses
 
   useEffect(() => {
     if (!event?.id) { setLoading(false); return }
@@ -110,14 +111,27 @@ export default function AdminDashboard() {
     return Array.from(m.values())
   }, [filtered])
 
+  // จำนวนผู้สมัครวันนี้ (unique email) — ใช้เทียบใน KPI
+  const todayUsers = useMemo(() => {
+    const sDay = new Date(); sDay.setHours(0, 0, 0, 0)
+    const s = new Set()
+    filtered.forEach((r) => { if (r.created >= sDay) s.add(r.submitter_email) })
+    return s.size
+  }, [filtered])
+
   const stats = useMemo(() => {
-    const totalIncome = filtered.filter(isPaid).reduce((s, r) => s + Number(r.price || 0), 0)
-    const uniquePaid = new Set(filtered.filter(isPaid).map((r) => r.submitter_email)).size
+    const paidRows = filtered.filter(isPaid)
+    const totalIncome = paidRows.reduce((s, r) => s + Number(r.price || 0), 0)
+    const uniquePaid = new Set(paidRows.map((r) => r.submitter_email)).size
     return {
       totalUsers: uniqueUsers.length,
       totalIncome,
       pendingSlips: filtered.filter((r) => r.status === "slip_uploaded").length,
+      pendingPayment: filtered.filter((r) => r.status === "pending_payment").length,
+      waitlist: filtered.filter((r) => r.status === "waitlist").length,
       uniquePaid,
+      paidSeats: paidRows.length,
+      avgPerPaid: uniquePaid > 0 ? Math.round(totalIncome / uniquePaid) : 0,
     }
   }, [filtered, uniqueUsers])
 
@@ -142,6 +156,52 @@ export default function AdminDashboard() {
     filtered.forEach((r) => { const k = r.course_category || "อื่นๆ"; c[k] = (c[k] || 0) + 1 })
     return Object.entries(c).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value)
   }, [filtered])
+
+  // สรุปแยกหมวด (ตาราง) — สมัคร/จ่ายจริง/รายได้/จำนวนวิชา/อัตราจ่าย
+  const categorySummary = useMemo(() => {
+    const m = {}
+    filtered.forEach((r) => {
+      const k = r.course_category || "อื่นๆ"
+      if (!m[k]) m[k] = { name: k, apps: 0, paidSeats: 0, revenue: 0, courses: new Set(), emails: new Set(), paidEmails: new Set() }
+      m[k].apps++
+      m[k].emails.add(r.submitter_email)
+      m[k].courses.add(r.course_id)
+      if (isPaid(r)) { m[k].paidSeats++; m[k].revenue += Number(r.price || 0); m[k].paidEmails.add(r.submitter_email) }
+    })
+    return Object.values(m).map((v) => ({
+      name: v.name,
+      apps: v.apps,
+      users: v.emails.size,
+      paidSeats: v.paidSeats,
+      paidUsers: v.paidEmails.size,
+      revenue: v.revenue,
+      courses: v.courses.size,
+      convRate: v.emails.size > 0 ? Math.round((v.paidEmails.size / v.emails.size) * 100) : 0,
+    })).sort((a, b) => b.users - a.users)
+  }, [filtered])
+
+  // ตารางโรงเรียนแบบเต็ม — คน/วิชา/จ่ายแล้ว/จังหวัด
+  const schoolTable = useMemo(() => {
+    const m = {}
+    filtered.forEach((r) => {
+      const key = r.school || "ไม่ระบุ"
+      if (!m[key]) m[key] = { name: key, emails: new Set(), paidEmails: new Set(), courses: new Set(), provinces: {} }
+      m[key].emails.add(r.submitter_email)
+      m[key].courses.add(r.course_id)
+      if (isPaid(r)) m[key].paidEmails.add(r.submitter_email)
+      const p = r.province || "-"
+      m[key].provinces[p] = (m[key].provinces[p] || 0) + 1
+    })
+    const arr = Object.values(m).map((v) => ({
+      name: v.name,
+      people: v.emails.size,
+      paid: v.paidEmails.size,
+      courses: v.courses.size,
+      province: Object.entries(v.provinces).sort((a, b) => b[1] - a[1])[0]?.[0] || "-",
+    }))
+    arr.sort((a, b) => schoolSort === "courses" ? b.courses - a.courses : b.people - a.people)
+    return arr
+  }, [filtered, schoolSort])
 
   const schoolRanking = useMemo(() => {
     const c = {}
@@ -250,10 +310,10 @@ export default function AdminDashboard() {
 
   const timeLabels = { TODAY: "วันนี้", WEEK: "สัปดาห์นี้", MONTH: "เดือนนี้", ALL: "ทั้งหมด" }
   const kpiCards = [
-    { title: "ผู้สมัครทั้งหมด", value: stats.totalUsers.toLocaleString(), unit: "คน", color: "sky", icon: "users", onClick: () => drillDown("ผู้สมัครทั้งหมด", () => true) },
-    { title: "รายได้รวม", value: stats.totalIncome.toLocaleString(), unit: "฿", color: "emerald", icon: "money", onClick: () => drillDown("ชำระแล้ว", isPaid) },
-    { title: "Conversion", value: stats.totalUsers > 0 ? ((stats.uniquePaid / stats.totalUsers) * 100).toFixed(1) : 0, unit: "%", color: "violet", icon: "trend", onClick: () => drillDown("ชำระแล้ว", isPaid) },
-    { title: "รอตรวจสลิป", value: stats.pendingSlips.toLocaleString(), unit: "รายการ", color: "orange", icon: "clock", onClick: () => drillDown("รอตรวจสลิป", (r) => r.status === "slip_uploaded") },
+    { title: "ผู้สมัครทั้งหมด", value: stats.totalUsers.toLocaleString(), unit: "คน", sub: todayUsers > 0 ? `+${todayUsers} วันนี้` : "ยังไม่มีวันนี้", color: "sky", icon: "users", onClick: () => drillDown("ผู้สมัครทั้งหมด", () => true) },
+    { title: "รายได้รวม", value: stats.totalIncome.toLocaleString(), unit: "฿", sub: `เฉลี่ย ฿${stats.avgPerPaid.toLocaleString()}/คน`, color: "emerald", icon: "money", onClick: () => drillDown("ชำระแล้ว", isPaid) },
+    { title: "Conversion", value: stats.totalUsers > 0 ? ((stats.uniquePaid / stats.totalUsers) * 100).toFixed(1) : 0, unit: "%", sub: `จ่ายจริง ${stats.uniquePaid.toLocaleString()} คน`, color: "violet", icon: "trend", onClick: () => drillDown("ชำระแล้ว", isPaid) },
+    { title: "รอตรวจสลิป", value: stats.pendingSlips.toLocaleString(), unit: "รายการ", sub: stats.pendingSlips > 0 ? "ต้องรีบตรวจ" : "เคลียร์หมดแล้ว", color: "orange", icon: "clock", onClick: () => drillDown("รอตรวจสลิป", (r) => r.status === "slip_uploaded") },
   ]
   const KPI_STYLE = {
     sky: { bg: "bg-sky-50", border: "border-sky-100", text: "text-sky-600", icon: "text-sky-500" },
@@ -261,11 +321,20 @@ export default function AdminDashboard() {
     violet: { bg: "bg-violet-50", border: "border-violet-100", text: "text-violet-600", icon: "text-violet-500" },
     orange: { bg: "bg-orange-50", border: "border-orange-100", text: "text-[#F15A24]", icon: "text-[#F15A24]" },
   }
-  const statusBadges = [
-    { label: "คิวสำรอง", value: filtered.filter((r) => r.status === "waitlist").length, status: "waitlist", filter: (r) => r.status === "waitlist" },
-    { label: "รอชำระ", value: filtered.filter((r) => r.status === "pending_payment").length, status: "pending_payment", filter: (r) => r.status === "pending_payment" },
-    { label: "ไม่ผ่าน", value: filtered.filter((r) => r.status === "rejected").length, status: "rejected", filter: (r) => r.status === "rejected" },
+
+  // การ์ด "ต้องรีบจัดการ" (Action Center)
+  const actionItems = [
+    { key: "slip", label: "รอตรวจสลิป", desc: "อัปโหลดสลิปแล้ว รอแอดมินยืนยัน", value: stats.pendingSlips, status: "slip_uploaded", filter: (r) => r.status === "slip_uploaded" },
+    { key: "pay", label: "รอชำระเงิน", desc: "จองที่นั่งแล้ว ยังไม่ได้จ่าย", value: stats.pendingPayment, status: "pending_payment", filter: (r) => r.status === "pending_payment" },
+    { key: "wait", label: "คิวสำรอง", desc: "รอที่นั่งว่างเพื่อเลื่อนขึ้น", value: stats.waitlist, status: "waitlist", filter: (r) => r.status === "waitlist" },
   ]
+  const totalAction = actionItems.reduce((s, a) => s + a.value, 0)
+
+  const statusBadges = [
+    { label: "ไม่ผ่าน", value: filtered.filter((r) => r.status === "rejected").length, status: "rejected", filter: (r) => r.status === "rejected" },
+    { label: "กันที่นั่ง", value: filtered.filter((r) => r.status === "held").length, status: "held", filter: (r) => r.status === "held" },
+    { label: "รอพิจารณา", value: filtered.filter((r) => r.status === "submitted").length, status: "submitted", filter: (r) => r.status === "submitted" },
+  ].filter((b) => b.value > 0)
 
   return (
     <div className="space-y-4 pb-24 lg:pb-6">
@@ -327,28 +396,88 @@ export default function AdminDashboard() {
               <p className={`text-2xl sm:text-3xl font-extrabold leading-none ${st.text}`}>
                 {k.value}<span className="text-xs font-normal ml-1 opacity-60">{k.unit}</span>
               </p>
+              <p className="text-[11px] text-slate-400 mt-1.5 font-medium">{k.sub}</p>
               <span className={`absolute right-3 bottom-3 opacity-15 ${st.icon}`}><I className="w-10 h-10" /></span>
             </button>
           )
         })}
       </div>
 
-      {/* Status badges */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm px-4 py-3 flex flex-wrap items-center gap-2">
-        <span className="text-xs font-semibold text-slate-400 mr-1 hidden sm:inline">สถานะอื่นๆ</span>
-        {statusBadges.map((b) => (
-          <button key={b.label} onClick={() => drillDown(b.label, b.filter)}
-            className={`flex items-center gap-1.5 border px-3 py-1.5 rounded-full text-xs font-bold transition hover:shadow-sm active:scale-95 ${STATUS_CFG[b.status]?.cls || "bg-slate-100 text-slate-500 border-slate-200"}`}>
-            {b.label}<span className="bg-black/10 rounded-full px-1.5 py-0.5 text-[10px] font-black leading-none">{b.value}</span>
-          </button>
-        ))}
-        <p className="text-[11px] text-slate-300 ml-auto hidden sm:block">คลิกการ์ดหรือ badge เพื่อดูรายชื่อ</p>
-      </div>
+      {/* ⭐ Action Center — ต้องรีบจัดการ */}
+      <SectionCard
+        title="ต้องรีบจัดการ" icon={Ico.clock}
+        action={<span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${totalAction > 0 ? "text-[#F15A24] bg-orange-50 border-orange-100" : "text-emerald-600 bg-emerald-50 border-emerald-100"}`}>{totalAction > 0 ? `${totalAction} รายการค้าง` : "เคลียร์หมดแล้ว"}</span>}
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {actionItems.map((a) => {
+            const cfg = STATUS_CFG[a.status]
+            const active = a.value > 0
+            return (
+              <button key={a.key} onClick={() => drillDown(a.label, a.filter)}
+                className={`text-left rounded-xl border p-4 transition active:scale-[.98] ${active ? "hover:shadow-md " + cfg.cls : "bg-slate-50 border-slate-100 opacity-70"}`}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="flex items-center gap-1.5 text-xs font-bold">
+                    <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />{a.label}
+                  </span>
+                  <span className="text-2xl font-extrabold leading-none">{a.value}</span>
+                </div>
+                <p className="text-[11px] text-slate-500 leading-snug">{a.desc}</p>
+              </button>
+            )
+          })}
+        </div>
+        {statusBadges.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-slate-100">
+            <span className="text-[11px] font-semibold text-slate-400">สถานะอื่นๆ:</span>
+            {statusBadges.map((b) => (
+              <button key={b.label} onClick={() => drillDown(b.label, b.filter)}
+                className={`flex items-center gap-1.5 border px-3 py-1 rounded-full text-xs font-bold transition hover:shadow-sm active:scale-95 ${STATUS_CFG[b.status]?.cls || "bg-slate-100 text-slate-500 border-slate-200"}`}>
+                {b.label}<span className="bg-black/10 rounded-full px-1.5 py-0.5 text-[10px] font-black leading-none">{b.value}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </SectionCard>
+
+      {/* ⭐ สรุปแยกหมวด — ตาราง */}
+      {categorySummary.length > 0 && (
+        <SectionCard title="สรุปแยกหมวด" icon={Ico.fire} action={<span className="text-xs text-slate-400">{categorySummary.length} หมวด</span>}>
+          <div className="overflow-x-auto -mx-5 px-5">
+            <table className="w-full text-xs min-w-[560px]">
+              <thead>
+                <tr className="text-[10px] text-slate-400 uppercase border-b border-slate-100">
+                  <th className="py-2 text-left">หมวด</th>
+                  <th className="py-2 text-right">วิชา</th>
+                  <th className="py-2 text-right">ผู้สมัคร</th>
+                  <th className="py-2 text-right">จ่ายจริง</th>
+                  <th className="py-2 text-right">อัตราจ่าย</th>
+                  <th className="py-2 text-right">รายได้</th>
+                </tr>
+              </thead>
+              <tbody>
+                {categorySummary.map((c, i) => (
+                  <tr key={i} onClick={() => drillDown(`หมวด: ${c.name}`, (r) => (r.course_category || "อื่นๆ") === c.name)}
+                    className="border-b last:border-0 hover:bg-orange-50/50 cursor-pointer transition">
+                    <td className="py-3"><span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold border ${catBadgeCls(c.name)}`}>{c.name}</span></td>
+                    <td className="py-3 text-right text-slate-500">{c.courses}</td>
+                    <td className="py-3 text-right font-bold text-slate-700">{c.users} คน</td>
+                    <td className="py-3 text-right font-semibold text-emerald-600">{c.paidUsers}</td>
+                    <td className="py-3 text-right">
+                      <span className={`font-bold ${c.convRate >= 60 ? "text-emerald-600" : c.convRate >= 30 ? "text-amber-500" : "text-slate-400"}`}>{c.convRate}%</span>
+                    </td>
+                    <td className="py-3 text-right font-bold text-[#F15A24] whitespace-nowrap">฿{c.revenue.toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+      )}
 
       {/* Trend + Pie */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2">
-          <SectionCard title="แนวโน้มการสมัคร" icon={Ico.trend} action={<span className="text-xs text-slate-400">{trendData.length} วัน</span>}>
+          <SectionCard title="📈 แนวโน้มการสมัคร (Registration Trend)" action={<span className="text-xs text-slate-400">{trendData.length} วัน</span>}>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={trendData}>
@@ -417,6 +546,48 @@ export default function AdminDashboard() {
           </div>
         </SectionCard>
       </div>
+
+      {/* ⭐ ตารางโรงเรียนแบบเต็ม */}
+      {schoolTable.length > 0 && (
+        <SectionCard
+          title="ข้อมูลโรงเรียนที่มาสมัคร" icon={Ico.school}
+          action={
+            <div className="flex bg-slate-100 p-0.5 rounded-lg gap-0.5">
+              <button onClick={() => setSchoolSort("people")} className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition ${schoolSort === "people" ? "bg-white text-[#F15A24] shadow-sm" : "text-slate-500"}`}>ตามจำนวนคน</button>
+              <button onClick={() => setSchoolSort("courses")} className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition ${schoolSort === "courses" ? "bg-white text-[#F15A24] shadow-sm" : "text-slate-500"}`}>ตามจำนวนวิชา</button>
+            </div>
+          }
+        >
+          <div className="overflow-x-auto -mx-5 px-5">
+            <table className="w-full text-xs min-w-[520px]">
+              <thead className="sticky top-0 bg-white">
+                <tr className="text-[10px] text-slate-400 uppercase border-b border-slate-100">
+                  <th className="py-2 text-center w-7">#</th>
+                  <th className="py-2 text-left">โรงเรียน</th>
+                  <th className="py-2 text-left">จังหวัด</th>
+                  <th className="py-2 text-right">ผู้สมัคร</th>
+                  <th className="py-2 text-right">จ่ายแล้ว</th>
+                  <th className="py-2 text-right pr-1">วิชา</th>
+                </tr>
+              </thead>
+              <tbody className="max-h-80">
+                {schoolTable.slice(0, 30).map((s, i) => (
+                  <tr key={i} onClick={() => drillDown(`โรงเรียน: ${s.name}`, (r) => (r.school || "ไม่ระบุ") === s.name)}
+                    className="border-b last:border-0 hover:bg-orange-50/50 cursor-pointer transition">
+                    <td className="py-3 text-center font-bold text-slate-300">{i + 1}</td>
+                    <td className="py-3 font-medium text-slate-700 max-w-[180px]"><span className="line-clamp-1">{s.name}</span></td>
+                    <td className="py-3 text-slate-500">{s.province}</td>
+                    <td className="py-3 text-right font-bold text-slate-700">{s.people} คน</td>
+                    <td className="py-3 text-right font-semibold text-emerald-600">{s.paid}</td>
+                    <td className="py-3 text-right text-slate-500 pr-1">{s.courses}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {schoolTable.length > 30 && <p className="text-[11px] text-slate-300 text-center mt-2">แสดง 30 อันดับแรก จากทั้งหมด {schoolTable.length} โรงเรียน</p>}
+        </SectionCard>
+      )}
 
       {/* กราฟความสนใจตามชั้นปี × หมวด */}
       <SectionCard title="ความสนใจตามชั้นปี (แยกตามหมวดวิชา)" icon={Ico.puzzle}>
