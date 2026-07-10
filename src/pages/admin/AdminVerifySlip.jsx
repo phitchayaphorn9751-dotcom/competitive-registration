@@ -443,6 +443,10 @@ function EditRegistrationModal({ data, eventId, isPaid, onClose, onSaved, toast 
   const hasSessions = courseSessions.length > 0
   const changedCourse = courseId !== data.course_id
 
+  // มีผู้เข้าร่วมที่ถือรหัส/บาร์โค้ดอยู่แล้วหรือไม่ (participant_code หรือ qr_token)
+  // ถ้าย้ายข้ามวิชา รหัส/บาร์โค้ดชุดเดิมจะถูก gen ใหม่ → ต้องเตือนแอดมิน
+  const hasIssuedCodes = (data.participants || []).some((p) => p.participant_code || p.qr_token)
+
   // ที่นั่งคงเหลือของคอร์ส (ระดับคอร์ส)
   function courseRemain(c) {
     if (c.seat_mode === "unlimited") return null // ไม่จำกัด
@@ -500,7 +504,12 @@ function EditRegistrationModal({ data, eventId, isPaid, onClose, onSaved, toast 
         const changed = a.full_name !== (orig.full_name || "") || a.phone !== (orig.phone || "") || a.email !== (orig.email || "")
         if (changed) await adminUpdateAdvisor(a.id, a)
       }
-      toast("บันทึกการแก้ไขแล้ว", "success")
+      // ⚠️ ย้ายข้ามวิชา + มีรหัส/บาร์โค้ดออกไปแล้ว → เตือนว่ารหัสชุดเดิมใช้ไม่ได้
+      if (changedCourse && hasIssuedCodes) {
+        toast("⚠️ ย้ายข้ามวิชาแล้ว — รหัส/บาร์โค้ดเดิมถูกออกใหม่ ผู้เข้าร่วมต้องใช้ QR/รหัสชุดใหม่ในการเช็คอิน", "warning")
+      } else {
+        toast("บันทึกการแก้ไขแล้ว", "success")
+      }
       onSaved()
     } catch (e) {
       const msg = e.message?.includes("ALREADY_FINALIZED") ? "แก้ไม่ได้ — รายการถูกยกเลิกแล้ว" : "บันทึกไม่สำเร็จ: " + e.message
@@ -519,6 +528,16 @@ function EditRegistrationModal({ data, eventId, isPaid, onClose, onSaved, toast 
           <div className="bg-orange-50 border border-orange-100 rounded-xl px-3 py-2 text-xs text-gray-600">
             ใบสมัครนี้มีผู้เข้าร่วม <b className="text-[#F15A24]">{seatsNeeded} คน</b> — การย้ายจะใช้ที่นั่ง {seatsNeeded} ที่
           </div>
+
+          {/* เตือนล่วงหน้า: ถ้ากำลังจะย้ายข้ามวิชา และมีรหัส/บาร์โค้ดออกไปแล้ว */}
+          {changedCourse && hasIssuedCodes && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 flex items-start gap-2">
+              <span className="text-base shrink-0">⚠️</span>
+              <p className="text-xs text-amber-700 leading-relaxed">
+                <b>ย้ายข้ามวิชา:</b> รหัส/บาร์โค้ดเดิมของผู้เข้าร่วมจะถูกออกใหม่ทั้งหมด — ผู้เข้าร่วมต้องใช้ QR/รหัสชุดใหม่ในการเช็คอิน (รหัสเดิมที่แจกไปแล้วจะใช้ไม่ได้)
+              </p>
+            </div>
+          )}
 
           {/* เลือกวิชา — โชว์ที่นั่งคงเหลือ + ติ๊กปัจจุบัน */}
           <div>
