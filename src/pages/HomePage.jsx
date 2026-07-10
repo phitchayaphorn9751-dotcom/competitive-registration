@@ -21,50 +21,6 @@ const Ico = {
   gift:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg>),
 }
 
-// normalize banner_images → array ของ string (กันข้อมูลเก่า/ค่าว่าง)
-function normBanners(v) {
-  if (Array.isArray(v)) return v.filter((x) => typeof x === "string" && x.trim())
-  if (typeof v === "string" && v.trim()) return [v.trim()]
-  return []
-}
-
-// ───── Banner Carousel (แสดงบนสุดใน Hero) ─────
-function BannerCarousel({ images, onView }) {
-  const [idx, setIdx] = useState(0)
-  // เลื่อนอัตโนมัติทุก 4 วินาที (ถ้ามีหลายรูป)
-  useEffect(() => {
-    if (images.length <= 1) return
-    const timer = setInterval(() => setIdx((i) => (i + 1) % images.length), 4000)
-    return () => clearInterval(timer)
-  }, [images.length])
-  // กันค่า idx เกินเมื่อจำนวนรูปเปลี่ยน
-  useEffect(() => { if (idx >= images.length) setIdx(0) }, [images.length, idx])
-
-  if (images.length === 0) return null
-
-  return (
-    <div className="relative rounded-2xl overflow-hidden border border-white/25 shadow-lg bg-black/10 max-w-4xl mx-auto mb-8">
-      <button type="button" onClick={() => onView(idx)} className="block w-full">
-        <img src={images[idx]} alt={`แบนเนอร์ ${idx + 1}`} className="w-full h-auto max-h-[380px] object-cover" />
-      </button>
-      {images.length > 1 && (
-        <>
-          <button onClick={() => setIdx((idx - 1 + images.length) % images.length)}
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition">‹</button>
-          <button onClick={() => setIdx((idx + 1) % images.length)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition">›</button>
-          <div className="absolute bottom-3 inset-x-0 flex justify-center gap-1.5">
-            {images.map((_, i) => (
-              <button key={i} onClick={() => setIdx(i)}
-                className={`h-2 rounded-full transition-all ${i === idx ? "w-5 bg-white" : "w-2 bg-white/50"}`} />
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  )
-}
-
 export default function HomePage() {
   const { t } = useLang()
   const navigate = useNavigate()
@@ -77,8 +33,8 @@ export default function HomePage() {
   const [heroSub, setHeroSub] = useState("")
   const [scheduleUrl, setScheduleUrl] = useState("")
   const [showSchedule, setShowSchedule] = useState(false)
-  const [bannerImages, setBannerImages] = useState([])
-  const [bannerView, setBannerView] = useState(null) // index รูป banner ที่เปิดดูเต็ม (null = ปิด)
+  const [bannerImage, setBannerImage] = useState("")
+  const [bannerView, setBannerView] = useState(false) // เปิดดูรูป banner เต็ม
 
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState("All")
@@ -100,7 +56,7 @@ export default function HomePage() {
           setHeroSub((es.hero_subtitle || "").trim())
           const rawSchedule = es.schedule_image_url ?? es.schedule_url ?? ""
           setScheduleUrl(String(rawSchedule).trim())
-          setBannerImages(normBanners(es.banner_images))
+          setBannerImage(String(es.banner_image || "").trim())
         }
       } catch (e) {
         setError(e.message || "โหลดข้อมูลไม่สำเร็จ")
@@ -155,52 +111,83 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-slate-50 pb-16">
-      {/* ─── Hero Banner ─── */}
-      <div className="relative bg-gradient-to-r from-[#F15A24] to-amber-500 text-white overflow-hidden shadow-md">
-        <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: `linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)`, backgroundSize: "40px 40px" }} />
-        <div className="absolute top-0 right-0 w-full h-[400px] bg-gradient-to-b from-black/10 to-transparent pointer-events-none" />
+      {/* ─── Hero: ถ้ามี banner → banner เต็มจอ + search ใต้ banner / ไม่มี → กรอบส้มเดิม ─── */}
+      {bannerImage ? (
+        <>
+          {/* Banner เต็มความกว้าง แทนพื้นส้ม (ไม่มีข้อความทับ) กดดูรูปเต็มได้ */}
+          <button type="button" onClick={() => setBannerView(true)} className="block w-full bg-slate-900">
+            <img src={bannerImage} alt="แบนเนอร์" className="w-full h-auto max-h-[70vh] object-contain mx-auto" />
+          </button>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-          {/* ─── Banner สไลด์ (บนสุดใน Hero) ─── */}
-          <BannerCarousel images={bannerImages} onView={(i) => setBannerView(i)} />
-
-          <div className="text-center mb-8">
-            <span className="inline-block bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full mb-3 tracking-widest uppercase">
-              🎓 {t("home.openNow")}
-            </span>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold mb-3 tracking-tight">
-              {siteTitle || event?.name || "CAMT SUMMER COURSE"}
-              {event?.year && <span className="ml-2">{event.year}</span>}
-            </h1>
-            <p className="text-orange-100 text-base sm:text-lg max-w-xl mx-auto">
-              {heroSub || t("home.heroSub")}
+          {/* Search & Filter — ย้ายลงมาใต้ banner บนพื้นขาว */}
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Ico.search className="w-4 h-4 absolute inset-y-0 left-3.5 my-auto text-slate-400 pointer-events-none" />
+                  <input type="text" placeholder={t("common.search") + "…"}
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl text-slate-800 text-sm outline-none focus:ring-2 focus:ring-[#F15A24]/40 bg-slate-50 focus:bg-white border border-slate-200 placeholder-slate-400 transition"
+                    value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                </div>
+                {types.length > 0 && (
+                  <select className="px-4 py-2.5 rounded-xl text-slate-800 text-sm outline-none focus:ring-2 focus:ring-[#F15A24]/40 bg-slate-50 focus:bg-white border border-slate-200 sm:w-52 transition"
+                    value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+                    <option value="All">ทุกหมวดหมู่</option>
+                    {types.map((tp) => <option key={tp} value={tp}>{tp}</option>)}
+                  </select>
+                )}
+              </div>
+            </div>
+            <p className="text-center text-slate-400 text-sm mt-3">
+              {t("home.foundCourses", { n: filtered.length })}
             </p>
           </div>
+        </>
+      ) : (
+        /* ─── Fallback: ไม่มี banner → กรอบส้มเดิม (มีข้อความ + search) ─── */
+        <div className="relative bg-gradient-to-r from-[#F15A24] to-amber-500 text-white overflow-hidden shadow-md">
+          <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: `linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)`, backgroundSize: "40px 40px" }} />
+          <div className="absolute top-0 right-0 w-full h-[400px] bg-gradient-to-b from-black/10 to-transparent pointer-events-none" />
 
-          {/* Search & Filter */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 sm:p-5 border border-white/20 max-w-4xl mx-auto">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative flex-1">
-                <Ico.search className="w-4 h-4 absolute inset-y-0 left-3.5 my-auto text-slate-400 pointer-events-none" />
-                <input type="text" placeholder={t("common.search") + "…"}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl text-slate-800 text-sm outline-none focus:ring-2 focus:ring-[#F15A24]/40 bg-white placeholder-slate-400"
-                  value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-              </div>
-              {types.length > 0 && (
-                <select className="px-4 py-2.5 rounded-xl text-slate-800 text-sm outline-none focus:ring-2 focus:ring-[#F15A24]/40 bg-white sm:w-52"
-                  value={filterType} onChange={(e) => setFilterType(e.target.value)}>
-                  <option value="All">ทุกหมวดหมู่</option>
-                  {types.map((tp) => <option key={tp} value={tp}>{tp}</option>)}
-                </select>
-              )}
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+            <div className="text-center mb-8">
+              <span className="inline-block bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full mb-3 tracking-widest uppercase">
+                🎓 {t("home.openNow")}
+              </span>
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold mb-3 tracking-tight">
+                {siteTitle || event?.name || "CAMT SUMMER COURSE"}
+                {event?.year && <span className="ml-2">{event.year}</span>}
+              </h1>
+              <p className="text-orange-100 text-base sm:text-lg max-w-xl mx-auto">
+                {heroSub || t("home.heroSub")}
+              </p>
             </div>
-          </div>
 
-          <p className="text-center text-white/70 text-sm mt-4">
-            {t("home.foundCourses", { n: filtered.length })}
-          </p>
+            {/* Search & Filter */}
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 sm:p-5 border border-white/20 max-w-4xl mx-auto">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Ico.search className="w-4 h-4 absolute inset-y-0 left-3.5 my-auto text-slate-400 pointer-events-none" />
+                  <input type="text" placeholder={t("common.search") + "…"}
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl text-slate-800 text-sm outline-none focus:ring-2 focus:ring-[#F15A24]/40 bg-white placeholder-slate-400"
+                    value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                </div>
+                {types.length > 0 && (
+                  <select className="px-4 py-2.5 rounded-xl text-slate-800 text-sm outline-none focus:ring-2 focus:ring-[#F15A24]/40 bg-white sm:w-52"
+                    value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+                    <option value="All">ทุกหมวดหมู่</option>
+                    {types.map((tp) => <option key={tp} value={tp}>{tp}</option>)}
+                  </select>
+                )}
+              </div>
+            </div>
+
+            <p className="text-center text-white/70 text-sm mt-4">
+              {t("home.foundCourses", { n: filtered.length })}
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ─── รูปตาราง + แบนเนอร์แจ้งเตือน (ใต้ Hero ก่อนคอร์ส) ─── */}
       {(scheduleUrl || notice.trim()) && (
@@ -271,20 +258,12 @@ export default function HomePage() {
       </div>
 
       {/* Modal ดูรูป banner เต็ม */}
-      {bannerView !== null && bannerImages[bannerView] && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setBannerView(null)}>
+      {bannerView && bannerImage && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setBannerView(false)}>
           <div className="relative max-w-5xl w-full max-h-[92vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => setBannerView(null)}
+            <button onClick={() => setBannerView(false)}
               className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 text-slate-700 flex items-center justify-center shadow-lg hover:bg-white z-10 text-xl">×</button>
-            {bannerImages.length > 1 && (
-              <>
-                <button onClick={(e) => { e.stopPropagation(); setBannerView((bannerView - 1 + bannerImages.length) % bannerImages.length) }}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 z-10 text-2xl">‹</button>
-                <button onClick={(e) => { e.stopPropagation(); setBannerView((bannerView + 1) % bannerImages.length) }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 z-10 text-2xl">›</button>
-              </>
-            )}
-            <img src={bannerImages[bannerView]} alt="แบนเนอร์" className="w-full h-auto rounded-2xl" />
+            <img src={bannerImage} alt="แบนเนอร์" className="w-full h-auto rounded-2xl" />
           </div>
         </div>
       )}
