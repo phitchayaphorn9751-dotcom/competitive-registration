@@ -1128,3 +1128,10 @@ export async function checkInDaily(token, courseId, dateKey, method = "qr", sess
   if (error) throw error
   return data
 }
+
+// ดึงทุกวิชาในงาน (รวมวิชา 0 คน) + จำนวนผู้สมัคร active + แยกรอบ — สำหรับ Dashboard "จำนวนผู้สมัคร"
+export async function fetchDashboardCourses(eventId) {
+  const { data, error } = await supabase.rpc("dashboard_courses", { p_event_id: eventId })
+  if (error) throw error
+  return data
+}

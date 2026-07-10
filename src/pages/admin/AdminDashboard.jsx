@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react"
 import { useOutletContext } from "react-router-dom"
-import { fetchDashboardRegistrations } from "../../lib/supabase.js"
+import { fetchDashboardRegistrations, fetchDashboardCourses } from "../../lib/supabase.js"
 import { Ico } from "../../lib/icons.jsx"
 import { catColor } from "../../lib/categoryColors.js"
 import {
@@ -37,10 +37,10 @@ function catBadgeCls(name) {
   return `${cc.bg} ${cc.text} border-transparent`
 }
 
-function SectionCard({ title, icon: Icon, children, action, className = "" }) {
+function SectionCard({ title, icon: Icon, children, action, className = "", headerClassName = "" }) {
   return (
-    <div className={`bg-white rounded-2xl border shadow-sm overflow-hidden ${className || "border-slate-200"}`}>
-      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+    <div className={`rounded-2xl border shadow-sm overflow-hidden ${className || "bg-white border-slate-200"}`}>
+      <div className={`flex items-center justify-between px-5 py-4 border-b ${headerClassName || "border-slate-100"}`}>
         <h3 className="font-bold text-slate-700 text-sm flex items-center gap-2">{Icon && <Icon className="w-4 h-4 text-[#F15A24]" />}{title}</h3>{action}
       </div>
       <div className="p-5">{children}</div>
@@ -63,12 +63,19 @@ export default function AdminDashboard() {
   const [drillCourse, setDrillCourse] = useState("All")
   const [selectedUser, setSelectedUser] = useState(null)
   const [courseDetail, setCourseDetail] = useState(null)
+  const [allCourses, setAllCourses] = useState([])  // ทุกวิชาในงาน (รวม 0 คน) — สำหรับ "จำนวนผู้สมัคร"
 
   useEffect(() => {
     if (!event?.id) { setLoading(false); return }
     setLoading(true)
-    fetchDashboardRegistrations(event.id)
-      .then((data) => setRows((data || []).map((r) => ({ ...r, created: r.created_at ? new Date(r.created_at) : new Date() }))))
+    Promise.all([
+      fetchDashboardRegistrations(event.id),
+      fetchDashboardCourses(event.id).catch(() => []),
+    ])
+      .then(([regs, courses]) => {
+        setRows((regs || []).map((r) => ({ ...r, created: r.created_at ? new Date(r.created_at) : new Date() })))
+        setAllCourses(courses || [])
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [event?.id])
@@ -141,83 +148,60 @@ export default function AdminDashboard() {
       .sort((a, b) => new Date(a.date.split("/").reverse().join("-")) - new Date(b.date.split("/").reverse().join("-")))
   }, [filtered])
 
-  // จำนวนผู้สมัครแต่ละวิชา (แยกหมวด + แยกรอบ) — ใช้ course_capacity/sessions จาก RPC
-  // นับ "ผู้สมัครที่ยัง active" (ไม่รวม rejected) เป็นตัวเศษ เทียบกับ capacity
+  // จำนวนผู้สมัครแต่ละวิชา — ใช้ allCourses (ทุกวิชาที่เปิดรับ รวม 0 คน) จาก RPC dashboard_courses
+  // กรองตามหมวด (catFilter) ให้สอดคล้องกับตัวกรองด้านบน + เฉพาะวิชาที่เปิดรับ (is_open)
   const seatsByCategory = useMemo(() => {
-    const courseMap = {}
-    filtered.forEach((r) => {
-      const id = r.course_id
-      if (!courseMap[id]) {
-        // parse sessions (jsonb array) — ถ้ามีรอบ จะแตกเป็นรายรอบ
+    const courses = (allCourses || [])
+      .filter((c) => c.is_open)   // เฉพาะวิชาที่เปิดรับ
+      .filter((c) => catFilter === "ALL" || (c.course_category || "อื่นๆ") === catFilter)
+      .map((c) => {
+        // parse sessions (jsonb)
         let sessions = []
         try {
-          const raw = r.course_sessions
+          const raw = c.sessions
           sessions = Array.isArray(raw) ? raw : (typeof raw === "string" ? JSON.parse(raw || "[]") : [])
         } catch { sessions = [] }
-        courseMap[id] = {
-          courseId: id,
-          name: r.course_name,
-          category: r.course_category || "อื่นๆ",
-          capacity: Number(r.course_capacity || 0),
-          seatMode: r.course_seat_mode || "",
-          sessions: Array.isArray(sessions) ? sessions : [],
-          taken: 0,               // นับเองจาก row (คอร์สไม่มีรอบ)
-          sessionTaken: {},       // นับแยกรอบ (key = session_id)
-        }
-      }
-      if (!["rejected"].includes(r.status)) {
-        courseMap[id].taken++
-        if (r.session_id) courseMap[id].sessionTaken[r.session_id] = (courseMap[id].sessionTaken[r.session_id] || 0) + 1
-      }
-    })
+        // parse session_counts { session_id: count }
+        let sCounts = {}
+        try {
+          const raw = c.session_counts
+          sCounts = (raw && typeof raw === "object" && !Array.isArray(raw)) ? raw : (typeof raw === "string" ? JSON.parse(raw || "{}") : {})
+        } catch { sCounts = {} }
 
-    // แตกเป็น "รายการที่จะแสดง" — คอร์สมีรอบ = 1 แถวต่อรอบ / ไม่มีรอบ = 1 แถวต่อคอร์ส
-    const items = []
-    Object.values(courseMap).forEach((c) => {
-      const hasSessions = Array.isArray(c.sessions) && c.sessions.length > 0
-      if (hasSessions) {
-        c.sessions.forEach((s) => {
-          const sCap = Number(s.capacity || 0)
-          // taken รายรอบ: ใช้ค่าจาก sessions jsonb ก่อน (ตรงกับหน้า Home) fallback เป็นที่นับเอง
-          const sTaken = s.taken != null ? Number(s.taken) : (c.sessionTaken[s.id] || 0)
-          items.push({
-            key: `${c.courseId}_${s.id}`,
-            courseId: c.courseId,
-            name: c.name,
-            sub: s.label || "รอบ",
-            category: c.category,
-            capacity: sCap,
-            taken: sTaken,
-            seatMode: sCap > 0 ? "" : c.seatMode,
-          })
-        })
-      } else {
-        items.push({
-          key: c.courseId,
-          courseId: c.courseId,
-          name: c.name,
-          sub: "",
-          category: c.category,
-          capacity: c.capacity,
-          taken: c.taken,
-          seatMode: c.seatMode,
-        })
-      }
-    })
+        const hasSessions = Array.isArray(sessions) && sessions.length > 0
+        const cap = Number(c.capacity || 0)
+        const taken = Number(c.active_regs || 0)
+        return {
+          courseId: c.course_id,
+          name: c.course_name,
+          category: c.course_category || "อื่นๆ",
+          capacity: cap,
+          seatMode: c.seat_mode || "",
+          taken,
+          hasSessions,
+          // แต่ละรอบ: label + capacity (จาก sessions jsonb) + taken (จาก session_counts ก่อน, fallback sessions.taken)
+          sessions: hasSessions ? sessions.map((s) => ({
+            id: s.id,
+            label: s.label || "รอบ",
+            capacity: Number(s.capacity || 0),
+            taken: sCounts[s.id] != null ? Number(sCounts[s.id]) : (s.taken != null ? Number(s.taken) : 0),
+          })) : [],
+        }
+      })
 
     // จัดกลุ่มตามหมวด
     const catMap = {}
-    items.forEach((it) => {
-      const k = it.category
+    courses.forEach((c) => {
+      const k = c.category
       if (!catMap[k]) catMap[k] = []
-      catMap[k].push(it)
+      catMap[k].push(c)
     })
-    // เรียงรายการในแต่ละหมวด (คนเยอะ→น้อย = มากบนสุด) + เรียงหมวดตามจำนวนรายการ
+    // เรียงวิชาในแต่ละหมวด (คนเยอะ→น้อย = มากบนสุด) + เรียงหมวดตามจำนวนวิชา
     return Object.entries(catMap).map(([category, list]) => ({
       category,
       courses: list.sort((a, b) => b.taken - a.taken),
     })).sort((a, b) => b.courses.length - a.courses.length)
-  }, [filtered])
+  }, [allCourses, catFilter])
 
   const categoryData = useMemo(() => {
     const c = {}
@@ -429,8 +413,9 @@ export default function AdminDashboard() {
       {/* ⭐ Action Center — ต้องรีบจัดการ */}
       <SectionCard
         title="ต้องรีบจัดการ" icon={Ico.clock}
-        className="border-2 border-[#F15A24]"
-        action={<span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${totalAction > 0 ? "text-[#F15A24] bg-orange-50 border-orange-100" : "text-emerald-600 bg-emerald-50 border-emerald-100"}`}>{totalAction > 0 ? `${totalAction} รายการค้าง` : "เคลียร์หมดแล้ว"}</span>}
+        className="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-[#F15A24]/40"
+        headerClassName="border-orange-100"
+        action={<span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${totalAction > 0 ? "text-[#F15A24] bg-white border-orange-200" : "text-emerald-600 bg-white border-emerald-100"}`}>{totalAction > 0 ? `${totalAction} รายการค้าง` : "เคลียร์หมดแล้ว"}</span>}
       >
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {actionItems.map((a) => {
@@ -474,29 +459,45 @@ export default function AdminDashboard() {
                   <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold border ${catBadgeCls(grp.category)}`}>{grp.category}</span>
                   <span className="text-[11px] text-slate-400">{grp.courses.length} รายการ</span>
                 </div>
-                {/* รายการวิชา/รอบในหมวด */}
+                {/* รายการวิชาในหมวด (มีรอบ = แตกปรอทแต่ละรอบข้างใน) */}
                 <div className="space-y-1">
                   {grp.courses.map((c) => {
-                    const unlimited = c.seatMode === "unlimited" || c.capacity <= 0
-                    const pct = unlimited ? Math.min(85, Math.round(Math.log10(c.taken + 1) * 39)) : Math.min(100, Math.round((c.taken / c.capacity) * 100))
-                    const isOver = !unlimited && c.taken >= c.capacity   // เต็ม/เกิน = แดง
-                    const barColor = unlimited ? "bg-[#F15A24]" : isOver ? "bg-rose-500" : "bg-gradient-to-r from-[#F15A24] to-orange-300"
-                    return (
-                      <div key={c.key} onClick={() => openCourseDetail(c.courseId, c.name)}
-                        className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-orange-50/60 cursor-pointer transition">
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-medium text-slate-700 truncate mb-1">
-                            {c.name}{c.sub && <span className="text-slate-400 font-normal"> · {c.sub}</span>}
+                    // ── helper วาดแถบ 1 เส้น (ใช้ทั้งวิชาไม่มีรอบ และแต่ละรอบ) ──
+                    const renderBar = (taken, capacity, seatMode, keySuffix, label) => {
+                      const unlimited = seatMode === "unlimited" || capacity <= 0
+                      const pct = unlimited ? Math.min(85, Math.round(Math.log10(taken + 1) * 39)) : Math.min(100, Math.round((taken / capacity) * 100))
+                      const isOver = !unlimited && taken >= capacity   // เต็ม/เกิน = แดง
+                      const barColor = unlimited ? "bg-[#F15A24]" : isOver ? "bg-rose-500" : "bg-gradient-to-r from-[#F15A24] to-orange-300"
+                      return (
+                        <div key={keySuffix} className="flex items-center gap-3">
+                          <div className="flex-1 min-w-0">
+                            {label && <div className="text-[11px] text-slate-400 font-medium truncate mb-0.5">{label}</div>}
+                            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                              <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
+                            </div>
                           </div>
-                          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
-                          </div>
+                          <span className={`text-xs font-bold shrink-0 ${isOver ? "text-rose-500" : "text-slate-500"}`}>
+                            {unlimited ? (
+                              <span className="inline-flex items-center gap-1">{taken} <span className="text-[#F15A24]">· ∞</span></span>
+                            ) : `${taken}/${capacity}`}
+                          </span>
                         </div>
-                        <span className={`text-xs font-bold shrink-0 ${isOver ? "text-rose-500" : "text-slate-500"}`}>
-                          {unlimited ? (
-                            <span className="inline-flex items-center gap-1">{c.taken} <span className="text-[#F15A24]">· ∞</span></span>
-                          ) : `${c.taken}/${c.capacity}`}
-                        </span>
+                      )
+                    }
+                    return (
+                      <div key={c.courseId} onClick={() => openCourseDetail(c.courseId, c.name)}
+                        className="px-2 py-2 rounded-xl hover:bg-orange-50/60 cursor-pointer transition">
+                        {/* ชื่อวิชา (เดียว) */}
+                        <div className="text-xs font-medium text-slate-700 truncate mb-1.5">{c.name}</div>
+                        {c.hasSessions ? (
+                          /* มีรอบ — แตกปรอทแต่ละรอบ พร้อม label รอบ */
+                          <div className="space-y-1.5 pl-1">
+                            {c.sessions.map((s) => renderBar(s.taken, s.capacity, "", s.id, s.label))}
+                          </div>
+                        ) : (
+                          /* ไม่มีรอบ — ปรอทเดียว */
+                          renderBar(c.taken, c.capacity, c.seatMode, c.courseId, "")
+                        )}
                       </div>
                     )
                   })}
