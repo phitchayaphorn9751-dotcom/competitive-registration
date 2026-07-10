@@ -109,6 +109,17 @@ export default function AdminCourses() {
     return matchSearch && matchStatus
   })
 
+  // จัดกลุ่มตามหมวด (course_types.label) — สำหรับ desktop 2 คอลัมน์
+  const grouped = (() => {
+    const groups = {}
+    filtered.forEach((c) => {
+      const label = c.course_types?.label || "อื่นๆ"
+      if (!groups[label]) groups[label] = []
+      groups[label].push(c)
+    })
+    return Object.entries(groups).map(([label, items]) => ({ label, items }))
+  })()
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -164,10 +175,31 @@ export default function AdminCourses() {
         </div>
       </div>
 
-      {/* Course cards — รูปซ้าย 1/3 + ข้อมูลขวา 2/3 (เดสก์ท็อป) */}
-      <div className="hidden md:grid grid-cols-1 gap-4">
-        {filtered.map((course) => <CourseCardWide key={course.id} course={course} onEdit={openEdit} onDelete={doDelete} onToggle={doToggle} onView={setViewCourse} />)}
-        {filtered.length === 0 && <div className="bg-white rounded-2xl p-16 text-center text-sm text-slate-400 shadow-sm border border-slate-100">ไม่พบรายวิชา</div>}
+      {/* Desktop — แบ่ง section ตามหมวด, 2 คอลัมน์ซ้ายขวา */}
+      <div className="hidden md:block">
+        {grouped.length === 0 ? (
+          <div className="bg-white rounded-2xl p-16 text-center text-sm text-slate-400 shadow-sm border border-slate-100">ไม่พบรายวิชา</div>
+        ) : (
+          <div className="space-y-8">
+            {grouped.map(({ label, items }) => {
+              const cc = catColor({ label })
+              return (
+                <section key={label}>
+                  {/* หัวข้อหมวด */}
+                  <div className="flex items-center gap-2.5 mb-3">
+                    <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${cc.bg} ${cc.text}`}>{label}</span>
+                    <span className="text-xs font-bold text-slate-400">{items.length} วิชา</span>
+                    <div className="flex-1 h-px bg-slate-200" />
+                  </div>
+                  {/* การ์ด 2 คอลัมน์ */}
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                    {items.map((course) => <CourseCardWide key={course.id} course={course} onEdit={openEdit} onDelete={doDelete} onToggle={doToggle} onView={setViewCourse} />)}
+                  </div>
+                </section>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* Mobile cards */}
@@ -300,7 +332,7 @@ function CourseCardWide({ course, onEdit, onDelete, onToggle, onView }) {
         {/* แถวบน: (ซ้าย) รูป + ป้าย/ชื่อวิชา  ·  (ขวา) toggle เหนือราคา */}
         <div className="flex items-start gap-3">
           {/* รูปเล็กซ้าย */}
-          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-100">
+          <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-100">
             {course.image_url
               ? <img src={course.image_url} alt="" className="w-full h-full object-cover" />
               : <div className="w-full h-full flex items-center justify-center text-slate-300"><Ico.book className="w-7 h-7" /></div>}
@@ -312,7 +344,7 @@ function CourseCardWide({ course, onEdit, onDelete, onToggle, onView }) {
               {typeLabel && <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-md ${cc.bg} ${cc.text}`}>{typeLabel}</span>}
               <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500 bg-slate-50 border border-slate-200/60 rounded-md px-2 py-0.5"><Ico.users className="w-3 h-3" /> {modeLabel(course)}</span>
             </div>
-            <h3 className="font-bold text-[#F15A24] text-sm sm:text-[15px] leading-snug">{course.title}</h3>
+            <h3 className="font-bold text-[#F15A24] text-sm leading-snug">{course.title}</h3>
             {instructors.length > 0 && <div className="text-[11px] text-slate-500 inline-flex items-center gap-1 truncate"><Ico.cap className="w-3 h-3 shrink-0" /> {instructors.join(", ")}</div>}
           </div>
 
@@ -327,65 +359,59 @@ function CourseCardWide({ course, onEdit, onDelete, onToggle, onView }) {
             </div>
             <div className="text-right">
               {course.price > 0
-                ? <span className="text-base sm:text-xl font-extrabold text-[#F15A24] leading-none whitespace-nowrap">{Number(course.price).toLocaleString()}<span className="text-[10px] font-bold text-slate-400 ml-1">บาท</span></span>
+                ? <span className="text-base font-extrabold text-[#F15A24] leading-none whitespace-nowrap">{Number(course.price).toLocaleString()}<span className="text-[10px] font-bold text-slate-400 ml-1">บาท</span></span>
                 : <span className="text-sm font-extrabold text-emerald-600 whitespace-nowrap">ฟรี</span>}
             </div>
           </div>
         </div>
 
-        {/* แถวล่าง: (ซ้าย) แถบที่นั่ง  |  (ขวา) ปุ่ม action — มีเส้นเทากั้น */}
-        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-4">
-          {/* ซ้าย: แถบที่นั่ง */}
-          <div className="flex-1 min-w-0">
-            {Array.isArray(course.sessions) && course.sessions.length > 0 ? (
-              /* คอร์สมีรอบ — ปรอทแยกแต่ละรอบ */
-              <div className="space-y-1.5">
-                {course.sessions.map((s) => {
-                  const sTaken = s.taken || 0
-                  const sCap = s.capacity || 0
-                  const sPct = sCap > 0 ? Math.min(100, Math.round((sTaken / sCap) * 100)) : 0
-                  const sFull = sCap > 0 && sTaken >= sCap
-                  return (
-                    <div key={s.id}>
-                      <div className="flex justify-between items-center text-[10px] mb-0.5">
-                        <span className="text-slate-500 truncate">{s.label || "รอบ"}: <span className={`font-bold ${sFull ? "text-rose-600" : "text-slate-700"}`}>{sTaken}/{sCap}</span></span>
-                        <span className={`font-bold ${sFull ? "text-rose-500" : sPct >= 80 ? "text-amber-500" : "text-[#F15A24]"}`}>{sPct}%</span>
-                      </div>
-                      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full ${sFull ? "bg-gradient-to-r from-rose-500 to-rose-600" : sPct >= 80 ? "bg-amber-400" : "bg-gradient-to-r from-[#fb923c] to-[#F15A24]"}`} style={{ width: `${sPct}%` }} />
-                      </div>
+        {/* แถบที่นั่ง (เต็มกว้าง) */}
+        <div className="mt-3 pt-3 border-t border-slate-100">
+          {Array.isArray(course.sessions) && course.sessions.length > 0 ? (
+            /* คอร์สมีรอบ — ปรอทแยกแต่ละรอบ */
+            <div className="space-y-1.5">
+              {course.sessions.map((s) => {
+                const sTaken = s.taken || 0
+                const sCap = s.capacity || 0
+                const sPct = sCap > 0 ? Math.min(100, Math.round((sTaken / sCap) * 100)) : 0
+                const sFull = sCap > 0 && sTaken >= sCap
+                return (
+                  <div key={s.id}>
+                    <div className="flex justify-between items-center text-[10px] mb-0.5">
+                      <span className="text-slate-500 truncate">{s.label || "รอบ"}: <span className={`font-bold ${sFull ? "text-rose-600" : "text-slate-700"}`}>{sTaken}/{sCap}</span></span>
+                      <span className={`font-bold ${sFull ? "text-rose-500" : sPct >= 80 ? "text-amber-500" : "text-[#F15A24]"}`}>{sPct}%</span>
                     </div>
-                  )
-                })}
+                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full ${sFull ? "bg-gradient-to-r from-rose-500 to-rose-600" : sPct >= 80 ? "bg-amber-400" : "bg-gradient-to-r from-[#fb923c] to-[#F15A24]"}`} style={{ width: `${sPct}%` }} />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <>
+              <div className="flex justify-between items-center text-[11px] mb-1">
+                <span className="text-slate-500">ที่นั่ง: <span className={`font-bold ${isFull && !unlimited ? "text-rose-600" : "text-slate-700"}`}>{taken} / {unlimited ? "∞" : cap}</span></span>
+                {!unlimited && <span className={`font-bold ${isFull ? "text-rose-500" : pct >= 80 ? "text-amber-500" : "text-[#F15A24]"}`}>{pct}%</span>}
               </div>
-            ) : (
-              <>
-                <div className="flex justify-between items-center text-[11px] mb-1">
-                  <span className="text-slate-500">ที่นั่ง: <span className={`font-bold ${isFull && !unlimited ? "text-rose-600" : "text-slate-700"}`}>{taken} / {unlimited ? "∞" : cap}</span></span>
-                  {!unlimited && <span className={`font-bold ${isFull ? "text-rose-500" : pct >= 80 ? "text-amber-500" : "text-[#F15A24]"}`}>{pct}%</span>}
+              {!unlimited ? (
+                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div className={`h-full rounded-full transition-all duration-500 ${isFull ? "bg-gradient-to-r from-rose-500 to-rose-600" : pct >= 80 ? "bg-amber-400" : "bg-gradient-to-r from-[#fb923c] to-[#F15A24]"}`} style={{ width: `${pct}%` }} />
                 </div>
-                {!unlimited ? (
-                  <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full transition-all duration-500 ${isFull ? "bg-gradient-to-r from-rose-500 to-rose-600" : pct >= 80 ? "bg-amber-400" : "bg-gradient-to-r from-[#fb923c] to-[#F15A24]"}`} style={{ width: `${pct}%` }} />
-                  </div>
-                ) : (
-                  <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full bg-emerald-400 transition-all duration-500" style={{ width: `${Math.min(85, Math.round(Math.log10(taken + 1) * 39))}%` }} />
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+              ) : (
+                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full bg-emerald-400 transition-all duration-500" style={{ width: `${Math.min(85, Math.round(Math.log10(taken + 1) * 39))}%` }} />
+                </div>
+              )}
+            </>
+          )}
+        </div>
 
-          {/* เส้นกั้น */}
-          <div className="w-px self-stretch bg-slate-200 shrink-0" />
-
-          {/* ขวา: ปุ่ม action */}
-          <div className="flex items-center gap-2 shrink-0">
-            <button onClick={() => onView(course)} className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition border border-slate-200/60"><Ico.eye className="w-4 h-4" /> ผู้สมัคร</button>
-            <button onClick={() => onEdit(course)} className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold text-[#F15A24] bg-orange-50 hover:bg-[#F15A24] hover:text-white rounded-xl transition border border-orange-100"><Ico.pencil className="w-4 h-4 shrink-0" /> แก้ไข</button>
-            <button onClick={() => onDelete(course)} className="p-2 rounded-xl border border-rose-200 text-rose-500 hover:bg-rose-500 hover:text-white transition shrink-0" aria-label="ลบรายวิชา"><Ico.trash className="w-4 h-4" /></button>
-          </div>
+        {/* ปุ่ม action (แถวล่าง เต็มกว้าง) */}
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          <button onClick={() => onView(course)} className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition border border-slate-200/60"><Ico.eye className="w-4 h-4" /> ผู้สมัคร</button>
+          <button onClick={() => onEdit(course)} className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold text-[#F15A24] bg-orange-50 hover:bg-[#F15A24] hover:text-white rounded-xl transition border border-orange-100"><Ico.pencil className="w-4 h-4 shrink-0" /> แก้ไข</button>
+          <button onClick={() => onDelete(course)} className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl border border-rose-200 text-rose-500 hover:bg-rose-500 hover:text-white transition"><Ico.trash className="w-4 h-4" /> ลบ</button>
         </div>
       </div>
     </div>
