@@ -15,6 +15,16 @@ import AdminUsers from "./AdminUsers.jsx"
 const inputCls = "w-full px-3 py-2.5 border border-slate-200 rounded-xl outline-none focus:border-[#F15A24] focus:ring-1 focus:ring-[#F15A24] text-sm transition"
 const labelCls = "text-xs font-bold text-slate-500 block mb-1.5"
 
+// ค่าเริ่มต้นรายการรางวัลเกียรติบัตร
+const DEFAULT_AWARDS = ["รางวัลชนะเลิศ", "รางวัลรองชนะเลิศอันดับ 1", "รางวัลรองชนะเลิศอันดับ 2", "รางวัลชมเชย", "เข้าร่วมกิจกรรม"]
+
+// normalize banner_images ให้เป็น array ของ string เสมอ (กันข้อมูลเก่า/ค่าว่าง)
+function normBanners(v) {
+  if (Array.isArray(v)) return v.filter((x) => typeof x === "string" && x.trim())
+  if (typeof v === "string" && v.trim()) return [v.trim()]
+  return []
+}
+
 export default function AdminSettings() {
   const { confirm, toast } = useDialog()
   const { event } = useOutletContext()
@@ -25,6 +35,7 @@ export default function AdminSettings() {
   const [types, setTypes] = useState([])
   const [typeModal, setTypeModal] = useState(null)
   const [uploadingSchedule, setUploadingSchedule] = useState(false)
+  const [uploadingBanner, setUploadingBanner] = useState(false)
 
   // โหลดค่ากลาง (Line/เบอร์) + ประเภทวิชา ครั้งเดียว
   useEffect(() => { loadAll() }, [])
@@ -41,8 +52,9 @@ export default function AdminSettings() {
         hero_subtitle: es.hero_subtitle || "",
         home_notice: es.home_notice || "",
         schedule_image_url: es.schedule_image_url || "",
+        banner_images: normBanners(es.banner_images),
         cert_template_url: es.cert_template_url || "",
-        cert_awards: (Array.isArray(es.cert_awards) && es.cert_awards.length) ? es.cert_awards : ["รางวัลชนะเลิศ", "รางวัลรองชนะเลิศอันดับ 1", "รางวัลรองชนะเลิศอันดับ 2", "รางวัลชมเชย", "เข้าร่วมกิจกรรม"],
+        cert_awards: (Array.isArray(es.cert_awards) && es.cert_awards.length) ? es.cert_awards : DEFAULT_AWARDS,
       })
       setTypes(await fetchCourseTypes(event?.id) || [])
     } catch (e) { toast("โหลดไม่สำเร็จ: " + e.message, "error") }
@@ -50,7 +62,7 @@ export default function AdminSettings() {
   async function loadEventPart() {
     try {
       const es = await fetchEventSettings(event.id)
-      setForm((f) => ({ ...(f || { line_id: "", phone: "" }), site_title: es.site_title || "", hero_subtitle: es.hero_subtitle || "", home_notice: es.home_notice || "", schedule_image_url: es.schedule_image_url || "", cert_template_url: es.cert_template_url || "", cert_awards: (Array.isArray(es.cert_awards) && es.cert_awards.length) ? es.cert_awards : ["รางวัลชนะเลิศ", "รางวัลรองชนะเลิศอันดับ 1", "รางวัลรองชนะเลิศอันดับ 2", "รางวัลชมเชย", "เข้าร่วมกิจกรรม"] }))
+      setForm((f) => ({ ...(f || { line_id: "", phone: "" }), site_title: es.site_title || "", hero_subtitle: es.hero_subtitle || "", home_notice: es.home_notice || "", schedule_image_url: es.schedule_image_url || "", banner_images: normBanners(es.banner_images), cert_template_url: es.cert_template_url || "", cert_awards: (Array.isArray(es.cert_awards) && es.cert_awards.length) ? es.cert_awards : DEFAULT_AWARDS }))
       setTypes(await fetchCourseTypes(event.id) || [])
     } catch (e) { toast("โหลดไม่สำเร็จ: " + e.message, "error") }
   }
@@ -61,7 +73,7 @@ export default function AdminSettings() {
       // ค่ากลาง: Line/เบอร์
       await updateSettings({ line_id: form.line_id, phone: form.phone })
       // ค่าตามงาน: ชื่อเว็บ/ข้อความแจ้งเตือน
-      if (event?.id) await updateEventSettings(event.id, { site_title: form.site_title, hero_subtitle: form.hero_subtitle, home_notice: form.home_notice, schedule_image_url: form.schedule_image_url || "", cert_template_url: form.cert_template_url || "", cert_awards: form.cert_awards || [] })
+      if (event?.id) await updateEventSettings(event.id, { site_title: form.site_title, hero_subtitle: form.hero_subtitle, home_notice: form.home_notice, schedule_image_url: form.schedule_image_url || "", banner_images: form.banner_images || [], cert_template_url: form.cert_template_url || "", cert_awards: form.cert_awards || [] })
       toast("บันทึกข้อมูลสำเร็จ", "success")
     }
     catch (e) { toast("บันทึกไม่สำเร็จ: " + e.message, "error") } finally { setSaving(false) }
@@ -96,7 +108,36 @@ export default function AdminSettings() {
     setForm((f) => ({ ...f, schedule_image_url: "" }))
   }
 
-  // ── เกียรติบัตร: อัปโหลดพื้นหลัง + จัดการรายการรางวัล ──
+  // ── Banner (หลายรูป) — อัปโหลดได้ทีละหลายไฟล์ / ลบ / เรียงลำดับ ──
+  async function handleBannerUpload(e) {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+    setUploadingBanner(true)
+    try {
+      const urls = []
+      for (const file of files) {
+        const url = await uploadCourseAsset(file, "banner")
+        urls.push(url)
+      }
+      setForm((f) => ({ ...f, banner_images: [...(f.banner_images || []), ...urls] }))
+      toast(`อัปโหลด ${urls.length} รูปแล้ว กดบันทึกเพื่อใช้งาน`, "success")
+    } catch (err) { toast("อัปโหลดไม่สำเร็จ: " + err.message, "error") }
+    finally { setUploadingBanner(false); e.target.value = "" }
+  }
+  function removeBanner(idx) {
+    setForm((f) => ({ ...f, banner_images: (f.banner_images || []).filter((_, i) => i !== idx) }))
+  }
+  // ย้ายลำดับรูป (ซ้าย/ขวา) — คุมลำดับสไลด์บนหน้าแรก
+  function moveBanner(idx, dir) {
+    setForm((f) => {
+      const arr = [...(f.banner_images || [])]
+      const j = idx + dir
+      if (j < 0 || j >= arr.length) return f
+      ;[arr[idx], arr[j]] = [arr[j], arr[idx]]
+      return { ...f, banner_images: arr }
+    })
+  }
+
   if (!form) return <div className="py-16 text-center text-slate-400">กำลังโหลด…</div>
   const set = (k, v) => setForm({ ...form, [k]: v })
 
@@ -145,6 +186,45 @@ export default function AdminSettings() {
             onChange={(e) => set("home_notice", e.target.value)}
             placeholder="เช่น แจ้งเรื่องการบันทึกภาพ และวิดีโอ: ตลอดกิจกรรมค่ายจะมีการบันทึกภาพนิ่งและวิดีโอ…" />
           <p className="text-[11px] text-slate-400 mt-1">ขึ้นบรรทัดใหม่ได้ · เว้นว่าง = ไม่แสดงแบนเนอร์</p>
+        </div>
+      </SectionCard>
+
+      {/* ── การ์ด: Banner หน้าแรก (หลายรูป สไลด์) เฉพาะงานนี้ ── */}
+      <SectionCard icon={Ico.image} title="ภาพแบนเนอร์หน้าแรก (สไลด์)"
+        subtitle={event ? `${event.name} ${event.year} — แสดงสไลด์บนสุดในหน้าแรก กดดูรูปเต็มได้` : "เลือกงานก่อน"}>
+        <div className="space-y-3">
+          {/* รายการรูปที่มี */}
+          {form.banner_images.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {form.banner_images.map((url, i) => (
+                <div key={i} className="relative rounded-xl overflow-hidden border border-slate-200 shadow-sm group bg-slate-50">
+                  <img src={url} alt={`banner ${i + 1}`} className="w-full h-32 object-cover" />
+                  {/* เลขลำดับ */}
+                  <span className="absolute top-2 left-2 w-6 h-6 rounded-full bg-black/60 text-white text-xs font-bold flex items-center justify-center">{i + 1}</span>
+                  {/* ปุ่มลบ */}
+                  <button onClick={() => removeBanner(i)} type="button"
+                    className="absolute top-2 right-2 w-7 h-7 rounded-full bg-rose-500 text-white flex items-center justify-center shadow-md hover:bg-rose-600 transition">
+                    <Ico.trash className="w-3.5 h-3.5" />
+                  </button>
+                  {/* ปุ่มเลื่อนลำดับ */}
+                  <div className="absolute bottom-2 right-2 flex gap-1">
+                    <button onClick={() => moveBanner(i, -1)} type="button" disabled={i === 0}
+                      className="w-7 h-7 rounded-lg bg-white/90 text-slate-700 flex items-center justify-center shadow-sm hover:bg-white disabled:opacity-30 transition text-sm font-bold">‹</button>
+                    <button onClick={() => moveBanner(i, 1)} type="button" disabled={i === form.banner_images.length - 1}
+                      className="w-7 h-7 rounded-lg bg-white/90 text-slate-700 flex items-center justify-center shadow-sm hover:bg-white disabled:opacity-30 transition text-sm font-bold">›</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {/* ปุ่มอัปโหลดเพิ่ม */}
+          <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed border-slate-200 rounded-xl py-6 cursor-pointer hover:border-[#F15A24] hover:bg-orange-50/40 transition ${uploadingBanner ? "opacity-60 pointer-events-none" : ""}`}>
+            <div className="w-12 h-12 rounded-xl bg-orange-100 text-[#F15A24] flex items-center justify-center"><Ico.image className="w-6 h-6" /></div>
+            <span className="text-sm font-bold text-slate-600">{uploadingBanner ? "กำลังอัปโหลด…" : form.banner_images.length > 0 ? "เพิ่มรูปแบนเนอร์" : "คลิกเพื่อเลือกรูปแบนเนอร์"}</span>
+            <span className="text-[11px] text-slate-400">JPG / PNG · เลือกได้หลายรูปพร้อมกัน · แนะนำสัดส่วนกว้าง (เช่น 16:9)</span>
+            <input type="file" accept="image/*" multiple onChange={handleBannerUpload} disabled={uploadingBanner} className="hidden" />
+          </label>
+          <p className="text-[11px] text-slate-400">ไม่มีรูป = ไม่แสดงสไลด์ · มีรูปเดียว = แสดงรูปนิ่ง · หลายรูป = สไลด์อัตโนมัติ · ใช้ ‹ › เพื่อจัดลำดับ</p>
         </div>
       </SectionCard>
 

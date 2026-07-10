@@ -21,6 +21,50 @@ const Ico = {
   gift:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg>),
 }
 
+// normalize banner_images → array ของ string (กันข้อมูลเก่า/ค่าว่าง)
+function normBanners(v) {
+  if (Array.isArray(v)) return v.filter((x) => typeof x === "string" && x.trim())
+  if (typeof v === "string" && v.trim()) return [v.trim()]
+  return []
+}
+
+// ───── Banner Carousel (แสดงบนสุดใน Hero) ─────
+function BannerCarousel({ images, onView }) {
+  const [idx, setIdx] = useState(0)
+  // เลื่อนอัตโนมัติทุก 4 วินาที (ถ้ามีหลายรูป)
+  useEffect(() => {
+    if (images.length <= 1) return
+    const timer = setInterval(() => setIdx((i) => (i + 1) % images.length), 4000)
+    return () => clearInterval(timer)
+  }, [images.length])
+  // กันค่า idx เกินเมื่อจำนวนรูปเปลี่ยน
+  useEffect(() => { if (idx >= images.length) setIdx(0) }, [images.length, idx])
+
+  if (images.length === 0) return null
+
+  return (
+    <div className="relative rounded-2xl overflow-hidden border border-white/25 shadow-lg bg-black/10 max-w-4xl mx-auto mb-8">
+      <button type="button" onClick={() => onView(idx)} className="block w-full">
+        <img src={images[idx]} alt={`แบนเนอร์ ${idx + 1}`} className="w-full h-auto max-h-[380px] object-cover" />
+      </button>
+      {images.length > 1 && (
+        <>
+          <button onClick={() => setIdx((idx - 1 + images.length) % images.length)}
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition">‹</button>
+          <button onClick={() => setIdx((idx + 1) % images.length)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition">›</button>
+          <div className="absolute bottom-3 inset-x-0 flex justify-center gap-1.5">
+            {images.map((_, i) => (
+              <button key={i} onClick={() => setIdx(i)}
+                className={`h-2 rounded-full transition-all ${i === idx ? "w-5 bg-white" : "w-2 bg-white/50"}`} />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 export default function HomePage() {
   const { t } = useLang()
   const navigate = useNavigate()
@@ -33,6 +77,8 @@ export default function HomePage() {
   const [heroSub, setHeroSub] = useState("")
   const [scheduleUrl, setScheduleUrl] = useState("")
   const [showSchedule, setShowSchedule] = useState(false)
+  const [bannerImages, setBannerImages] = useState([])
+  const [bannerView, setBannerView] = useState(null) // index รูป banner ที่เปิดดูเต็ม (null = ปิด)
 
   const [searchTerm, setSearchTerm] = useState("")
   const [filterType, setFilterType] = useState("All")
@@ -54,6 +100,7 @@ export default function HomePage() {
           setHeroSub((es.hero_subtitle || "").trim())
           const rawSchedule = es.schedule_image_url ?? es.schedule_url ?? ""
           setScheduleUrl(String(rawSchedule).trim())
+          setBannerImages(normBanners(es.banner_images))
         }
       } catch (e) {
         setError(e.message || "โหลดข้อมูลไม่สำเร็จ")
@@ -114,6 +161,9 @@ export default function HomePage() {
         <div className="absolute top-0 right-0 w-full h-[400px] bg-gradient-to-b from-black/10 to-transparent pointer-events-none" />
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+          {/* ─── Banner สไลด์ (บนสุดใน Hero) ─── */}
+          <BannerCarousel images={bannerImages} onView={(i) => setBannerView(i)} />
+
           <div className="text-center mb-8">
             <span className="inline-block bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full mb-3 tracking-widest uppercase">
               🎓 {t("home.openNow")}
@@ -219,6 +269,25 @@ export default function HomePage() {
           </div>
         )}
       </div>
+
+      {/* Modal ดูรูป banner เต็ม */}
+      {bannerView !== null && bannerImages[bannerView] && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setBannerView(null)}>
+          <div className="relative max-w-5xl w-full max-h-[92vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setBannerView(null)}
+              className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 text-slate-700 flex items-center justify-center shadow-lg hover:bg-white z-10 text-xl">×</button>
+            {bannerImages.length > 1 && (
+              <>
+                <button onClick={(e) => { e.stopPropagation(); setBannerView((bannerView - 1 + bannerImages.length) % bannerImages.length) }}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 z-10 text-2xl">‹</button>
+                <button onClick={(e) => { e.stopPropagation(); setBannerView((bannerView + 1) % bannerImages.length) }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 z-10 text-2xl">›</button>
+              </>
+            )}
+            <img src={bannerImages[bannerView]} alt="แบนเนอร์" className="w-full h-auto rounded-2xl" />
+          </div>
+        </div>
+      )}
 
       {/* Modal ดูรูปตารางเต็ม */}
       {showSchedule && scheduleUrl && (
