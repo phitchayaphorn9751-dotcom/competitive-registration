@@ -37,9 +37,9 @@ function catBadgeCls(name) {
   return `${cc.bg} ${cc.text} border-transparent`
 }
 
-function SectionCard({ title, icon: Icon, children, action }) {
+function SectionCard({ title, icon: Icon, children, action, className = "" }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <div className={`bg-white rounded-2xl border shadow-sm overflow-hidden ${className || "border-slate-200"}`}>
       <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
         <h3 className="font-bold text-slate-700 text-sm flex items-center gap-2">{Icon && <Icon className="w-4 h-4 text-[#F15A24]" />}{title}</h3>{action}
       </div>
@@ -141,45 +141,81 @@ export default function AdminDashboard() {
       .sort((a, b) => new Date(a.date.split("/").reverse().join("-")) - new Date(b.date.split("/").reverse().join("-")))
   }, [filtered])
 
-  const courseChartData = useMemo(() => {
-    const m = {}
-    filtered.filter(isPaid).forEach((r) => {
-      if (!m[r.course_id]) m[r.course_id] = { fullName: r.course_name, category: r.course_category || "อื่นๆ", courseId: r.course_id, Applicants: 0, TotalRevenue: 0 }
-      m[r.course_id].Applicants++; m[r.course_id].TotalRevenue += Number(r.price || 0)
-    })
-    return Object.values(m).sort((a, b) => b.Applicants - a.Applicants)
-  }, [filtered])
-
-  // ที่นั่งแต่ละวิชา (แยกหมวด) — ใช้ course_capacity/seats_taken จาก RPC
+  // จำนวนผู้สมัครแต่ละวิชา (แยกหมวด + แยกรอบ) — ใช้ course_capacity/sessions จาก RPC
   // นับ "ผู้สมัครที่ยัง active" (ไม่รวม rejected) เป็นตัวเศษ เทียบกับ capacity
   const seatsByCategory = useMemo(() => {
     const courseMap = {}
     filtered.forEach((r) => {
       const id = r.course_id
       if (!courseMap[id]) {
+        // parse sessions (jsonb array) — ถ้ามีรอบ จะแตกเป็นรายรอบ
+        let sessions = []
+        try {
+          const raw = r.course_sessions
+          sessions = Array.isArray(raw) ? raw : (typeof raw === "string" ? JSON.parse(raw || "[]") : [])
+        } catch { sessions = [] }
         courseMap[id] = {
           courseId: id,
           name: r.course_name,
           category: r.course_category || "อื่นๆ",
           capacity: Number(r.course_capacity || 0),
           seatMode: r.course_seat_mode || "",
-          taken: 0,
+          sessions: Array.isArray(sessions) ? sessions : [],
+          taken: 0,               // นับเองจาก row (คอร์สไม่มีรอบ)
+          sessionTaken: {},       // นับแยกรอบ (key = session_id)
         }
       }
-      // นับที่นั่งที่ถือครองจริง (ไม่นับ rejected/held ที่ปล่อยแล้ว) — ยึด status ที่ยัง active
-      if (!["rejected"].includes(r.status)) courseMap[id].taken++
+      if (!["rejected"].includes(r.status)) {
+        courseMap[id].taken++
+        if (r.session_id) courseMap[id].sessionTaken[r.session_id] = (courseMap[id].sessionTaken[r.session_id] || 0) + 1
+      }
     })
+
+    // แตกเป็น "รายการที่จะแสดง" — คอร์สมีรอบ = 1 แถวต่อรอบ / ไม่มีรอบ = 1 แถวต่อคอร์ส
+    const items = []
+    Object.values(courseMap).forEach((c) => {
+      const hasSessions = Array.isArray(c.sessions) && c.sessions.length > 0
+      if (hasSessions) {
+        c.sessions.forEach((s) => {
+          const sCap = Number(s.capacity || 0)
+          // taken รายรอบ: ใช้ค่าจาก sessions jsonb ก่อน (ตรงกับหน้า Home) fallback เป็นที่นับเอง
+          const sTaken = s.taken != null ? Number(s.taken) : (c.sessionTaken[s.id] || 0)
+          items.push({
+            key: `${c.courseId}_${s.id}`,
+            courseId: c.courseId,
+            name: c.name,
+            sub: s.label || "รอบ",
+            category: c.category,
+            capacity: sCap,
+            taken: sTaken,
+            seatMode: sCap > 0 ? "" : c.seatMode,
+          })
+        })
+      } else {
+        items.push({
+          key: c.courseId,
+          courseId: c.courseId,
+          name: c.name,
+          sub: "",
+          category: c.category,
+          capacity: c.capacity,
+          taken: c.taken,
+          seatMode: c.seatMode,
+        })
+      }
+    })
+
     // จัดกลุ่มตามหมวด
     const catMap = {}
-    Object.values(courseMap).forEach((c) => {
-      const k = c.category
+    items.forEach((it) => {
+      const k = it.category
       if (!catMap[k]) catMap[k] = []
-      catMap[k].push(c)
+      catMap[k].push(it)
     })
-    // เรียงวิชาในแต่ละหมวด (คนเยอะ→น้อย) + เรียงหมวดตามจำนวนวิชา
-    return Object.entries(catMap).map(([category, courses]) => ({
+    // เรียงรายการในแต่ละหมวด (คนเยอะ→น้อย = มากบนสุด) + เรียงหมวดตามจำนวนรายการ
+    return Object.entries(catMap).map(([category, list]) => ({
       category,
-      courses: courses.sort((a, b) => b.taken - a.taken),
+      courses: list.sort((a, b) => b.taken - a.taken),
     })).sort((a, b) => b.courses.length - a.courses.length)
   }, [filtered])
 
@@ -189,28 +225,6 @@ export default function AdminDashboard() {
     return Object.entries(c).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value)
   }, [filtered])
 
-  // สรุปแยกหมวด (ตาราง) — สมัคร/จ่ายจริง/รายได้/จำนวนวิชา/อัตราจ่าย
-  const categorySummary = useMemo(() => {
-    const m = {}
-    filtered.forEach((r) => {
-      const k = r.course_category || "อื่นๆ"
-      if (!m[k]) m[k] = { name: k, apps: 0, paidSeats: 0, revenue: 0, courses: new Set(), emails: new Set(), paidEmails: new Set() }
-      m[k].apps++
-      m[k].emails.add(r.submitter_email)
-      m[k].courses.add(r.course_id)
-      if (isPaid(r)) { m[k].paidSeats++; m[k].revenue += Number(r.price || 0); m[k].paidEmails.add(r.submitter_email) }
-    })
-    return Object.values(m).map((v) => ({
-      name: v.name,
-      apps: v.apps,
-      users: v.emails.size,
-      paidSeats: v.paidSeats,
-      paidUsers: v.paidEmails.size,
-      revenue: v.revenue,
-      courses: v.courses.size,
-      convRate: v.emails.size > 0 ? Math.round((v.paidEmails.size / v.emails.size) * 100) : 0,
-    })).sort((a, b) => b.users - a.users)
-  }, [filtered])
 
   const schoolRanking = useMemo(() => {
     const c = {}
@@ -415,6 +429,7 @@ export default function AdminDashboard() {
       {/* ⭐ Action Center — ต้องรีบจัดการ */}
       <SectionCard
         title="ต้องรีบจัดการ" icon={Ico.clock}
+        className="border-2 border-[#F15A24]"
         action={<span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${totalAction > 0 ? "text-[#F15A24] bg-orange-50 border-orange-100" : "text-emerald-600 bg-emerald-50 border-emerald-100"}`}>{totalAction > 0 ? `${totalAction} รายการค้าง` : "เคลียร์หมดแล้ว"}</span>}
       >
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -448,71 +463,38 @@ export default function AdminDashboard() {
         )}
       </SectionCard>
 
-      {/* ⭐ สรุปแยกหมวด — ตาราง */}
-      {categorySummary.length > 0 && (
-        <SectionCard title="สรุปแยกหมวด" icon={Ico.fire} action={<span className="text-xs text-slate-400">{categorySummary.length} หมวด</span>}>
-          <div className="overflow-x-auto -mx-5 px-5">
-            <table className="w-full text-xs min-w-[560px]">
-              <thead>
-                <tr className="text-[10px] text-slate-400 uppercase border-b border-slate-100">
-                  <th className="py-2 text-left">หมวด</th>
-                  <th className="py-2 text-right">วิชา</th>
-                  <th className="py-2 text-right">ผู้สมัคร</th>
-                  <th className="py-2 text-right">จ่ายจริง</th>
-                  <th className="py-2 text-right">อัตราจ่าย</th>
-                  <th className="py-2 text-right">รายได้</th>
-                </tr>
-              </thead>
-              <tbody>
-                {categorySummary.map((c, i) => (
-                  <tr key={i} onClick={() => drillDown(`หมวด: ${c.name}`, (r) => (r.course_category || "อื่นๆ") === c.name)}
-                    className="border-b last:border-0 hover:bg-orange-50/50 cursor-pointer transition">
-                    <td className="py-3"><span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold border ${catBadgeCls(c.name)}`}>{c.name}</span></td>
-                    <td className="py-3 text-right text-slate-500">{c.courses}</td>
-                    <td className="py-3 text-right font-bold text-slate-700">{c.users} คน</td>
-                    <td className="py-3 text-right font-semibold text-emerald-600">{c.paidUsers}</td>
-                    <td className="py-3 text-right">
-                      <span className={`font-bold ${c.convRate >= 60 ? "text-emerald-600" : c.convRate >= 30 ? "text-amber-500" : "text-slate-400"}`}>{c.convRate}%</span>
-                    </td>
-                    <td className="py-3 text-right font-bold text-[#F15A24] whitespace-nowrap">฿{c.revenue.toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </SectionCard>
-      )}
-
-      {/* ⭐ ที่นั่งแต่ละวิชา (แยกหมวด) — ปรอทแบบอันดับโรงเรียน + 12/30 */}
+      {/* ⭐ จำนวนผู้สมัคร (แยกหมวด + แยกรอบ) */}
       {seatsByCategory.length > 0 && (
-        <SectionCard title="ที่นั่งแต่ละวิชา" icon={Ico.chart} action={<span className="text-xs text-slate-400">แยกตามหมวด</span>}>
+        <SectionCard title="จำนวนผู้สมัคร" icon={Ico.chart} action={<span className="text-xs text-slate-400">แยกตามหมวด</span>}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-5">
             {seatsByCategory.map((grp) => (
               <div key={grp.category}>
                 {/* หัวหมวด */}
                 <div className="flex items-center gap-2 mb-2.5">
                   <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold border ${catBadgeCls(grp.category)}`}>{grp.category}</span>
-                  <span className="text-[11px] text-slate-400">{grp.courses.length} วิชา</span>
+                  <span className="text-[11px] text-slate-400">{grp.courses.length} รายการ</span>
                 </div>
-                {/* รายการวิชาในหมวด */}
+                {/* รายการวิชา/รอบในหมวด */}
                 <div className="space-y-1">
                   {grp.courses.map((c) => {
                     const unlimited = c.seatMode === "unlimited" || c.capacity <= 0
                     const pct = unlimited ? Math.min(85, Math.round(Math.log10(c.taken + 1) * 39)) : Math.min(100, Math.round((c.taken / c.capacity) * 100))
-                    const isFull = !unlimited && c.taken >= c.capacity
-                    const barColor = unlimited ? "bg-emerald-400" : isFull ? "bg-rose-500" : pct >= 75 ? "bg-amber-500" : "bg-gradient-to-r from-[#F15A24] to-orange-300"
+                    const isOver = !unlimited && c.taken >= c.capacity   // เต็ม/เกิน = แดง
+                    const barColor = unlimited ? "bg-[#F15A24]" : isOver ? "bg-rose-500" : "bg-gradient-to-r from-[#F15A24] to-orange-300"
                     return (
-                      <div key={c.courseId} onClick={() => openCourseDetail(c.courseId, c.name)}
+                      <div key={c.key} onClick={() => openCourseDetail(c.courseId, c.name)}
                         className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-orange-50/60 cursor-pointer transition">
                         <div className="flex-1 min-w-0">
-                          <div className="text-xs font-medium text-slate-700 truncate mb-1">{c.name}</div>
+                          <div className="text-xs font-medium text-slate-700 truncate mb-1">
+                            {c.name}{c.sub && <span className="text-slate-400 font-normal"> · {c.sub}</span>}
+                          </div>
                           <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                             <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
                           </div>
                         </div>
-                        <span className={`text-xs font-bold shrink-0 ${isFull ? "text-rose-500" : "text-slate-500"}`}>
+                        <span className={`text-xs font-bold shrink-0 ${isOver ? "text-rose-500" : "text-slate-500"}`}>
                           {unlimited ? (
-                            <span className="inline-flex items-center gap-1">{c.taken} <span className="text-emerald-500">· ∞</span></span>
+                            <span className="inline-flex items-center gap-1">{c.taken} <span className="text-[#F15A24]">· ∞</span></span>
                           ) : `${c.taken}/${c.capacity}`}
                         </span>
                       </div>
@@ -613,34 +595,6 @@ export default function AdminDashboard() {
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
-      </SectionCard>
-
-      {/* Course ranking */}
-      <SectionCard title="อันดับวิชายอดฮิต" icon={Ico.trophy} action={<span className="text-xs font-bold text-[#F15A24] bg-orange-50 px-2.5 py-1 rounded-full border border-orange-100">คลิกวิชาเพื่อดูรายละเอียด</span>}>
-        <div className="overflow-y-auto max-h-80 -mx-5 px-5">
-          <table className="w-full text-xs">
-            <thead className="sticky top-0 bg-white border-b border-slate-100">
-              <tr className="text-[10px] text-slate-400 uppercase">
-                <th className="py-2 text-center w-7">#</th><th className="py-2 text-left">วิชา</th>
-                <th className="py-2 text-left">หมวด</th>
-                <th className="py-2 text-right pr-2">สมัคร</th><th className="py-2 text-right">รายได้</th>
-              </tr>
-            </thead>
-            <tbody>
-              {courseChartData.map((c, i) => (
-                <tr key={i} onClick={() => openCourseDetail(c.courseId, c.fullName)}
-                  className="border-b last:border-0 hover:bg-orange-50/50 cursor-pointer transition">
-                  <td className="py-3 text-center font-bold text-slate-300">{i + 1}</td>
-                  <td className="py-3 font-medium text-slate-700 max-w-[140px]"><span className="line-clamp-2 leading-snug">{c.fullName}</span></td>
-                  <td className="py-3"><span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold border ${catBadgeCls(c.category)}`}>{c.category}</span></td>
-                  <td className="py-3 text-right font-bold text-slate-600 pr-2 whitespace-nowrap">{c.Applicants} คน</td>
-                  <td className="py-3 text-right font-bold text-[#F15A24] whitespace-nowrap">฿{c.TotalRevenue.toLocaleString()}</td>
-                </tr>
-              ))}
-              {courseChartData.length === 0 && <tr><td colSpan="5" className="py-8 text-center text-slate-300">ยังไม่มีข้อมูล</td></tr>}
-            </tbody>
-          </table>
         </div>
       </SectionCard>
 
