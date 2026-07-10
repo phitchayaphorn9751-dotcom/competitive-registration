@@ -180,6 +180,12 @@ export async function adminUpdateAdvisor(advisorId, a) {
   if (error) throw error
   return data
 }
+// แอดมินบันทึกโน้ต/หมายเหตุในใบสมัคร (ผู้สมัครเห็นด้วย)
+export async function adminSetNote(regId, note) {
+  const { data, error } = await supabase.rpc("admin_set_note", { p_reg_id: regId, p_note: note || "" })
+  if (error) throw error
+  return data
+}
 // ข้อ 7: แอดมินแก้จำนวนเงิน
 export async function adminUpdatePaymentAmount(regId, amount) {
   const { data, error } = await supabase.rpc("admin_update_payment_amount", { p_reg_id: regId, p_amount: amount })

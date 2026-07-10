@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate, useOutletContext } from "react-router-dom"
-import { fetchRegistration, confirmRegistration, releaseSeat, cancelRegistration, rejectRegistration, rejectPortfolio, promoteWaitlist, fetchCoursesAdmin, adminReassign, adminUpdatePaymentAmount, deleteRegistration, saveRegistrationTheme, adminUpdateParticipant, adminUpdateAdvisor, uploadSlip, attachSlip } from "../../lib/supabase.js"
+import { fetchRegistration, confirmRegistration, releaseSeat, cancelRegistration, rejectRegistration, rejectPortfolio, promoteWaitlist, fetchCoursesAdmin, adminReassign, adminUpdatePaymentAmount, deleteRegistration, saveRegistrationTheme, adminUpdateParticipant, adminUpdateAdvisor, uploadSlip, attachSlip, adminSetNote } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
 
 const STATUS = {
@@ -332,6 +332,9 @@ export default function AdminVerifySlip() {
             </div>
           )}
 
+          {/* โน้ต/หมายเหตุจากแอดมิน (ผู้สมัครเห็นด้วย) */}
+          <AdminNoteCard regId={data.id} note={data.admin_note} onSaved={(v) => setData((prev) => ({ ...prev, admin_note: v }))} toast={toast} />
+
           {/* Actions */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">การดำเนินการ</p>
@@ -651,6 +654,56 @@ function EditRegistrationModal({ data, eventId, isPaid, onClose, onSaved, toast 
           <button onClick={save} disabled={busy} className="py-3 bg-[#F15A24] text-white rounded-xl font-bold hover:bg-orange-600 shadow-sm transition text-sm disabled:opacity-50">บันทึก</button>
         </div>
       </div>
+    </div>
+  )
+}
+
+// การ์ดโน้ต/หมายเหตุจากแอดมิน — แก้ไข inline (ผู้สมัครเห็นด้วยในหน้าใบสมัครของฉัน)
+function AdminNoteCard({ regId, note, onSaved, toast }) {
+  const [editing, setEditing] = useState(false)
+  const [value, setValue] = useState(note || "")
+  const [saving, setSaving] = useState(false)
+
+  async function handleSave() {
+    setSaving(true)
+    try {
+      await adminSetNote(regId, value.trim())
+      onSaved(value.trim())
+      setEditing(false)
+      toast("บันทึกโน้ตแล้ว", "success")
+    } catch (e) {
+      toast("บันทึกไม่สำเร็จ: " + e.message, "error")
+    } finally { setSaving(false) }
+  }
+
+  return (
+    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-bold text-amber-700">📝 โน้ต/หมายเหตุ <span className="font-normal text-amber-500">(ผู้สมัครเห็นด้วย)</span></p>
+        {!editing && (
+          <button onClick={() => { setValue(note || ""); setEditing(true) }}
+            className="text-[10px] font-bold text-amber-600 hover:text-amber-800 bg-amber-100 hover:bg-amber-200 px-2 py-1 rounded-lg transition">
+            ✏️ แก้ไข
+          </button>
+        )}
+      </div>
+      {editing ? (
+        <div className="space-y-2">
+          <textarea autoFocus rows={3} value={value} onChange={(e) => setValue(e.target.value)}
+            placeholder="เช่น โอนเงินเกิน รอคืนส่วนต่าง / ติดต่อกลับแล้ว / ขอเอกสารเพิ่ม…"
+            className="w-full px-3 py-2 border-2 border-amber-300 rounded-xl outline-none focus:border-amber-500 bg-white text-sm resize-none transition" />
+          <div className="flex gap-2">
+            <button onClick={() => setEditing(false)} className="flex-1 py-2 bg-gray-200 text-gray-600 rounded-xl font-bold text-xs hover:bg-gray-300 transition">ยกเลิก</button>
+            <button onClick={handleSave} disabled={saving} className="flex-1 py-2 bg-amber-600 text-white rounded-xl font-bold text-xs hover:bg-amber-700 disabled:opacity-50 transition">
+              {saving ? "กำลังบันทึก…" : "💾 บันทึก"}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <p className="text-sm text-amber-800 leading-relaxed whitespace-pre-wrap min-h-[1.25rem]">
+          {note ? note : <span className="text-amber-400 italic text-xs">ยังไม่มีโน้ต — กด แก้ไข เพื่อเพิ่ม</span>}
+        </p>
+      )}
     </div>
   )
 }

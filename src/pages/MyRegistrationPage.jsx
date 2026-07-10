@@ -272,6 +272,13 @@ export default function MyRegistrationPage() {
                     {/* หมายเหตุสถานะ */}
                     {d === "waitlist" && <p className="text-[11px] text-slate-400 mt-2">*จำนวนเต็มแล้ว — เมื่อมีที่ว่างระบบจะเรียกคิวอัตโนมัติ</p>}
                     {d === "rejected" && reg.reject_reason && <p className="text-[11px] text-rose-400 mt-2">เหตุผล: {reg.reject_reason}</p>}
+                    {/* โน้ตจากผู้จัด (แอดมินเขียน) */}
+                    {reg.admin_note && (
+                      <div className="mt-2 flex items-start gap-1.5 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5">
+                        <Ico.info className="w-3 h-3 text-amber-500 shrink-0 mt-0.5" />
+                        <p className="text-[11px] text-amber-700 leading-relaxed whitespace-pre-wrap">{reg.admin_note}</p>
+                      </div>
+                    )}
 
                     {/* ปุ่ม action — แถวล่างสุด ดันชิดท้ายการ์ดเสมอ กดง่ายบนมือถือ */}
                     {hasAction && (
@@ -539,6 +546,14 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
               <div className="bg-rose-50 border border-rose-100 rounded-xl p-3 my-2">
                 <p className="text-xs font-bold text-rose-500 mb-1">เหตุผลที่ไม่ผ่าน</p>
                 <p className="text-sm text-rose-700">{reg.reject_reason}</p>
+              </div>
+            )}
+
+            {/* โน้ต/หมายเหตุจากผู้จัด */}
+            {reg.admin_note && (
+              <div className="bg-amber-50 border border-amber-100 rounded-xl p-3 my-2">
+                <p className="text-xs font-bold text-amber-600 mb-1 flex items-center gap-1.5"><Ico.info className="w-3.5 h-3.5" /> หมายเหตุจากผู้จัด</p>
+                <p className="text-sm text-amber-800 leading-relaxed whitespace-pre-wrap">{reg.admin_note}</p>
               </div>
             )}
           </div>
