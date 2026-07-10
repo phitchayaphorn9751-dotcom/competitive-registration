@@ -143,6 +143,15 @@ export default function RegisterPage() {
     }
     for (const m of extraMembers) {
       if (!m.full_name.trim()) return setError(t("reg.needName"))
+      // บังคับเลขบัตร 13 หลัก — กันสมัครซ้ำ/สวมสิทธิ์ (ต้องมีเพื่อเช็คซ้ำได้)
+      const nid = (m.national_id || "").trim()
+      if (nid.length !== 13) {
+        return setError(`กรุณากรอกเลขบัตรประชาชน 13 หลักของ "${m.full_name.trim()}" ให้ครบ (ถามเพื่อนในทีม — ใช้กันการสมัครซ้ำ)`)
+      }
+    }
+    // เจ้าของทีมต้องมีเลขบัตรใน profile ด้วย (คอร์สแบบทีม)
+    if (course.count_mode === "team" && (ownerNationalId || "").trim().length !== 13) {
+      return setError("โปรไฟล์ของคุณยังไม่มีเลขบัตรประชาชน 13 หลัก — กรุณาไปกรอกที่หน้าโปรไฟล์ก่อนสมัครแบบทีม")
     }
     if (course.count_mode === "team" && (teamCount < minTeam || teamCount > maxTeam)) {
       return setError(`ทีมต้องมี ${minTeam}-${maxTeam} คน (ตอนนี้ ${teamCount} คน)`)
@@ -532,7 +541,7 @@ export default function RegisterPage() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <input className={inputCls} placeholder="ชื่อ-สกุล *" value={m.full_name} onChange={(e) => updateMember(i, "full_name", e.target.value)} />
-                    <input className={inputCls} placeholder="เลขบัตรประชาชน 13 หลัก" value={m.national_id || ""} onChange={(e) => updateMember(i, "national_id", e.target.value.replace(/[^0-9]/g, "").slice(0, 13))} />
+                    <input className={inputCls + ((m.national_id || "").length > 0 && (m.national_id || "").length !== 13 ? " border-rose-300 focus:border-rose-400 focus:ring-rose-100" : "")} placeholder="เลขบัตรประชาชน 13 หลัก *" value={m.national_id || ""} onChange={(e) => updateMember(i, "national_id", e.target.value.replace(/[^0-9]/g, "").slice(0, 13))} />
                     <input className={inputCls} type="email" placeholder="Gmail ของน้องคนนี้" value={m.email || ""} onChange={(e) => updateMember(i, "email", e.target.value)} />
                     <div className="relative">
                       <input className={inputCls} placeholder="โรงเรียน (พิมพ์เพื่อค้นหา)" value={m.school}
@@ -549,6 +558,7 @@ export default function RegisterPage() {
                     <input className={inputCls} placeholder="เบอร์โทร" value={m.phone} onChange={(e) => updateMember(i, "phone", e.target.value.replace(/[^0-9]/g, "").slice(0, 10))} />
                   </div>
                   <p className="text-[11px] text-slate-400 mt-1.5">💡 ใส่ Gmail ของน้องเพื่อให้น้อง login เข้ามาดูงานนี้และ QR เช็คอินของตัวเองได้</p>
+                  <p className="text-[11px] text-[#F15A24] mt-1 flex items-center gap-1"><Ico.warn className="w-3 h-3 shrink-0" /> ต้องกรอกเลขบัตร 13 หลักของเพื่อนให้ครบ (ถามเพื่อนในทีม) — ใช้กันการสมัครซ้ำ/สวมสิทธิ์</p>
                 </div>
               ))}
             </div>
