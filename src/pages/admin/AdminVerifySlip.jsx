@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate, useOutletContext } from "react-router-dom"
-import { fetchRegistration, confirmRegistration, releaseSeat, cancelRegistration, rejectRegistration, rejectPortfolio, promoteWaitlist, fetchCoursesAdmin, adminReassign, adminUpdatePaymentAmount, deleteRegistration, saveRegistrationTheme } from "../../lib/supabase.js"
+import { fetchRegistration, confirmRegistration, releaseSeat, cancelRegistration, rejectRegistration, rejectPortfolio, promoteWaitlist, fetchCoursesAdmin, adminReassign, adminUpdatePaymentAmount, deleteRegistration, saveRegistrationTheme, adminUpdateParticipant, adminUpdateAdvisor } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
 
 const STATUS = {
@@ -378,6 +378,16 @@ function EditRegistrationModal({ data, eventId, isPaid, onClose, onSaved, toast 
   const [amount, setAmount] = useState((data.payments?.[0]?.amount ?? data.courses?.price ?? 0))
   const [themeName, setThemeName] = useState(data.theme_name || "")
   const [busy, setBusy] = useState(false)
+  // ── แก้ข้อมูลผู้เข้าร่วม + ครูที่ปรึกษา (clone มาแก้ในฟอร์ม) ──
+  const [members, setMembers] = useState(() => (data.participants || []).map((p) => ({
+    id: p.id, full_name: p.full_name || "", school: p.school || "", grade_level: p.grade_level || "",
+    phone: p.phone || "", email: p.email || "", national_id: p.national_id || "",
+  })))
+  const [advs, setAdvs] = useState(() => (data.advisors || []).map((a) => ({
+    id: a.id, full_name: a.full_name || "", phone: a.phone || "", email: a.email || "",
+  })))
+  function setMember(i, k, v) { setMembers((prev) => prev.map((m, idx) => idx === i ? { ...m, [k]: v } : m)) }
+  function setAdv(i, k, v) { setAdvs((prev) => prev.map((a, idx) => idx === i ? { ...a, [k]: v } : a)) }
 
   // จำนวนที่นั่งที่ใบนี้กิน = จำนวนสมาชิก (ทีม 3 คน = 3)
   const seatsNeeded = Math.max(1, (data.participants || []).length)
@@ -429,6 +439,24 @@ function EditRegistrationModal({ data, eventId, isPaid, onClose, onSaved, toast 
       // แก้ชื่อทีม
       if (themeName.trim() !== (data.theme_name || "")) {
         await saveRegistrationTheme(data.id, themeName.trim())
+      }
+      // แก้ข้อมูลผู้เข้าร่วม (เฉพาะคนที่มีการเปลี่ยนแปลง)
+      for (let i = 0; i < members.length; i++) {
+        const m = members[i]
+        const orig = data.participants?.[i]
+        if (!m.id || !orig) continue
+        const changed = m.full_name !== (orig.full_name || "") || m.school !== (orig.school || "")
+          || m.grade_level !== (orig.grade_level || "") || m.phone !== (orig.phone || "")
+          || m.email !== (orig.email || "") || m.national_id !== (orig.national_id || "")
+        if (changed) await adminUpdateParticipant(m.id, m)
+      }
+      // แก้ข้อมูลครูที่ปรึกษา (เฉพาะที่เปลี่ยน)
+      for (let i = 0; i < advs.length; i++) {
+        const a = advs[i]
+        const orig = data.advisors?.[i]
+        if (!a.id || !orig) continue
+        const changed = a.full_name !== (orig.full_name || "") || a.phone !== (orig.phone || "") || a.email !== (orig.email || "")
+        if (changed) await adminUpdateAdvisor(a.id, a)
       }
       toast("บันทึกการแก้ไขแล้ว", "success")
       onSaved()
@@ -526,6 +554,58 @@ function EditRegistrationModal({ data, eventId, isPaid, onClose, onSaved, toast 
             <input value={themeName} onChange={(e) => setThemeName(e.target.value)} placeholder="เช่น Team Rocket / ชื่อผลงาน"
               className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#F15A24]" />
           </div>
+
+          {/* ── แก้ข้อมูลผู้เข้าร่วม ── */}
+          {members.length > 0 && (
+            <div className="pt-2 border-t border-gray-100">
+              <label className="text-xs font-bold text-gray-500 block mb-2">👥 ข้อมูลผู้เข้าร่วม</label>
+              <div className="space-y-3">
+                {members.map((m, i) => (
+                  <div key={m.id || i} className="bg-gray-50 rounded-xl p-3 border border-gray-100 space-y-2">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-5 h-5 bg-[#F15A24] text-white rounded-md flex items-center justify-center text-[10px] font-bold shrink-0">{i + 1}</span>
+                      <span className="text-[11px] font-bold text-gray-500">คนที่ {i + 1}</span>
+                    </div>
+                    <input value={m.full_name} onChange={(e) => setMember(i, "full_name", e.target.value)} placeholder="ชื่อ-สกุล"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#F15A24]" />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input value={m.school} onChange={(e) => setMember(i, "school", e.target.value)} placeholder="โรงเรียน"
+                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#F15A24]" />
+                      <input value={m.grade_level} onChange={(e) => setMember(i, "grade_level", e.target.value)} placeholder="ระดับชั้น"
+                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#F15A24]" />
+                      <input value={m.phone} onChange={(e) => setMember(i, "phone", e.target.value.replace(/[^0-9]/g, "").slice(0, 10))} placeholder="เบอร์โทร"
+                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#F15A24]" />
+                      <input value={m.national_id} onChange={(e) => setMember(i, "national_id", e.target.value.replace(/[^0-9]/g, "").slice(0, 13))} placeholder="เลขบัตร ปชช."
+                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#F15A24]" />
+                    </div>
+                    <input type="email" value={m.email} onChange={(e) => setMember(i, "email", e.target.value)} placeholder="อีเมล"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#F15A24]" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── แก้ข้อมูลครูที่ปรึกษา ── */}
+          {advs.length > 0 && (
+            <div className="pt-2 border-t border-gray-100">
+              <label className="text-xs font-bold text-gray-500 block mb-2">🧑‍🏫 ครูที่ปรึกษา</label>
+              <div className="space-y-3">
+                {advs.map((a, i) => (
+                  <div key={a.id || i} className="bg-blue-50 rounded-xl p-3 border border-blue-100 space-y-2">
+                    <input value={a.full_name} onChange={(e) => setAdv(i, "full_name", e.target.value)} placeholder="ชื่อครูที่ปรึกษา"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#F15A24]" />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input value={a.phone} onChange={(e) => setAdv(i, "phone", e.target.value.replace(/[^0-9]/g, "").slice(0, 10))} placeholder="เบอร์โทร"
+                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#F15A24]" />
+                      <input type="email" value={a.email} onChange={(e) => setAdv(i, "email", e.target.value)} placeholder="อีเมล"
+                        className="px-3 py-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-[#F15A24]" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         <div className="px-5 sm:px-6 pb-5 sm:pb-6 pt-2 grid grid-cols-2 gap-3 shrink-0 border-t border-gray-50">
           <button onClick={onClose} className="py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition text-sm">ยกเลิก</button>
