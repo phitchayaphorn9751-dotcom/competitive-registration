@@ -289,7 +289,7 @@ function CourseCard({ course, t, onDetail, onRegister }) {
   const type = course.course_types
   const taken = course.seats_taken || 0
   const cap = course.capacity || 0
-  const isUnlimited = course.seat_mode === "unlimited"
+  const isUnlimited = course.seat_mode === "unlimited" || (course.capacity || 0) === 0
   const hasSessions = Array.isArray(course.sessions) && course.sessions.length > 0
   const remaining = Math.max(0, cap - taken)
   const pct = cap > 0 ? Math.min((taken / cap) * 100, 100) : 0
@@ -379,7 +379,7 @@ function CourseCard({ course, t, onDetail, onRegister }) {
                 <span className="text-slate-500">{t("home.seats")}</span>
                 <span className={`font-bold ${isFull ? "text-rose-500" : "text-emerald-600"}`}>
                   {isFull ? t("home.full") : isUnlimited ? (
-                    <span className="inline-flex items-center gap-1">{taken} คน · <Ico.infinity className="w-4 h-4 inline-block" /></span>
+                    <span className="inline-flex items-center gap-1">ไม่จำกัด <Ico.infinity className="w-4 h-4 inline-block" /> · {taken} คน</span>
                   ) : (cap > 0 && (taken / cap) >= 0.5) ? `${taken}/${cap}` : `รับ ${cap} ที่นั่ง`}
                 </span>
               </div>
