@@ -29,7 +29,7 @@ function normBanners(v) {
 }
 
 // ───── Banner Carousel (แสดงบนสุดใน Hero) ─────
-function BannerCarousel({ images, onView }) {
+function BannerCarousel({ images, onView, hero }) {
   const [idx, setIdx] = useState(0)
   // เลื่อนอัตโนมัติทุก 4 วินาที (ถ้ามีหลายรูป)
   useEffect(() => {
@@ -42,10 +42,18 @@ function BannerCarousel({ images, onView }) {
 
   if (images.length === 0) return null
 
+  // hero = เต็มความกว้าง ไม่มีขอบมน (แทนพื้นส้ม) / ปกติ = การ์ดมีขอบมน
+  const wrapCls = hero
+    ? "relative overflow-hidden bg-slate-900 shadow-md"
+    : "relative rounded-2xl overflow-hidden border border-white/25 shadow-lg bg-black/10 max-w-4xl mx-auto mb-8"
+  const imgCls = hero
+    ? "w-full h-auto max-h-[70vh] object-contain mx-auto"
+    : "w-full h-auto max-h-[380px] object-cover"
+
   return (
-    <div className="relative rounded-2xl overflow-hidden border border-white/25 shadow-lg bg-black/10 max-w-4xl mx-auto mb-8">
+    <div className={wrapCls}>
       <button type="button" onClick={() => onView(idx)} className="block w-full">
-        <img src={images[idx]} alt={`แบนเนอร์ ${idx + 1}`} className="w-full h-auto max-h-[380px] object-cover" />
+        <img src={images[idx]} alt={`แบนเนอร์ ${idx + 1}`} className={imgCls} />
       </button>
       {images.length > 1 && (
         <>
@@ -155,52 +163,81 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-slate-50 pb-16">
-      {/* ─── Hero Banner ─── */}
-      <div className="relative bg-gradient-to-r from-[#F15A24] to-amber-500 text-white overflow-hidden shadow-md">
-        <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: `linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)`, backgroundSize: "40px 40px" }} />
-        <div className="absolute top-0 right-0 w-full h-[400px] bg-gradient-to-b from-black/10 to-transparent pointer-events-none" />
+      {/* ─── Hero: ถ้ามี banner → banner เต็มจอ + search ใต้ banner / ไม่มี → กรอบส้มเดิม ─── */}
+      {bannerImages.length > 0 ? (
+        <>
+          {/* Banner เต็มความกว้าง แทนพื้นส้ม (ไม่มีข้อความทับ) */}
+          <BannerCarousel images={bannerImages} onView={(i) => setBannerView(i)} hero />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-          {/* ─── Banner สไลด์ (บนสุดใน Hero) ─── */}
-          <BannerCarousel images={bannerImages} onView={(i) => setBannerView(i)} />
-
-          <div className="text-center mb-8">
-            <span className="inline-block bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full mb-3 tracking-widest uppercase">
-              🎓 {t("home.openNow")}
-            </span>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold mb-3 tracking-tight">
-              {siteTitle || event?.name || "CAMT SUMMER COURSE"}
-              {event?.year && <span className="ml-2">{event.year}</span>}
-            </h1>
-            <p className="text-orange-100 text-base sm:text-lg max-w-xl mx-auto">
-              {heroSub || t("home.heroSub")}
+          {/* Search & Filter — ย้ายลงมาใต้ banner บนพื้นขาว */}
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Ico.search className="w-4 h-4 absolute inset-y-0 left-3.5 my-auto text-slate-400 pointer-events-none" />
+                  <input type="text" placeholder={t("common.search") + "…"}
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl text-slate-800 text-sm outline-none focus:ring-2 focus:ring-[#F15A24]/40 bg-slate-50 focus:bg-white border border-slate-200 placeholder-slate-400 transition"
+                    value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                </div>
+                {types.length > 0 && (
+                  <select className="px-4 py-2.5 rounded-xl text-slate-800 text-sm outline-none focus:ring-2 focus:ring-[#F15A24]/40 bg-slate-50 focus:bg-white border border-slate-200 sm:w-52 transition"
+                    value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+                    <option value="All">ทุกหมวดหมู่</option>
+                    {types.map((tp) => <option key={tp} value={tp}>{tp}</option>)}
+                  </select>
+                )}
+              </div>
+            </div>
+            <p className="text-center text-slate-400 text-sm mt-3">
+              {t("home.foundCourses", { n: filtered.length })}
             </p>
           </div>
+        </>
+      ) : (
+        /* ─── Fallback: ไม่มี banner → กรอบส้มเดิม (มีข้อความ + search) ─── */
+        <div className="relative bg-gradient-to-r from-[#F15A24] to-amber-500 text-white overflow-hidden shadow-md">
+          <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: `linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)`, backgroundSize: "40px 40px" }} />
+          <div className="absolute top-0 right-0 w-full h-[400px] bg-gradient-to-b from-black/10 to-transparent pointer-events-none" />
 
-          {/* Search & Filter */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 sm:p-5 border border-white/20 max-w-4xl mx-auto">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative flex-1">
-                <Ico.search className="w-4 h-4 absolute inset-y-0 left-3.5 my-auto text-slate-400 pointer-events-none" />
-                <input type="text" placeholder={t("common.search") + "…"}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl text-slate-800 text-sm outline-none focus:ring-2 focus:ring-[#F15A24]/40 bg-white placeholder-slate-400"
-                  value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-              </div>
-              {types.length > 0 && (
-                <select className="px-4 py-2.5 rounded-xl text-slate-800 text-sm outline-none focus:ring-2 focus:ring-[#F15A24]/40 bg-white sm:w-52"
-                  value={filterType} onChange={(e) => setFilterType(e.target.value)}>
-                  <option value="All">ทุกหมวดหมู่</option>
-                  {types.map((tp) => <option key={tp} value={tp}>{tp}</option>)}
-                </select>
-              )}
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+            <div className="text-center mb-8">
+              <span className="inline-block bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full mb-3 tracking-widest uppercase">
+                🎓 {t("home.openNow")}
+              </span>
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold mb-3 tracking-tight">
+                {siteTitle || event?.name || "CAMT SUMMER COURSE"}
+                {event?.year && <span className="ml-2">{event.year}</span>}
+              </h1>
+              <p className="text-orange-100 text-base sm:text-lg max-w-xl mx-auto">
+                {heroSub || t("home.heroSub")}
+              </p>
             </div>
-          </div>
 
-          <p className="text-center text-white/70 text-sm mt-4">
-            {t("home.foundCourses", { n: filtered.length })}
-          </p>
+            {/* Search & Filter */}
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 sm:p-5 border border-white/20 max-w-4xl mx-auto">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Ico.search className="w-4 h-4 absolute inset-y-0 left-3.5 my-auto text-slate-400 pointer-events-none" />
+                  <input type="text" placeholder={t("common.search") + "…"}
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl text-slate-800 text-sm outline-none focus:ring-2 focus:ring-[#F15A24]/40 bg-white placeholder-slate-400"
+                    value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                </div>
+                {types.length > 0 && (
+                  <select className="px-4 py-2.5 rounded-xl text-slate-800 text-sm outline-none focus:ring-2 focus:ring-[#F15A24]/40 bg-white sm:w-52"
+                    value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+                    <option value="All">ทุกหมวดหมู่</option>
+                    {types.map((tp) => <option key={tp} value={tp}>{tp}</option>)}
+                  </select>
+                )}
+              </div>
+            </div>
+
+            <p className="text-center text-white/70 text-sm mt-4">
+              {t("home.foundCourses", { n: filtered.length })}
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ─── รูปตาราง + แบนเนอร์แจ้งเตือน (ใต้ Hero ก่อนคอร์ส) ─── */}
       {(scheduleUrl || notice.trim()) && (
