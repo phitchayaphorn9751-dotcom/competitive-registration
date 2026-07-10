@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate, useOutletContext } from "react-router-dom"
-import { fetchRegistration, confirmRegistration, releaseSeat, cancelRegistration, rejectRegistration, rejectPortfolio, promoteWaitlist, fetchCoursesAdmin, adminChangeCourse, adminUpdatePaymentAmount, deleteRegistration, saveRegistrationTheme } from "../../lib/supabase.js"
+import { fetchRegistration, confirmRegistration, releaseSeat, cancelRegistration, rejectRegistration, rejectPortfolio, promoteWaitlist, fetchCoursesAdmin, adminReassign, adminUpdatePaymentAmount, deleteRegistration, saveRegistrationTheme } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
 
 const STATUS = {
@@ -35,7 +35,6 @@ export default function AdminVerifySlip() {
     setLoading(true)
     try {
       const d = await fetchRegistration(registrationId)
-      console.log("🎯 theme_name:", d.theme_name, "| count_mode:", d.count_mode, "| status:", d.status)
       setData(d)
     }
     catch (e) { setErr(e.message) }
@@ -121,18 +120,13 @@ export default function AdminVerifySlip() {
   const isType1 = !isPaid && (data.courses?.require_portfolio !== true)
   const isFreePortfolioLike = isType1 || isType2  // ฟรีทั้งคู่ ใช้ปุ่มไม่ผ่าน=กลับคิวสำรอง
 
-  // อนุมัติ: ประเภท 1 confirmed แล้วไม่ต้องอนุมัติซ้ำ — อนุมัติเฉพาะ waitlist
-  //         ประเภท 3 (เสียเงิน) waitlist → ใช้ปุ่ม "ให้สิทธิ์" (promote) แทน ไม่ใช่ "อนุมัติ"
   const isPaidWaitlist = isPaid && data.status === "waitlist"
   const canApprove = isType1
     ? data.status === "waitlist"
     : isPaid
-    ? ["slip_uploaded", "submitted", "approved", "pending_payment"].includes(data.status)  // เสียเงิน: อนุมัติหลังแนบสลิป (ไม่รวม waitlist)
+    ? ["slip_uploaded", "submitted", "approved", "pending_payment"].includes(data.status)
     : ["slip_uploaded", "submitted", "approved", "held", "pending_payment", "waitlist"].includes(data.status)
-  // ให้สิทธิ์ (promote): เฉพาะประเภท 3 (เสียเงิน) ที่เป็นคิวสำรอง
   const canPromote = isPaidWaitlist
-  // ไม่ผ่าน: ประเภท 1 เฉพาะ waitlist (กลับคิว) — confirmed ไม่มีปุ่มไม่ผ่าน (ใช้คืนที่นั่งแทน)
-  //         ประเภท 2 = submitted/confirmed (กลับคิว) / เสียเงิน: ตีกลับขอสลิปใหม่
   const canReject = isType1
     ? data.status === "waitlist"
     : isType2
@@ -140,6 +134,13 @@ export default function AdminVerifySlip() {
     : ["slip_uploaded", "submitted", "approved", "confirmed", "pending_payment"].includes(data.status)
   const canRelease = ["confirmed", "approved", "pending_payment", "slip_uploaded", "submitted", "waitlist", "held", "slip_rejected"].includes(data.status)
   const checkedIn = participants.filter((p) => (p.checkins?.length || 0) > 0).length
+
+  // ชื่อรอบปัจจุบัน (ถ้ามี) — จาก courses.sessions match ด้วย session_id
+  const curSession = (() => {
+    if (!data.session_id) return null
+    const ss = data.courses?.sessions || []
+    return Array.isArray(ss) ? ss.find((s) => s.id === data.session_id) : null
+  })()
 
   return (
     <>
@@ -159,7 +160,7 @@ export default function AdminVerifySlip() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* LEFT: ตรวจสลิป + ผลงาน (แสดงทั้งคู่ พร้อมกำกับว่าคอร์สต้องการอะไร) */}
+        {/* LEFT: ตรวจสลิป + ผลงาน */}
         <div className="space-y-5">
           {/* สลิปการชำระเงิน */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
@@ -238,6 +239,7 @@ export default function AdminVerifySlip() {
             <div className="p-4 space-y-0">
               {[
                 ["วิชาที่สมัคร", data.courses?.title, true],
+                ...(curSession ? [["รอบที่เลือก", `${curSession.label || "รอบ"}${curSession.time ? ` · ${curSession.time}` : ""}`, true]] : []),
                 ["อีเมลผู้สมัคร", data.submitter_email, false],
                 ["ยอดที่ต้องชำระ", isPaid ? `${(data.courses?.price || 0).toLocaleString()} บาท` : "ไม่มีค่าใช้จ่าย", false],
                 ...(data.theme_name ? [["ชื่อทีม/ธีม", data.theme_name, true]] : []),
@@ -368,25 +370,63 @@ export default function AdminVerifySlip() {
   )
 }
 
-// ข้อ 6 + 7: แก้ไขใบสมัคร (เปลี่ยนคอร์ส / แก้จำนวนเงิน)
+// แก้ไขใบสมัคร: ย้ายวิชา + เลือกรอบ (โชว์ที่นั่งคงเหลือ + ไฮไลต์ปัจจุบัน) / แก้จำนวนเงิน / ชื่อทีม
 function EditRegistrationModal({ data, eventId, isPaid, onClose, onSaved, toast }) {
   const [courses, setCourses] = useState([])
   const [courseId, setCourseId] = useState(data.course_id)
+  const [sessionId, setSessionId] = useState(data.session_id || "")
   const [amount, setAmount] = useState((data.payments?.[0]?.amount ?? data.courses?.price ?? 0))
   const [themeName, setThemeName] = useState(data.theme_name || "")
   const [busy, setBusy] = useState(false)
+
+  // จำนวนที่นั่งที่ใบนี้กิน = จำนวนสมาชิก (ทีม 3 คน = 3)
+  const seatsNeeded = Math.max(1, (data.participants || []).length)
 
   useEffect(() => {
     fetchCoursesAdmin(eventId).then(setCourses).catch(() => {})
   }, [eventId])
 
+  const selectedCourse = courses.find((c) => c.id === courseId)
+  const courseSessions = Array.isArray(selectedCourse?.sessions) ? selectedCourse.sessions : []
+  const hasSessions = courseSessions.length > 0
+  const changedCourse = courseId !== data.course_id
+
+  // ที่นั่งคงเหลือของคอร์ส (ระดับคอร์ส)
+  function courseRemain(c) {
+    if (c.seat_mode === "unlimited") return null // ไม่จำกัด
+    const cap = c.capacity || 0
+    const taken = c.seats_taken || 0
+    return Math.max(0, cap - taken)
+  }
+  // ที่นั่งคงเหลือของรอบ
+  function sessionRemain(s) {
+    const cap = s.capacity || 0
+    const taken = s.taken || 0
+    return Math.max(0, cap - taken)
+  }
+
+  // เมื่อเปลี่ยนคอร์ส → รีเซ็ตรอบ (เว้นแต่ยังเป็นคอร์สเดิม ให้คงรอบเดิม)
+  function onChangeCourse(newId) {
+    setCourseId(newId)
+    if (newId === data.course_id) setSessionId(data.session_id || "")
+    else setSessionId("") // คอร์สใหม่ยังไม่เลือกรอบ
+  }
+
   async function save() {
+    // ถ้าคอร์สใหม่มีรอบ ต้องเลือกรอบก่อน
+    if (hasSessions && !sessionId) return toast("กรุณาเลือกรอบก่อนบันทึก", "error")
     setBusy(true)
     try {
-      if (courseId !== data.course_id) await adminChangeCourse(data.id, courseId)
+      const changedSession = sessionId !== (data.session_id || "")
+      // ย้ายวิชา/รอบ (ถ้าเปลี่ยนอย่างใดอย่างหนึ่ง)
+      if (changedCourse || changedSession) {
+        await adminReassign(data.id, courseId, hasSessions ? sessionId : "")
+      }
+      // แก้จำนวนเงิน (เฉพาะเสียเงิน)
       if (isPaid && Number(amount) !== Number(data.payments?.[0]?.amount ?? data.courses?.price ?? 0)) {
         await adminUpdatePaymentAmount(data.id, Number(amount))
       }
+      // แก้ชื่อทีม
       if (themeName.trim() !== (data.theme_name || "")) {
         await saveRegistrationTheme(data.id, themeName.trim())
       }
@@ -399,18 +439,80 @@ function EditRegistrationModal({ data, eventId, isPaid, onClose, onSaved, toast 
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-        <div className="h-1.5 bg-[#F15A24]" />
-        <div className="p-5 sm:p-6 space-y-4">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
+      <div className="bg-white w-full sm:max-w-lg sm:rounded-2xl shadow-2xl overflow-hidden rounded-t-2xl flex flex-col max-h-[92dvh]" onClick={(e) => e.stopPropagation()}>
+        <div className="h-1.5 bg-[#F15A24] shrink-0" />
+        <div className="p-5 sm:p-6 space-y-4 overflow-y-auto">
           <h3 className="font-bold text-gray-800 text-lg">✏️ แก้ไขใบสมัคร</h3>
-          <div>
-            <label className="text-xs font-bold text-gray-500 block mb-1.5">เปลี่ยนวิชา</label>
-            <select value={courseId} onChange={(e) => setCourseId(e.target.value)}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#F15A24]">
-              {courses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
-            </select>
+
+          {/* จำนวนที่นั่งที่ใบนี้กิน */}
+          <div className="bg-orange-50 border border-orange-100 rounded-xl px-3 py-2 text-xs text-gray-600">
+            ใบสมัครนี้มีผู้เข้าร่วม <b className="text-[#F15A24]">{seatsNeeded} คน</b> — การย้ายจะใช้ที่นั่ง {seatsNeeded} ที่
           </div>
+
+          {/* เลือกวิชา — โชว์ที่นั่งคงเหลือ + ติ๊กปัจจุบัน */}
+          <div>
+            <label className="text-xs font-bold text-gray-500 block mb-1.5">วิชา</label>
+            <select value={courseId} onChange={(e) => onChangeCourse(e.target.value)}
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#F15A24]">
+              {courses.map((c) => {
+                const remain = courseRemain(c)
+                const isCurrent = c.id === data.course_id
+                const remainTxt = remain === null ? "ไม่จำกัด" : `เหลือ ${remain} ที่`
+                return (
+                  <option key={c.id} value={c.id}>
+                    {isCurrent ? "● " : ""}{c.title} — {remainTxt}{isCurrent ? " (ปัจจุบัน)" : ""}
+                  </option>
+                )
+              })}
+            </select>
+            {selectedCourse && (() => {
+              const remain = courseRemain(selectedCourse)
+              if (remain === null) return <p className="text-[11px] text-emerald-600 mt-1">ที่นั่งไม่จำกัด</p>
+              const notEnough = changedCourse && !hasSessions && remain < seatsNeeded
+              return (
+                <p className={`text-[11px] mt-1 ${notEnough ? "text-rose-500 font-bold" : "text-gray-400"}`}>
+                  คงเหลือ {remain} ที่{notEnough ? ` — ไม่พอสำหรับ ${seatsNeeded} คน` : ""}
+                </p>
+              )
+            })()}
+          </div>
+
+          {/* เลือกรอบ — เฉพาะวิชาที่มีรอบ */}
+          {hasSessions && (
+            <div>
+              <label className="text-xs font-bold text-gray-500 block mb-1.5">รอบ (Workshop มีหลายรอบ)</label>
+              <div className="space-y-2">
+                {courseSessions.map((s) => {
+                  const remain = sessionRemain(s)
+                  const isCurrent = s.id === data.session_id && courseId === data.course_id
+                  const selected = sessionId === s.id
+                  const full = remain < seatsNeeded && !isCurrent
+                  return (
+                    <button key={s.id} type="button" disabled={full}
+                      onClick={() => setSessionId(s.id)}
+                      className={`w-full text-left px-3 py-2.5 rounded-xl border transition flex items-center justify-between gap-2 ${
+                        selected ? "border-[#F15A24] bg-orange-50 ring-1 ring-[#F15A24]"
+                        : full ? "border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed"
+                        : "border-gray-200 hover:border-orange-200 hover:bg-orange-50/40"}`}>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-bold text-gray-800">{s.label || "รอบ"}</span>
+                          {isCurrent && <span className="text-[10px] font-bold text-[#F15A24] bg-orange-100 px-1.5 py-0.5 rounded">ปัจจุบัน</span>}
+                        </div>
+                        {s.time && <div className="text-[11px] text-gray-400">🕐 {s.time}</div>}
+                      </div>
+                      <span className={`text-xs font-bold shrink-0 ${full ? "text-rose-500" : "text-emerald-600"}`}>
+                        {full ? "เต็ม" : `เหลือ ${remain}`}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+              {changedCourse && <p className="text-[11px] text-amber-600 mt-1.5">⚠️ ย้ายมาวิชาใหม่ — เลือกรอบก่อนบันทึก</p>}
+            </div>
+          )}
+
           {isPaid && (
             <div>
               <label className="text-xs font-bold text-gray-500 block mb-1.5">จำนวนเงินที่ต้องชำระ (บาท)</label>
@@ -425,7 +527,7 @@ function EditRegistrationModal({ data, eventId, isPaid, onClose, onSaved, toast 
               className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-[#F15A24]" />
           </div>
         </div>
-        <div className="px-5 sm:px-6 pb-5 sm:pb-6 grid grid-cols-2 gap-3">
+        <div className="px-5 sm:px-6 pb-5 sm:pb-6 pt-2 grid grid-cols-2 gap-3 shrink-0 border-t border-gray-50">
           <button onClick={onClose} className="py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition text-sm">ยกเลิก</button>
           <button onClick={save} disabled={busy} className="py-3 bg-[#F15A24] text-white rounded-xl font-bold hover:bg-orange-600 shadow-sm transition text-sm disabled:opacity-50">บันทึก</button>
         </div>

@@ -146,6 +146,15 @@ export async function adminChangeCourse(regId, newCourseId) {
   if (error) throw error
   return data
 }
+// ย้ายวิชา + รอบพร้อมกัน — คืนโควตารอบเก่า, ตั้งรอบใหม่, จัดการที่นั่งตามจำนวนสมาชิก
+// p_new_session_id เป็น "" หรือ null ได้ ถ้าวิชาใหม่ไม่มีรอบ
+export async function adminReassign(regId, newCourseId, newSessionId) {
+  const { data, error } = await supabase.rpc("admin_reassign", {
+    p_reg_id: regId, p_new_course_id: newCourseId, p_new_session_id: newSessionId || "",
+  })
+  if (error) throw error
+  return data
+}
 // ข้อ 7: แอดมินแก้จำนวนเงิน
 export async function adminUpdatePaymentAmount(regId, amount) {
   const { data, error } = await supabase.rpc("admin_update_payment_amount", { p_reg_id: regId, p_amount: amount })

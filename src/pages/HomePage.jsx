@@ -669,7 +669,7 @@ function DetailModal({ course, t, onClose, onRegister }) {
               <div className="bg-white p-4 rounded-2xl border border-orange-100 shadow-sm">
                 <h4 className="font-bold text-[#F15A24] text-base mb-2 flex items-center gap-2">
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
-                  รายละเอียดการแข่งขัน
+                  รายละเอียด
                 </h4>
                 <p className="text-slate-700 text-sm leading-7 whitespace-pre-line">{course.description}</p>
               </div>
