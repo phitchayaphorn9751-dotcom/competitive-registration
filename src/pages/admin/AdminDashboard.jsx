@@ -63,7 +63,6 @@ export default function AdminDashboard() {
   const [drillCourse, setDrillCourse] = useState("All")
   const [selectedUser, setSelectedUser] = useState(null)
   const [courseDetail, setCourseDetail] = useState(null)
-  const [schoolSort, setSchoolSort] = useState("people") // people | courses
 
   useEffect(() => {
     if (!event?.id) { setLoading(false); return }
@@ -151,6 +150,39 @@ export default function AdminDashboard() {
     return Object.values(m).sort((a, b) => b.Applicants - a.Applicants)
   }, [filtered])
 
+  // ที่นั่งแต่ละวิชา (แยกหมวด) — ใช้ course_capacity/seats_taken จาก RPC
+  // นับ "ผู้สมัครที่ยัง active" (ไม่รวม rejected) เป็นตัวเศษ เทียบกับ capacity
+  const seatsByCategory = useMemo(() => {
+    const courseMap = {}
+    filtered.forEach((r) => {
+      const id = r.course_id
+      if (!courseMap[id]) {
+        courseMap[id] = {
+          courseId: id,
+          name: r.course_name,
+          category: r.course_category || "อื่นๆ",
+          capacity: Number(r.course_capacity || 0),
+          seatMode: r.course_seat_mode || "",
+          taken: 0,
+        }
+      }
+      // นับที่นั่งที่ถือครองจริง (ไม่นับ rejected/held ที่ปล่อยแล้ว) — ยึด status ที่ยัง active
+      if (!["rejected"].includes(r.status)) courseMap[id].taken++
+    })
+    // จัดกลุ่มตามหมวด
+    const catMap = {}
+    Object.values(courseMap).forEach((c) => {
+      const k = c.category
+      if (!catMap[k]) catMap[k] = []
+      catMap[k].push(c)
+    })
+    // เรียงวิชาในแต่ละหมวด (คนเยอะ→น้อย) + เรียงหมวดตามจำนวนวิชา
+    return Object.entries(catMap).map(([category, courses]) => ({
+      category,
+      courses: courses.sort((a, b) => b.taken - a.taken),
+    })).sort((a, b) => b.courses.length - a.courses.length)
+  }, [filtered])
+
   const categoryData = useMemo(() => {
     const c = {}
     filtered.forEach((r) => { const k = r.course_category || "อื่นๆ"; c[k] = (c[k] || 0) + 1 })
@@ -179,29 +211,6 @@ export default function AdminDashboard() {
       convRate: v.emails.size > 0 ? Math.round((v.paidEmails.size / v.emails.size) * 100) : 0,
     })).sort((a, b) => b.users - a.users)
   }, [filtered])
-
-  // ตารางโรงเรียนแบบเต็ม — คน/วิชา/จ่ายแล้ว/จังหวัด
-  const schoolTable = useMemo(() => {
-    const m = {}
-    filtered.forEach((r) => {
-      const key = r.school || "ไม่ระบุ"
-      if (!m[key]) m[key] = { name: key, emails: new Set(), paidEmails: new Set(), courses: new Set(), provinces: {} }
-      m[key].emails.add(r.submitter_email)
-      m[key].courses.add(r.course_id)
-      if (isPaid(r)) m[key].paidEmails.add(r.submitter_email)
-      const p = r.province || "-"
-      m[key].provinces[p] = (m[key].provinces[p] || 0) + 1
-    })
-    const arr = Object.values(m).map((v) => ({
-      name: v.name,
-      people: v.emails.size,
-      paid: v.paidEmails.size,
-      courses: v.courses.size,
-      province: Object.entries(v.provinces).sort((a, b) => b[1] - a[1])[0]?.[0] || "-",
-    }))
-    arr.sort((a, b) => schoolSort === "courses" ? b.courses - a.courses : b.people - a.people)
-    return arr
-  }, [filtered, schoolSort])
 
   const schoolRanking = useMemo(() => {
     const c = {}
@@ -414,12 +423,12 @@ export default function AdminDashboard() {
             const active = a.value > 0
             return (
               <button key={a.key} onClick={() => drillDown(a.label, a.filter)}
-                className={`text-left rounded-xl border p-4 transition active:scale-[.98] ${active ? "hover:shadow-md " + cfg.cls : "bg-slate-50 border-slate-100 opacity-70"}`}>
+                className={`text-left rounded-xl border p-4 transition active:scale-[.98] ${active ? "bg-white border-slate-200 hover:shadow-md" : "bg-slate-50 border-slate-100 opacity-70"}`}>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="flex items-center gap-1.5 text-xs font-bold">
+                  <span className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
                     <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />{a.label}
                   </span>
-                  <span className="text-2xl font-extrabold leading-none">{a.value}</span>
+                  <span className="text-2xl font-extrabold leading-none text-slate-700">{a.value}</span>
                 </div>
                 <p className="text-[11px] text-slate-500 leading-snug">{a.desc}</p>
               </button>
@@ -474,7 +483,47 @@ export default function AdminDashboard() {
         </SectionCard>
       )}
 
-      {/* Trend + Pie */}
+      {/* ⭐ ที่นั่งแต่ละวิชา (แยกหมวด) — ปรอทแบบอันดับโรงเรียน + 12/30 */}
+      {seatsByCategory.length > 0 && (
+        <SectionCard title="ที่นั่งแต่ละวิชา" icon={Ico.chart} action={<span className="text-xs text-slate-400">แยกตามหมวด</span>}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-5">
+            {seatsByCategory.map((grp) => (
+              <div key={grp.category}>
+                {/* หัวหมวด */}
+                <div className="flex items-center gap-2 mb-2.5">
+                  <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold border ${catBadgeCls(grp.category)}`}>{grp.category}</span>
+                  <span className="text-[11px] text-slate-400">{grp.courses.length} วิชา</span>
+                </div>
+                {/* รายการวิชาในหมวด */}
+                <div className="space-y-1">
+                  {grp.courses.map((c) => {
+                    const unlimited = c.seatMode === "unlimited" || c.capacity <= 0
+                    const pct = unlimited ? Math.min(85, Math.round(Math.log10(c.taken + 1) * 39)) : Math.min(100, Math.round((c.taken / c.capacity) * 100))
+                    const isFull = !unlimited && c.taken >= c.capacity
+                    const barColor = unlimited ? "bg-emerald-400" : isFull ? "bg-rose-500" : pct >= 75 ? "bg-amber-500" : "bg-gradient-to-r from-[#F15A24] to-orange-300"
+                    return (
+                      <div key={c.courseId} onClick={() => openCourseDetail(c.courseId, c.name)}
+                        className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-orange-50/60 cursor-pointer transition">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-medium text-slate-700 truncate mb-1">{c.name}</div>
+                          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                        <span className={`text-xs font-bold shrink-0 ${isFull ? "text-rose-500" : "text-slate-500"}`}>
+                          {unlimited ? (
+                            <span className="inline-flex items-center gap-1">{c.taken} <span className="text-emerald-500">· ∞</span></span>
+                          ) : `${c.taken}/${c.capacity}`}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2">
           <SectionCard title="📈 แนวโน้มการสมัคร (Registration Trend)" action={<span className="text-xs text-slate-400">{trendData.length} วัน</span>}>
@@ -546,48 +595,6 @@ export default function AdminDashboard() {
           </div>
         </SectionCard>
       </div>
-
-      {/* ⭐ ตารางโรงเรียนแบบเต็ม */}
-      {schoolTable.length > 0 && (
-        <SectionCard
-          title="ข้อมูลโรงเรียนที่มาสมัคร" icon={Ico.school}
-          action={
-            <div className="flex bg-slate-100 p-0.5 rounded-lg gap-0.5">
-              <button onClick={() => setSchoolSort("people")} className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition ${schoolSort === "people" ? "bg-white text-[#F15A24] shadow-sm" : "text-slate-500"}`}>ตามจำนวนคน</button>
-              <button onClick={() => setSchoolSort("courses")} className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition ${schoolSort === "courses" ? "bg-white text-[#F15A24] shadow-sm" : "text-slate-500"}`}>ตามจำนวนวิชา</button>
-            </div>
-          }
-        >
-          <div className="overflow-x-auto -mx-5 px-5">
-            <table className="w-full text-xs min-w-[520px]">
-              <thead className="sticky top-0 bg-white">
-                <tr className="text-[10px] text-slate-400 uppercase border-b border-slate-100">
-                  <th className="py-2 text-center w-7">#</th>
-                  <th className="py-2 text-left">โรงเรียน</th>
-                  <th className="py-2 text-left">จังหวัด</th>
-                  <th className="py-2 text-right">ผู้สมัคร</th>
-                  <th className="py-2 text-right">จ่ายแล้ว</th>
-                  <th className="py-2 text-right pr-1">วิชา</th>
-                </tr>
-              </thead>
-              <tbody className="max-h-80">
-                {schoolTable.slice(0, 30).map((s, i) => (
-                  <tr key={i} onClick={() => drillDown(`โรงเรียน: ${s.name}`, (r) => (r.school || "ไม่ระบุ") === s.name)}
-                    className="border-b last:border-0 hover:bg-orange-50/50 cursor-pointer transition">
-                    <td className="py-3 text-center font-bold text-slate-300">{i + 1}</td>
-                    <td className="py-3 font-medium text-slate-700 max-w-[180px]"><span className="line-clamp-1">{s.name}</span></td>
-                    <td className="py-3 text-slate-500">{s.province}</td>
-                    <td className="py-3 text-right font-bold text-slate-700">{s.people} คน</td>
-                    <td className="py-3 text-right font-semibold text-emerald-600">{s.paid}</td>
-                    <td className="py-3 text-right text-slate-500 pr-1">{s.courses}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {schoolTable.length > 30 && <p className="text-[11px] text-slate-300 text-center mt-2">แสดง 30 อันดับแรก จากทั้งหมด {schoolTable.length} โรงเรียน</p>}
-        </SectionCard>
-      )}
 
       {/* กราฟความสนใจตามชั้นปี × หมวด */}
       <SectionCard title="ความสนใจตามชั้นปี (แยกตามหมวดวิชา)" icon={Ico.puzzle}>
