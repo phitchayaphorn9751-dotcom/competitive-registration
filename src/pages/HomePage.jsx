@@ -348,52 +348,34 @@ function CourseCard({ course, t, onDetail, onRegister }) {
         {/* Seat progress */}
         <div className="mb-4">
           {Array.isArray(course.sessions) && course.sessions.length > 0 ? (
-            /* คอร์สมีรอบ — แสดงปรอทแยกแต่ละรอบ */
-            <div className="space-y-2">
+            /* คอร์สมีรอบ — แยกแต่ละรอบ (ไม่มีปรอท) */
+            <div className="space-y-1.5">
               {course.sessions.map((s) => {
                 const sTaken = s.taken || 0
                 const sCap = s.capacity || 0
-                const sPct = sCap > 0 ? Math.min((sTaken / sCap) * 100, 100) : 0
                 const sFull = sCap > 0 && sTaken >= sCap
-                // จิตวิทยา: รอบที่คนสมัคร < 50% โชว์แค่จำนวนรับ ไม่โชว์ว่ารับไปกี่คน
-                const sShowCount = sCap > 0 && (sTaken / sCap) >= 0.5
+                // จิตวิทยา: รอบที่ยังไม่ใกล้เต็ม (<80%) โชว์แค่จำนวนรับ / ใกล้เต็มค่อยโชว์ตัวเลข
+                const sShowCount = sCap > 0 && (sTaken / sCap) >= 0.8
                 return (
-                  <div key={s.id}>
-                    <div className="flex justify-between items-center text-[11px] mb-1">
-                      <span className="text-slate-500 font-medium truncate">{s.label || "รอบ"}</span>
-                      <span className={`font-bold ${sFull ? "text-rose-500" : "text-emerald-600"}`}>
-                        {sFull ? "เต็ม" : sShowCount ? `${sTaken}/${sCap}` : `รับ ${sCap} ที่นั่ง`}
-                      </span>
-                    </div>
-                    <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                      <div className={`h-full rounded-full transition-all duration-500 ${sPct >= 100 ? "bg-rose-500" : sPct >= 75 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${sPct}%` }} />
-                    </div>
+                  <div key={s.id} className="flex justify-between items-center text-[11px]">
+                    <span className="text-slate-500 font-medium truncate">{s.label || "รอบ"}</span>
+                    <span className={`font-bold ${sFull ? "text-rose-500" : "text-emerald-600"}`}>
+                      {sFull ? "เต็ม" : sShowCount ? `${sTaken}/${sCap}` : `รับ ${sCap} ที่นั่ง`}
+                    </span>
                   </div>
                 )
               })}
             </div>
           ) : (
-            /* คอร์สปกติ — ปรอทเดียว */
-            <>
-              <div className="flex justify-between items-center text-xs mb-1.5">
-                <span className="text-slate-500">{t("home.seats")}</span>
-                <span className={`font-bold ${isFull ? "text-rose-500" : "text-emerald-600"}`}>
-                  {isFull ? t("home.full") : isUnlimited ? (
-                    <span className="inline-flex items-center gap-1">ไม่จำกัด <Ico.infinity className="w-4 h-4 inline-block" /> · {taken} คน</span>
-                  ) : (cap > 0 && (taken / cap) >= 0.5) ? `${taken}/${cap}` : `รับ ${cap} ที่นั่ง`}
-                </span>
-              </div>
-              {isUnlimited ? (
-                /* ไม่จำกัด — แถบค่อยๆ โตตามจำนวนคน (log scale, ไม่มีวันเต็ม) */
-                <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
-                  <div className="h-full rounded-full bg-emerald-400 transition-all duration-500" style={{ width: `${Math.min(85, Math.round(Math.log10(taken + 1) * 39))}%` }} />
-                </div>
-              ) : (
-                <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                  <div className={`h-full rounded-full transition-all duration-500 ${pct >= 100 ? "bg-rose-500" : pct >= 75 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${pct}%` }} />
-                </div>
-              )}
-            </>
+            /* คอร์สปกติ — บรรทัดเดียว (ไม่มีปรอท) */
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-slate-500">{t("home.seats")}</span>
+              <span className={`font-bold ${isFull ? "text-rose-500" : "text-emerald-600"}`}>
+                {isFull ? t("home.full") : isUnlimited ? (
+                  <span className="inline-flex items-center gap-1">ไม่จำกัด <Ico.infinity className="w-4 h-4 inline-block" /></span>
+                ) : (cap > 0 && (taken / cap) >= 0.8) ? `${taken}/${cap}` : `รับ ${cap} ที่นั่ง`}
+              </span>
+            </div>
           )}
         </div>
 
