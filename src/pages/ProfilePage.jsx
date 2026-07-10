@@ -166,8 +166,6 @@ export default function ProfilePage() {
     }
     if (f.phone.length !== 10) return setError("เบอร์โทรศัพท์ต้องมีครบ 10 หลัก")
     if (!f.phone.startsWith("0")) return setError("เบอร์โทรศัพท์ต้องขึ้นต้นด้วยเลข 0")
-    if (f.parent_phone && (f.parent_phone.length !== 10 || !f.parent_phone.startsWith("0")))
-      return setError("เบอร์โทรผู้ปกครองต้องมี 10 หลักและขึ้นต้นด้วย 0")
     if (f.school && !schoolVerified && !customSchool)
       return setError("กรุณาเลือกโรงเรียนจากรายการ หากไม่พบให้กด 'ไม่พบโรงเรียนของฉัน'")
 
@@ -222,7 +220,7 @@ export default function ProfilePage() {
 
           {/* Step dots */}
           <div className="flex items-center justify-center gap-3 sm:gap-6 mt-8">
-            {[t("profile.step1"), t("profile.step2"), t("profile.step3"), "แบบสอบถาม"].map((label, i) => (
+            {[t("profile.step1"), t("profile.step3"), "แบบสอบถาม"].map((label, i) => (
               <div key={i} className="flex items-center gap-3 sm:gap-6">
                 <div className={`flex flex-col sm:flex-row items-center gap-2 text-xs font-bold transition-all ${activeSection === i + 1 ? "text-[#F15A24]" : "text-slate-400"}`}>
                   <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all ${
@@ -233,7 +231,7 @@ export default function ProfilePage() {
                   </span>
                   <span className="mt-1 sm:mt-0">{label}</span>
                 </div>
-                {i < 3 && <div className={`hidden sm:block w-8 sm:w-12 h-[2px] rounded-full transition-colors ${activeSection > i + 1 ? "bg-[#F15A24]" : "bg-slate-100"}`} />}
+                {i < 2 && <div className={`hidden sm:block w-8 sm:w-12 h-[2px] rounded-full transition-colors ${activeSection > i + 1 ? "bg-[#F15A24]" : "bg-slate-100"}`} />}
               </div>
             ))}
           </div>
@@ -356,28 +354,9 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* ══ Section 2 ══ */}
+          {/* ══ Section 2: ที่อยู่ (เดิม Section 3 — ผู้ปกครองถูกนำออก) ══ */}
           <div className={sectionCls(2)} onClick={() => setActiveSection(2)}>
-            <SectionHeader number="2" title={t("profile.parentInfo")} />
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-              <div>
-                <Label>{t("profile.parentTitle")}</Label>
-                <select className={selectCls} value={f.parent_title} onChange={(e) => set("parent_title", e.target.value)}>
-                  <option value="">{t("profile.select")}</option>
-                  {PARENT_TITLES.map((tt) => <option key={tt} value={tt}>{tt}</option>)}
-                </select>
-              </div>
-              <div className="sm:col-span-2"><Label>{t("profile.parentName")}</Label><input className={inputCls} value={f.parent_full_name} onChange={(e) => set("parent_full_name", e.target.value)} /></div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div><Label>{t("profile.relationship")}</Label><input className={inputCls} value={f.parent_relationship} placeholder={t("profile.relationshipPlaceholder")} onChange={(e) => set("parent_relationship", e.target.value)} /></div>
-              <div><Label>{t("profile.parentPhone")}</Label><input className={inputCls} value={f.parent_phone} inputMode="numeric" onChange={(e) => setNumeric("parent_phone", e.target.value, 10)} placeholder="08xxxxxxxx" /></div>
-            </div>
-          </div>
-
-          {/* ══ Section 3 ══ */}
-          <div className={sectionCls(3)} onClick={() => setActiveSection(3)}>
-            <SectionHeader number="3" title={t("profile.addressInfo")} />
+            <SectionHeader number="2" title={t("profile.addressInfo")} />
             <div className="mb-4">
               <Label>{t("profile.address")}</Label>
               <input className={inputCls} value={f.address} placeholder={t("profile.addressPlaceholder")} onChange={(e) => set("address", e.target.value)} />
@@ -418,9 +397,9 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* ══ Section 4: แบบสอบถาม (ตอบครั้งเดียว — ถ้าตอบแล้วแก้ไม่ได้) ══ */}
-          <div className={sectionCls(4)} onClick={() => setActiveSection(4)}>
-            <SectionHeader number="4" title="แบบสอบถาม" />
+          {/* ══ Section 3: แบบสอบถาม (เดิม Section 4) — ตอบครั้งเดียว ══ */}
+          <div className={sectionCls(3)} onClick={() => setActiveSection(3)}>
+            <SectionHeader number="3" title="แบบสอบถาม" />
             {rawProfile?.survey_done && (
               <div className="mb-4 flex items-center gap-2 bg-slate-100 text-slate-500 rounded-xl px-3 py-2 text-xs">
                 <Ico.check className="w-4 h-4" /> ตอบแบบสอบถามแล้ว — ส่วนนี้แก้ไขไม่ได้
