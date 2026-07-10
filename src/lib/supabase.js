@@ -667,15 +667,6 @@ export async function checkInByToken(token) {
   return data
 }
 
-// เช็คอินรายวัน (แยกตามวิชา + วัน) — คืน { ok, duplicate?, reason?, name?, school?, course_title?, time? }
-export async function checkInDaily(token, courseId, dateKey, method = "qr") {
-  const { data, error } = await supabase.rpc("check_in_daily", {
-    p_token: token, p_course_id: courseId, p_date: dateKey, p_method: method,
-  })
-  if (error) throw error
-  return data
-}
-
 // ดึงรายชื่อนักเรียนยืนยันแล้ว + สถานะเช็คชื่อวันนั้น (โหมดรายวัน)
 export async function attendanceRoster(courseId, dateKey) {
   const { data, error } = await supabase.rpc("attendance_roster", { p_course_id: courseId, p_date: dateKey })
