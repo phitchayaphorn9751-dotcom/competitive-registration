@@ -558,7 +558,7 @@ export default function RegisterPage() {
                     <input className={inputCls} placeholder="เบอร์โทร" value={m.phone} onChange={(e) => updateMember(i, "phone", e.target.value.replace(/[^0-9]/g, "").slice(0, 10))} />
                   </div>
                   <p className="text-[11px] text-slate-400 mt-1.5">💡 ใส่ Gmail ของน้องเพื่อให้น้อง login เข้ามาดูงานนี้และ QR เช็คอินของตัวเองได้</p>
-                  <p className="text-[11px] text-[#F15A24] mt-1 flex items-center gap-1"><Ico.warn className="w-3 h-3 shrink-0" /> ต้องกรอกเลขบัตร 13 หลักของเพื่อนให้ครบ (ถามเพื่อนในทีม) — ใช้กันการสมัครซ้ำ/สวมสิทธิ์</p>
+                  <p className="text-[11px] text-[#F15A24] mt-1 flex items-center gap-1"><Ico.warn className="w-3 h-3 shrink-0" /> ต้องกรอกเลขบัตร 13 หลักของเพื่อนให้ครบ </p>
                 </div>
               ))}
             </div>

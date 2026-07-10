@@ -19,6 +19,7 @@ const Ico = {
   clock:   (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>),
   sparkle: (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>),
   gift:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg>),
+  infinity:(p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M6 16c-2.2 0-4-1.8-4-4s1.8-4 4-4c1.5 0 2.5.8 3.5 2l5 4c1 1.2 2 2 3.5 2 2.2 0 4-1.8 4-4s-1.8-4-4-4c-1.5 0-2.5.8-3.5 2l-5 4c-1 1.2-2 2-3.5 2z"/></svg>),
 }
 
 export default function HomePage() {
@@ -354,12 +355,14 @@ function CourseCard({ course, t, onDetail, onRegister }) {
                 const sCap = s.capacity || 0
                 const sPct = sCap > 0 ? Math.min((sTaken / sCap) * 100, 100) : 0
                 const sFull = sCap > 0 && sTaken >= sCap
+                // จิตวิทยา: รอบที่คนสมัคร < 50% โชว์แค่จำนวนรับ ไม่โชว์ว่ารับไปกี่คน
+                const sShowCount = sCap > 0 && (sTaken / sCap) >= 0.5
                 return (
                   <div key={s.id}>
                     <div className="flex justify-between items-center text-[11px] mb-1">
                       <span className="text-slate-500 font-medium truncate">{s.label || "รอบ"}</span>
                       <span className={`font-bold ${sFull ? "text-rose-500" : "text-emerald-600"}`}>
-                        {sFull ? "เต็ม" : `${sTaken}/${sCap}`}
+                        {sFull ? "เต็ม" : sShowCount ? `${sTaken}/${sCap}` : `รับ ${sCap} ที่นั่ง`}
                       </span>
                     </div>
                     <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
@@ -376,8 +379,8 @@ function CourseCard({ course, t, onDetail, onRegister }) {
                 <span className="text-slate-500">{t("home.seats")}</span>
                 <span className={`font-bold ${isFull ? "text-rose-500" : "text-emerald-600"}`}>
                   {isFull ? t("home.full") : isUnlimited ? (
-                    <span className="inline-flex items-center gap-1">{taken} คน · <span className="text-base leading-none">∞</span></span>
-                  ) : `${taken}/${cap}`}
+                    <span className="inline-flex items-center gap-1">{taken} คน · <Ico.infinity className="w-4 h-4 inline-block" /></span>
+                  ) : (cap > 0 && (taken / cap) >= 0.5) ? `${taken}/${cap}` : `รับ ${cap} ที่นั่ง`}
                 </span>
               </div>
               {isUnlimited ? (
