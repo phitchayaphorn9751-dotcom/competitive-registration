@@ -155,6 +155,31 @@ export async function adminReassign(regId, newCourseId, newSessionId) {
   if (error) throw error
   return data
 }
+// แอดมินแก้ข้อมูลผู้เข้าร่วม (ชื่อ/โรงเรียน/ระดับชั้น/เบอร์/อีเมล/เลขบัตร)
+export async function adminUpdateParticipant(participantId, p) {
+  const { data, error } = await supabase.rpc("admin_update_participant", {
+    p_participant_id: participantId,
+    p_full_name: p.full_name || "",
+    p_school: p.school || "",
+    p_grade_level: p.grade_level || "",
+    p_phone: p.phone || "",
+    p_email: (p.email || "").trim(),
+    p_national_id: (p.national_id || "").trim(),
+  })
+  if (error) throw error
+  return data
+}
+// แอดมินแก้ข้อมูลครูที่ปรึกษา (ชื่อ/เบอร์/อีเมล)
+export async function adminUpdateAdvisor(advisorId, a) {
+  const { data, error } = await supabase.rpc("admin_update_advisor", {
+    p_advisor_id: advisorId,
+    p_full_name: a.full_name || "",
+    p_phone: a.phone || "",
+    p_email: (a.email || "").trim(),
+  })
+  if (error) throw error
+  return data
+}
 // ข้อ 7: แอดมินแก้จำนวนเงิน
 export async function adminUpdatePaymentAmount(regId, amount) {
   const { data, error } = await supabase.rpc("admin_update_payment_amount", { p_reg_id: regId, p_amount: amount })
