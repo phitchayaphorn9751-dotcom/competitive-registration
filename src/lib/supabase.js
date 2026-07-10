@@ -1125,3 +1125,15 @@ export async function claimPendingProfile() {
   if (error) return false
   return data === true
 }
+
+
+// เช็คอินรายวัน (แยกตามวิชา + วัน + รอบ) — ส่ง session_id เพื่อบล็อกเด็กผิดรอบ (WRONG_SESSION)
+// sessionId = รอบที่เจ้าหน้าที่เปิดเช็คอินอยู่ (null/'' = วิชาไม่มีรอบ ไม่บล็อก)
+export async function checkInDaily(token, courseId, dateKey, method = "qr", sessionId = null) {
+  const { data, error } = await supabase.rpc("check_in_daily", {
+    p_token: token, p_course_id: courseId, p_date: dateKey, p_method: method,
+    p_session_id: sessionId || null,
+  })
+  if (error) throw error
+  return data
+}

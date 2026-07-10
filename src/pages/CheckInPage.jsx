@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { useNavigate, useOutletContext } from "react-router-dom"
 import { fetchCoursesAdmin, checkInDaily, attendanceDaily, subscribeCheckins } from "../lib/supabase.js"
 
-// ───── ไอคอน SVG inline (สไตล์ lucide) — โทนเดียวกับหน้าอื่น ─────
 const Ico = {
   scan:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" x2="17" y1="12" y2="12"/></svg>),
   back:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>),
@@ -17,7 +16,6 @@ const Ico = {
   clock:   (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>),
 }
 
-// เสียงตอบรับ
 function playSound(type) {
   try {
     const Ctx = window.AudioContext || window.webkitAudioContext
@@ -55,8 +53,9 @@ export default function CheckInPage() {
   try { outlet = useOutletContext() || {} } catch (_) {}
 
   const [courses, setCourses] = useState([])
-  const [category, setCategory] = useState("")   // หมวดที่เลือก (course_types.label)
+  const [category, setCategory] = useState("")
   const [courseId, setCourseId] = useState("")
+  const [sessionId, setSessionId] = useState("")   // รอบที่แอดมินเปิดเช็คอิน (เฉพาะวิชาที่มีหลายรอบ)
   const [dates, setDates] = useState([])
   const [dateKey, setDateKey] = useState("")
   const [scanInput, setScanInput] = useState("")
@@ -70,7 +69,6 @@ export default function CheckInPage() {
   const scannerRef = useRef(null)
   const busyRef = useRef(false)
 
-  // โหลดวิชา (ใช้ event จาก outlet ถ้ามี ไม่งั้นโหลดทั้งหมด)
   useEffect(() => {
     async function load() {
       try {
@@ -84,12 +82,9 @@ export default function CheckInPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [outlet?.event?.id])
 
-  // รายชื่อหมวด (จาก course_types.label) — เรียงตามตัวอักษร
   const categories = [...new Set(courses.map((c) => c.course_types?.label).filter(Boolean))].sort()
-  // วิชาที่กรองตามหมวดที่เลือก
   const filteredCourses = category ? courses.filter((c) => c.course_types?.label === category) : courses
 
-  // คำนวณช่วงวันของวิชา
   useEffect(() => {
     if (!courseId) { setDates([]); setDateKey(""); return }
     const c = courses.find((x) => x.id === courseId)
@@ -105,7 +100,6 @@ export default function CheckInPage() {
     setDateKey(out.includes(today) ? today : out[0])
   }, [courseId, courses])
 
-  // โหลด log ของวิชา+วัน (refresh ทุก 5 วิ)
   const loadLogs = useCallback(async () => {
     if (!courseId || !dateKey) { setLogs([]); setTotal(0); return }
     try {
@@ -118,25 +112,40 @@ export default function CheckInPage() {
   useEffect(() => {
     loadLogs()
     if (!courseId || !dateKey) return
-    // realtime — log เช็คอินขึ้นทันทีไม่ต้องรอ polling
     const ch = subscribeCheckins(() => loadLogs())
     return () => { ch.unsubscribe() }
   }, [courseId, dateKey, loadLogs])
 
-  // ประมวลผลเช็คอิน
   async function process(token, method = "qr") {
     if (busyRef.current) return
     if (!courseId || !dateKey) { setCameraError("เลือกวิชาและวันก่อน"); return }
+    // วิชามีหลายรอบ → ต้องเลือกรอบที่เปิดเช็คอินก่อน (บล็อกผิดรอบ)
+    if (courseNeedsSession && !sessionId) {
+      playSound("error")
+      setLast({ type: "error", msg: "เลือกรอบที่เปิดเช็คอินก่อน", sub: "วิชานี้มีหลายรอบ" })
+      return
+    }
     busyRef.current = true
     try {
-      const res = await checkInDaily(token.trim(), courseId, dateKey, method)
+      const res = await checkInDaily(token.trim(), courseId, dateKey, method, sessionId || null)
       if (!res?.ok) {
         playSound("error")
-        const msg = res?.reason === "NOT_FOUND" ? "ไม่พบรหัสนี้"
-          : res?.reason === "NOT_CONFIRMED" ? "ยังไม่ยืนยันการสมัคร"
-          : res?.reason === "WRONG_COURSE" ? "ไม่ใช่ผู้สมัครวิชานี้"
-          : "เช็คอินไม่สำเร็จ"
-        setLast({ type: "error", msg, sub: res?.name || "" })
+        if (res?.reason === "WRONG_SESSION") {
+          // เด็กอยู่คนละรอบกับที่แอดมินเปิด → บล็อก + บอกว่าเด็กอยู่รอบไหน
+          const stuName = sessionLabelOf(res?.student_session)
+          setLast({
+            type: "error",
+            msg: "ผิดรอบ! เช็คอินไม่ได้",
+            sub: `${res.name || ""}${stuName ? ` — อยู่ ${stuName}` : ""}`,
+            session: sessionLabelOf(res?.picked_session),
+          })
+        } else {
+          const msg = res?.reason === "NOT_FOUND" ? "ไม่พบรหัสนี้"
+            : res?.reason === "NOT_CONFIRMED" ? "ยังไม่ยืนยันการสมัคร"
+            : res?.reason === "WRONG_COURSE" ? "ไม่ใช่ผู้สมัครวิชานี้"
+            : "เช็คอินไม่สำเร็จ"
+          setLast({ type: "error", msg, sub: res?.name || "" })
+        }
       } else if (res.duplicate) {
         playSound("warning")
         setLast({ type: "warning", msg: "เช็คอินไปแล้ว!", sub: `${res.name} · ${res.time || ""}`, session: res.session_label || sessionOf(res) })
@@ -153,12 +162,20 @@ export default function CheckInPage() {
     }
   }
 
-  // หารอบของคนที่สแกน (จาก res.session_id เทียบกับ course.sessions)
   function sessionOf(res) {
     const c = courses.find((x) => x.id === courseId)
     if (!c || !Array.isArray(c.sessions) || c.sessions.length === 0) return ""
     const sid = res?.session_id
     if (!sid) return ""
+    const s = c.sessions.find((x) => x.id === sid)
+    return s ? (s.label || "รอบ") : ""
+  }
+
+  // หา label ของรอบจาก session id (ใช้แสดงตอน WRONG_SESSION — ทั้งรอบเด็กและรอบที่เปิด)
+  function sessionLabelOf(sid) {
+    if (!sid) return ""
+    const c = courses.find((x) => x.id === courseId)
+    if (!c || !Array.isArray(c.sessions)) return ""
     const s = c.sessions.find((x) => x.id === sid)
     return s ? (s.label || "รอบ") : ""
   }
@@ -171,9 +188,12 @@ export default function CheckInPage() {
     process(v, "barcode")
   }
 
-  // กล้องสแกน QR (html5-qrcode)
   async function openCamera() {
     if (!courseId || !dateKey) { setCameraError("เลือกวิชาและวันก่อนเริ่มสแกน"); setLast({ type: "error", msg: "เลือกวิชาและวันก่อน", sub: "" }); return }
+    // วิชามีหลายรอบ ต้องเลือกรอบก่อนเปิดกล้อง
+    const c = courses.find((x) => x.id === courseId)
+    const needsSession = c && Array.isArray(c.sessions) && c.sessions.length > 0
+    if (needsSession && !sessionId) { setLast({ type: "error", msg: "เลือกรอบที่เปิดเช็คอินก่อน", sub: "วิชานี้มีหลายรอบ" }); return }
     setCameraError(""); setCameraOpen(true)
   }
 
@@ -194,7 +214,6 @@ export default function CheckInPage() {
         if (cancelled) return
         const Html5Qrcode = window.Html5Qrcode
         const formats = window.Html5QrcodeSupportedFormats
-        // รองรับทั้ง QR และบาร์โค้ด 1D (Code128/Code39/EAN)
         const supported = formats ? [
           formats.QR_CODE, formats.CODE_128, formats.CODE_39,
           formats.EAN_13, formats.EAN_8, formats.UPC_A, formats.ITF,
@@ -205,7 +224,6 @@ export default function CheckInPage() {
           { facingMode: "environment" },
           {
             fps: 10,
-            // กรอบแนวนอน (กว้างกว่าสูง) — เหมาะกับบาร์โค้ด 1D
             qrbox: (vw, vh) => {
               const w = Math.floor(Math.min(vw, 320))
               return { width: w, height: Math.floor(w * 0.5) }
@@ -231,6 +249,11 @@ export default function CheckInPage() {
   const selCourse = courses.find((c) => c.id === courseId)
   const dayIdx = dates.indexOf(dateKey)
   const courseHasSessions = selCourse && Array.isArray(selCourse.sessions) && selCourse.sessions.length > 0
+  // วิชานี้ต้องเลือกรอบก่อนสแกนไหม (มีหลายรอบ = ต้องเลือก)
+  const courseNeedsSession = courseHasSessions
+  const courseSessions = courseHasSessions ? selCourse.sessions : []
+  // พร้อมสแกน = เลือกวิชา+วันแล้ว และถ้าวิชามีรอบต้องเลือกรอบด้วย
+  const canScan = !!courseId && !!dateKey && (!courseNeedsSession || !!sessionId)
 
   const SC = {
     success: { bg: "bg-emerald-50", border: "border-emerald-400", Icon: Ico.check, iconBg: "bg-emerald-100", iconColor: "text-emerald-600", text: "text-emerald-700" },
@@ -249,7 +272,6 @@ export default function CheckInPage() {
       `}</style>
 
       <div className="max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
-        {/* Header — gradient + ไอคอนวงกลม (โทนเดียวกับหน้าอื่น) */}
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 bg-gradient-to-br from-[#F15A24] to-amber-500 rounded-xl flex items-center justify-center shadow-sm shrink-0">
@@ -273,40 +295,55 @@ export default function CheckInPage() {
           </p>
         )}
 
-        {/* Setup */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 mb-4">
-          {/* 1. เลือกหมวด */}
           <div className="mb-4">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
               <span className="w-5 h-5 bg-[#F15A24] text-white rounded-full flex items-center justify-center text-[10px] font-black">1</span>เลือกหมวดหมู่
             </label>
-            <select value={category} onChange={(e) => { setCategory(e.target.value); setCourseId(""); setLast(null) }}
+            <select value={category} onChange={(e) => { setCategory(e.target.value); setCourseId(""); setSessionId(""); setLast(null) }}
               className="w-full px-3 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 bg-slate-50 focus:bg-white focus:border-[#F15A24] focus:ring-2 focus:ring-orange-100 outline-none transition">
               <option value="">— ทุกหมวดหมู่ —</option>
               {categories.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
             </select>
           </div>
 
-          {/* 2. เลือกวิชา (กรองตามหมวด) */}
           <div className="mb-4">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
               <span className="w-5 h-5 bg-[#F15A24] text-white rounded-full flex items-center justify-center text-[10px] font-black">2</span>เลือกวิชา
               {category && <span className="text-[10px] font-normal text-slate-400 normal-case">({filteredCourses.length} วิชาในหมวดนี้)</span>}
             </label>
-            <select value={courseId} onChange={(e) => { setCourseId(e.target.value); setLast(null) }}
+            <select value={courseId} onChange={(e) => { setCourseId(e.target.value); setSessionId(""); setLast(null) }}
               className="w-full px-3 py-3 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 bg-slate-50 focus:bg-white focus:border-[#F15A24] focus:ring-2 focus:ring-orange-100 outline-none transition">
               <option value="">— กรุณาเลือกวิชา —</option>
               {filteredCourses.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
             </select>
           </div>
 
-          {/* คอร์สมีรอบ — แจ้งให้รู้ว่าสแกนแล้วจะบอกรอบ */}
           {courseHasSessions && (
-            <div className="mb-4 flex items-start gap-2 bg-orange-50 border border-orange-100 rounded-xl px-3 py-2.5">
-              <Ico.layers className="w-4 h-4 text-[#F15A24] shrink-0 mt-0.5" />
-              <div className="text-xs text-slate-600">
-                <span className="font-bold text-[#F15A24]">วิชานี้มีหลายรอบ</span> — ตอนสแกนระบบจะแสดงรอบของผู้สมัคร ({selCourse.sessions.map((s) => s.label || "รอบ").join(" / ")})
+            <div className="mb-4">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5 mb-1.5">
+                <span className="w-5 h-5 bg-[#F15A24] text-white rounded-full flex items-center justify-center text-[10px] font-black">!</span>
+                เลือกรอบที่เปิดเช็คอิน
+                <span className="text-[10px] font-normal text-rose-500 normal-case">(ต้องเลือกก่อนสแกน — เด็กผิดรอบจะเช็คอินไม่ได้)</span>
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {courseSessions.map((s) => {
+                  const active = sessionId === s.id
+                  return (
+                    <button key={s.id} type="button"
+                      onClick={() => { setSessionId(s.id); setLast(null) }}
+                      className={`flex flex-col items-start px-3.5 py-2 rounded-xl border-2 transition text-left ${active ? "bg-[#F15A24] text-white border-[#F15A24] shadow-md shadow-orange-500/20" : "bg-white text-slate-600 border-slate-200 hover:border-orange-300"}`}>
+                      <span className="text-sm font-bold">{s.label || "รอบ"}</span>
+                      {s.time && <span className={`text-[10px] ${active ? "text-orange-100" : "text-slate-400"}`}>🕐 {s.time}</span>}
+                    </button>
+                  )
+                })}
               </div>
+              {!sessionId && (
+                <p className="text-[11px] text-rose-500 font-bold mt-1.5 flex items-center gap-1">
+                  <Ico.warn className="w-3 h-3" /> ยังไม่เลือกรอบ — สแกนไม่ได้จนกว่าจะเลือก
+                </p>
+              )}
             </div>
           )}
 
@@ -330,7 +367,6 @@ export default function CheckInPage() {
           )}
         </div>
 
-        {/* Scanner area */}
         <div className={`relative rounded-2xl border-4 p-5 sm:p-8 text-center transition shadow-lg ${sc.bg} ${sc.border}`}>
           {courseId && dateKey && (
             <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-white/80 backdrop-blur rounded-xl px-3 py-1.5 shadow-sm">
@@ -340,7 +376,6 @@ export default function CheckInPage() {
           <div className={`w-16 h-16 sm:w-20 sm:h-20 ${sc.iconBg} ${sc.iconColor} rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-inner`}><sc.Icon className="w-8 h-8 sm:w-10 sm:h-10" /></div>
           <div className={`mb-1 text-lg sm:text-2xl font-black ${sc.text} leading-tight`}>{last ? last.msg : "พร้อมสแกน"}</div>
           {last?.sub && <div className="text-sm text-slate-600 font-semibold mb-1">{last.sub}</div>}
-          {/* แสดงรอบของคนที่สแกน (ถ้าคอร์สมีรอบ) */}
           {last?.session && (
             <div className="inline-flex items-center gap-1.5 bg-[#F15A24] text-white text-sm font-bold px-3 py-1 rounded-full mb-3">
               <Ico.clock className="w-3.5 h-3.5" /> {last.session}
@@ -348,24 +383,21 @@ export default function CheckInPage() {
           )}
           {!last && <p className="text-sm text-slate-400 mb-4">สแกน QR หรือยิงบาร์โค้ดเพื่อเช็คอิน</p>}
 
-          {/* Manual / barcode input */}
           <form onSubmit={onManualSubmit} className="flex justify-center mt-3">
             <input ref={inputRef} type="text" value={scanInput} onChange={(e) => setScanInput(e.target.value)} autoFocus
-              disabled={!courseId || !dateKey}
-              placeholder={courseId && dateKey ? "พิมพ์รหัส 6 หลัก หรือยิงบาร์โค้ด" : "เลือกวิชาและวันก่อน"}
-              className={`w-full max-w-sm px-4 py-3 text-center text-base font-bold border-2 rounded-xl outline-none transition placeholder:text-sm placeholder:font-normal ${!courseId || !dateKey ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed" : "bg-white border-slate-300 focus:border-[#F15A24] focus:ring-4 focus:ring-orange-100"}`} />
+              disabled={!canScan}
+              placeholder={canScan ? "พิมพ์รหัส 6 หลัก หรือยิงบาร์โค้ด" : (courseNeedsSession && !sessionId ? "เลือกรอบที่เปิดเช็คอินก่อน" : "เลือกวิชาและวันก่อน")}
+              className={`w-full max-w-sm px-4 py-3 text-center text-base font-bold border-2 rounded-xl outline-none transition placeholder:text-sm placeholder:font-normal ${!canScan ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed" : "bg-white border-slate-300 focus:border-[#F15A24] focus:ring-4 focus:ring-orange-100"}`} />
           </form>
 
-          {/* Camera button */}
           <div className="mt-4 flex justify-center">
-            <button onClick={openCamera} disabled={!courseId || !dateKey}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition shadow-md ${courseId && dateKey ? "bg-[#F15A24] hover:bg-orange-600 text-white active:scale-95 shadow-orange-500/20" : "bg-slate-200 text-slate-400 cursor-not-allowed"}`}>
+            <button onClick={openCamera} disabled={!canScan}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition shadow-md ${canScan ? "bg-[#F15A24] hover:bg-orange-600 text-white active:scale-95 shadow-orange-500/20" : "bg-slate-200 text-slate-400 cursor-not-allowed"}`}>
               <Ico.camera className="w-4 h-4" /> สแกนด้วยกล้องมือถือ
             </button>
           </div>
         </div>
 
-        {/* Log */}
         <div className="mt-5">
           <h3 className="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2 mb-3">
             ประวัติการเช็คอินวันนี้
@@ -406,7 +438,6 @@ export default function CheckInPage() {
         </div>
       </div>
 
-      {/* Camera Modal */}
       {cameraOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
           <div className="relative w-full max-w-sm bg-black rounded-3xl overflow-hidden shadow-2xl">
