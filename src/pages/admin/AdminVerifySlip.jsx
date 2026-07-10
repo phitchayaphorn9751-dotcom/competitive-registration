@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useParams, useNavigate, useOutletContext } from "react-router-dom"
-import { fetchRegistration, confirmRegistration, releaseSeat, cancelRegistration, rejectRegistration, rejectPortfolio, promoteWaitlist, fetchCoursesAdmin, adminReassign, adminUpdatePaymentAmount, deleteRegistration, saveRegistrationTheme, adminUpdateParticipant, adminUpdateAdvisor } from "../../lib/supabase.js"
+import { fetchRegistration, confirmRegistration, releaseSeat, cancelRegistration, rejectRegistration, rejectPortfolio, promoteWaitlist, fetchCoursesAdmin, adminReassign, adminUpdatePaymentAmount, deleteRegistration, saveRegistrationTheme, adminUpdateParticipant, adminUpdateAdvisor, uploadSlip, attachSlip } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
 
 const STATUS = {
@@ -29,6 +29,7 @@ export default function AdminVerifySlip() {
   const [rejectModal, setRejectModal] = useState(false)
   const [rejectReason, setRejectReason] = useState("")
   const [editOpen, setEditOpen] = useState(false)
+  const [uploadingSlip, setUploadingSlip] = useState(false)
 
   useEffect(() => { load() }, [registrationId])
   async function load() {
@@ -96,6 +97,32 @@ export default function AdminVerifySlip() {
     setBusy(true)
     try { await deleteRegistration(registrationId); toast("ลบรายการสมัครแล้ว", "success"); onBack() }
     catch (e) { toast("ลบไม่สำเร็จ: " + e.message, "error"); setBusy(false) }
+  }
+
+  // แอดมินอัปโหลดสลิปแทนผู้สมัคร → ใช้ uploadSlip + attachSlip (attach_slip เป็น security definer)
+  // ตั้งสถานะเป็น slip_uploaded (รอตรวจสอบ) แล้วแอดมินกดอนุมัติต่อได้
+  async function handleAdminUploadSlip(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) { toast("ไฟล์ใหญ่เกิน 5MB", "error"); e.target.value = ""; return }
+    const ok = await confirm({
+      title: "อัปโหลดสลิปแทนผู้สมัคร?",
+      message: `แนบสลิป "${file.name}" แทนผู้สมัคร\nสถานะจะเปลี่ยนเป็น "รอตรวจสอบ" เพื่อให้กดอนุมัติต่อ`,
+      confirmText: "อัปโหลด", tone: "success",
+    })
+    if (!ok) { e.target.value = ""; return }
+    setUploadingSlip(true)
+    try {
+      const url = await uploadSlip(file, registrationId)
+      await attachSlip(registrationId, url, data.courses?.price || 0)
+      toast("อัปโหลดสลิปแทนเรียบร้อย — สถานะรอตรวจสอบ", "success")
+      await load()
+    } catch (err) {
+      const msg = err.message?.includes("INVALID_STATE")
+        ? "อัปสลิปไม่ได้ — สถานะใบนี้ไม่รองรับ (ต้องเป็นรอชำระ/รอตรวจสอบ/ตีกลับ)"
+        : "อัปโหลดไม่สำเร็จ: " + err.message
+      toast(msg, "error")
+    } finally { setUploadingSlip(false); e.target.value = "" }
   }
 
   if (loading) {
@@ -182,6 +209,18 @@ export default function AdminVerifySlip() {
                 <div className="h-32 rounded-xl bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-300 gap-1.5">
                   <span className="text-3xl">🧾</span><span className="text-sm">ผู้สมัครยังไม่แนบสลิป</span>
                 </div>
+              )}
+
+              {/* อัปโหลดสลิปแทนผู้สมัคร — เฉพาะคอร์สเสียเงิน + สถานะที่ยังแนบได้ */}
+              {isPaid && ["held", "pending_payment", "slip_rejected", "slip_uploaded"].includes(data.status) && (
+                <label className={`mt-3 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm border-2 border-dashed cursor-pointer transition ${uploadingSlip ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed" : "bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 hover:border-blue-400"}`}>
+                  <input type="file" accept="image/*" className="hidden" onChange={handleAdminUploadSlip} disabled={uploadingSlip} />
+                  {uploadingSlip ? (
+                    <><div className="w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" /> กำลังอัปโหลด…</>
+                  ) : (
+                    <>📤 {payment?.slip_url ? "เปลี่ยนสลิป (อัปแทนผู้สมัคร)" : "อัปโหลดสลิปแทนผู้สมัคร"}</>
+                  )}
+                </label>
               )}
             </div>
           </div>
