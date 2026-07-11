@@ -1081,19 +1081,13 @@ export async function importUsersBatch(users) {
     if (seen.has(email)) { continue }   // กันซ้ำในไฟล์เดียวกัน
     seen.add(email)
 
-    const row = {}
+// ยัดข้อมูลลง data (jsonb) — ตาราง pending_profiles มีแค่ email + data
+    const dataObj = {}
     for (const k of ALLOWED) {
-      if (u[k] !== undefined && u[k] !== "") row[k] = u[k]
+      if (k === "email") continue
+      if (u[k] !== undefined && u[k] !== "") dataObj[k] = String(u[k]).trim()
     }
-    row.email = email
-    if (row.age !== undefined) {
-      const n = parseInt(row.age, 10)
-      row.age = Number.isNaN(n) ? null : n
-    }
-    if (row.pdpa_consent !== undefined) {
-      row.pdpa_consent = row.pdpa_consent === true || row.pdpa_consent === "true" || row.pdpa_consent === "1"
-    }
-    rows.push(row)
+    rows.push({ email, data: dataObj, claimed: false })
   }
 
   if (rows.length === 0) {
