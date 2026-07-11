@@ -64,6 +64,7 @@ export async function holdSeat(courseId, email, seats) {
     p_course_id: courseId,
     p_submitter_email: email,
     p_seats_needed: seats,
+    p_session_id: sessionId, 
   })
   if (error) throw error
   return data // registration uuid

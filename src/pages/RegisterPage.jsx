@@ -194,11 +194,19 @@ export default function RegisterPage() {
       const fresh = await fetchCourse(courseId)
       const unlimited = fresh.seat_mode === "unlimited" || (fresh.capacity || 0) === 0
       // นับที่นั่งเป็น "จำนวนคน" — ทีมกี่คนกินที่นั่งเท่านั้น (teamCount)
-      const willWaitlist = !unlimited && (fresh.seats_taken || 0) + teamCount > (fresh.capacity || 0)
+      // คอร์สมีรอบ → เช็คที่รอบ (seats_taken คอร์สรวมทุกรอบ ใช้ไม่ได้) · hold_seat จะตัดสินจริงอีกที
+      let willWaitlist
+      if (hasSessions && selectedSession) {
+        const sess = fresh.sessions?.find((s) => s.id === selectedSession)
+        willWaitlist = sess ? ((sess.taken || 0) + teamCount > (sess.capacity || 0)) : false
+      } else {
+        willWaitlist = !unlimited && (fresh.seats_taken || 0) + teamCount > (fresh.capacity || 0)
+      }
 
       // ── ขั้นตอนหลัก (ต้องสำเร็จ) ──
       // กันที่นั่งตามจำนวนสมาชิกจริง (ทีม 3 คน = กัน 3 ที่นั่ง)
-      const regId = await holdSeat(courseId, email.trim(), teamCount)
+      // ส่ง session ที่เลือกเข้าไปด้วย — hold_seat จะเช็คที่นั่ง "ของรอบนั้น" (คอร์สมีรอบ)
+      const regId = await holdSeat(courseId, email.trim(), teamCount, hasSessions ? selectedSession : null)
 
       // ถ้าคอร์สมีรอบ — บันทึกรอบที่เลือก + เพิ่ม taken ของรอบนั้น
       if (hasSessions && selectedSession) {
@@ -860,5 +868,6 @@ function translateError(msg) {
   if (!msg) return "เกิดข้อผิดพลาด"
   if (msg.includes("COURSE_FULL") || msg.includes("full")) return "ที่นั่งเต็มแล้ว"
   if (msg.includes("CLOSED") || msg.includes("not open")) return "คอร์สนี้ปิดรับสมัครแล้ว"
+  if (msg.includes("SESSION_NOT_FOUND")) return "ไม่พบรอบที่เลือก — กรุณาเลือกรอบใหม่"
   return "เกิดข้อผิดพลาด: " + msg
 }
