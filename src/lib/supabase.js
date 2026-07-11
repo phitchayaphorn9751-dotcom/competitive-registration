@@ -59,12 +59,11 @@ export async function fetchRegistrationMembers(regId) {
 // ===== ลงทะเบียน (ผ่าน RPC) =====
 
 // schema จริง: hold_seat คืน uuid ตรงๆ (ไม่ใช่ table)
-export async function holdSeat(courseId, email, seats) {
-  const { data, error } = await supabase.rpc("hold_seat", {
+export async function holdSeat(courseId, email, seats, sessionId = null) {  const { data, error } = await supabase.rpc("hold_seat", {
     p_course_id: courseId,
     p_submitter_email: email,
     p_seats_needed: seats,
-    p_session_id: sessionId, 
+    p_session_id: sessionId || null,
   })
   if (error) throw error
   return data // registration uuid
