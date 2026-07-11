@@ -157,13 +157,19 @@ export default function ProfilePage() {
 
   async function handleSave() {
     setError(null)
+    // ── บังคับกรอกข้อมูลส่วนตัวให้ครบ (ยกเว้น Line ID + ที่อยู่) ──
+    if (!f.title) return setError("กรุณาเลือกคำนำหน้าชื่อ")
     if (!f.first_name.trim() || !f.last_name.trim()) return setError("กรุณากรอกชื่อ-นามสกุล")
+    if (!f.nickname.trim()) return setError("กรุณากรอกชื่อเล่น")
+    if (!String(f.age).trim()) return setError("กรุณากรอกอายุ")
     if (f.nationality === "thai") {
       if (f.national_id.length !== 13) return setError("เลขบัตรประชาชนต้องมีครบ 13 หลัก")
       if (!checkThaiID(f.national_id)) return setError("เลขบัตรประชาชนไม่ถูกต้อง (กรุณาตรวจสอบอีกครั้ง)")
     } else {
       if (!f.passport_no.trim() || f.passport_no.trim().length < 5) return setError("กรุณาระบุเลข Passport ให้ถูกต้อง")
     }
+    if (!f.grade_level.trim()) return setError("กรุณาเลือกระดับชั้น")
+    if (!f.school.trim()) return setError("กรุณากรอกโรงเรียน")
     if (f.phone.length !== 10) return setError("เบอร์โทรศัพท์ต้องมีครบ 10 หลัก")
     if (!f.phone.startsWith("0")) return setError("เบอร์โทรศัพท์ต้องขึ้นต้นด้วยเลข 0")
     if (f.school && !schoolVerified && !customSchool)
@@ -172,12 +178,12 @@ export default function ProfilePage() {
     // แบบสอบถาม section 4 — บังคับตอบครั้งแรก (ถ้ายังไม่เคยตอบ)
     if (!rawProfile?.survey_done) {
       if (f.pdpa_consent === null || f.pdpa_consent === undefined)
-        return setError("กรุณาเลือกยินยอม/ไม่ยินยอม ในแบบสอบถาม (ส่วนที่ 4)")
+        return setError("กรุณาเลือกยินยอม/ไม่ยินยอม ในแบบสอบถาม (ส่วนที่ 3)")
       if (f.pdpa_consent === false)
         return setError("ต้องยินยอมข้อตกลง PDPA ก่อนจึงจะลงทะเบียนได้")
       const acts = Array.isArray(f.past_activities) ? f.past_activities : []
       if (acts.length === 0 && !f.past_activities_other?.trim())
-        return setError("กรุณาตอบข้อ 'เคยร่วมกิจกรรม' ในแบบสอบถาม (ส่วนที่ 4)")
+        return setError("กรุณาตอบข้อ 'เคยร่วมกิจกรรม' ในแบบสอบถาม (ส่วนที่ 3)")
     }
 
     setSaving(true)
@@ -257,7 +263,7 @@ export default function ProfilePage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
               <div>
-                <Label>{f.nationality === "thai" ? t("profile.nationalId") : t("profile.passport")}</Label>
+                <Label>{f.nationality === "thai" ? t("profile.nationalId") : t("profile.passport")} *</Label>
                 {f.nationality === "thai" ? (
                   <input className={inputCls} value={f.national_id} inputMode="numeric"
                     onChange={(e) => setNumeric("national_id", e.target.value, 13)} placeholder={t("profile.idPlaceholder")} />
@@ -265,12 +271,12 @@ export default function ProfilePage() {
                   <input className={inputCls} value={f.passport_no} onChange={(e) => set("passport_no", e.target.value)} placeholder="Passport No." />
                 )}
               </div>
-              <div><Label>{t("profile.nickname")}</Label><input className={inputCls} value={f.nickname} onChange={(e) => set("nickname", e.target.value)} /></div>
+              <div><Label>{t("profile.nickname")} *</Label><input className={inputCls} value={f.nickname} onChange={(e) => set("nickname", e.target.value)} /></div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
               <div>
-                <Label>{t("profile.titleName")}</Label>
+                <Label>{t("profile.titleName")} *</Label>
                 <select className={selectCls} value={f.title} onChange={(e) => set("title", e.target.value)}>
                   <option value="">{t("profile.select")}</option>
                   {TITLES.map((tt) => <option key={tt} value={tt}>{tt}</option>)}
@@ -282,11 +288,11 @@ export default function ProfilePage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4">
               <div className="sm:col-span-1">
-                <Label>{t("profile.age")}</Label>
+                <Label>{t("profile.age")} *</Label>
                 <input className={inputCls} value={f.age} inputMode="numeric" onChange={(e) => setNumeric("age", e.target.value, 2)} placeholder="ปี" />
               </div>
               <div className="sm:col-span-3">
-                <Label>{t("profile.grade")}</Label>
+                <Label>{t("profile.grade")} *</Label>
                 <div className="flex gap-2">
                   <select className={`${selectCls} flex-1`} value={customGrade ? "อื่นๆ" : gradeGroup} onChange={(e) => onGradeGroup(e.target.value)}>
                     <option value="">{t("profile.selectGrade")}</option>
@@ -309,7 +315,7 @@ export default function ProfilePage() {
             {/* โรงเรียน */}
             <div className="relative mb-4">
               <div className="flex justify-between items-center mb-1.5">
-                <Label>{t("profile.school")}</Label>
+                <Label>{t("profile.school")} *</Label>
                 <button type="button" onClick={toggleCustomSchool}
                   className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full transition-all ${customSchool ? "bg-orange-100 text-[#F15A24] border border-orange-300" : "text-slate-400 hover:text-[#F15A24] underline"}`}>
                   {customSchool ? (<><Ico.arrowLeft className="w-3 h-3" /> ค้นหาจากรายการ</>) : "ไม่พบโรงเรียนของฉัน"}

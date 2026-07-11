@@ -153,6 +153,12 @@ export default function RegisterPage() {
       if (nid.length !== 13) {
         return setError(`กรุณากรอกเลขบัตรประชาชน 13 หลักของ "${m.full_name.trim()}" ให้ครบ (ถามเพื่อนในทีม — ใช้กันการสมัครซ้ำ)`)
       }
+      // บังคับกรอกข้อมูลสมาชิกให้ครบ (Gmail + โรงเรียน + เบอร์)
+      const memberName = m.full_name.trim()
+      if (!(m.email || "").trim()) return setError(`กรุณากรอก Gmail ของ "${memberName}"`)
+      if (!(m.school || "").trim()) return setError(`กรุณากรอกโรงเรียนของ "${memberName}"`)
+      const mphone = (m.phone || "").trim()
+      if (mphone.length !== 10 || !mphone.startsWith("0")) return setError(`เบอร์โทรของ "${memberName}" ต้องมี 10 หลักและขึ้นต้นด้วย 0`)
     }
     // เจ้าของทีมต้องมีเลขบัตรใน profile ด้วย (คอร์สแบบทีม)
     if (course.count_mode === "team" && (ownerNationalId || "").trim().length !== 13) {
@@ -167,6 +173,11 @@ export default function RegisterPage() {
     const isCompetition = course.course_types?.requires_approval
     if (isCompetition && !advisor.full_name.trim()) {
       return setError(t("reg.needAdvisor"))
+    }
+    if (isCompetition) {
+      const aphone = (advisor.phone || "").trim()
+      if (aphone.length !== 10 || !aphone.startsWith("0")) return setError("เบอร์โทรครูที่ปรึกษาต้องมี 10 หลักและขึ้นต้นด้วย 0")
+      if (!(advisor.email || "").trim()) return setError("กรุณากรอกอีเมลครูที่ปรึกษา")
     }
     if (course.require_portfolio && !portfolioUrl.trim()) {
       return setError("กรุณาแนบลิงก์ผลงานก่อนสมัคร")
@@ -555,9 +566,9 @@ export default function RegisterPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <input className={inputCls} placeholder="ชื่อ-สกุล *" value={m.full_name} onChange={(e) => updateMember(i, "full_name", e.target.value)} />
                     <input className={inputCls + ((m.national_id || "").length > 0 && (m.national_id || "").length !== 13 ? " border-rose-300 focus:border-rose-400 focus:ring-rose-100" : "")} placeholder="เลขบัตรประชาชน 13 หลัก *" value={m.national_id || ""} onChange={(e) => updateMember(i, "national_id", e.target.value.replace(/[^0-9]/g, "").slice(0, 13))} />
-                    <input className={inputCls} type="email" placeholder="Gmail ของน้องคนนี้" value={m.email || ""} onChange={(e) => updateMember(i, "email", e.target.value)} />
+                    <input className={inputCls} type="email" placeholder="Gmail ของน้องคนนี้ *" value={m.email || ""} onChange={(e) => updateMember(i, "email", e.target.value)} />
                     <div className="relative">
-                      <input className={inputCls} placeholder="โรงเรียน (พิมพ์เพื่อค้นหา)" value={m.school}
+                      <input className={inputCls} placeholder="โรงเรียน (พิมพ์เพื่อค้นหา) *" value={m.school}
                         onChange={(e) => onMemberSchoolInput(i, e.target.value)}
                         onBlur={() => setTimeout(() => setSchoolDD((p) => p.idx === i ? { idx: -1, options: [] } : p), 200)} />
                       {schoolDD.idx === i && schoolDD.options.length > 0 && (
@@ -568,7 +579,7 @@ export default function RegisterPage() {
                         </ul>
                       )}
                     </div>
-                    <input className={inputCls} placeholder="เบอร์โทร" value={m.phone} onChange={(e) => updateMember(i, "phone", e.target.value.replace(/[^0-9]/g, "").slice(0, 10))} />
+                    <input className={inputCls} placeholder="เบอร์โทร *" value={m.phone} onChange={(e) => updateMember(i, "phone", e.target.value.replace(/[^0-9]/g, "").slice(0, 10))} />
                   </div>
                   <p className="text-[11px] text-slate-400 mt-1.5">💡 ใส่ Gmail ของน้องเพื่อให้น้อง login เข้ามาดูงานนี้และ QR เช็คอินของตัวเองได้</p>
                   <p className="text-[11px] text-[#F15A24] mt-1 flex items-center gap-1"><Ico.warn className="w-3 h-3 shrink-0" /> ต้องกรอกเลขบัตร 13 หลักของเพื่อนให้ครบ </p>
@@ -595,8 +606,8 @@ export default function RegisterPage() {
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <input className={inputCls} placeholder={t("reg.advisorName") + " *"} value={advisor.full_name} onChange={(e) => setAdvisor({ ...advisor, full_name: e.target.value })} />
-              <input className={inputCls} placeholder={t("reg.advisorPhone")} value={advisor.phone} onChange={(e) => setAdvisor({ ...advisor, phone: e.target.value.replace(/[^0-9]/g, "").slice(0, 10) })} />
-              <input className={inputCls} type="email" placeholder="อีเมลที่ปรึกษา" value={advisor.email} onChange={(e) => setAdvisor({ ...advisor, email: e.target.value })} />
+              <input className={inputCls} placeholder={t("reg.advisorPhone") + " *"} value={advisor.phone} onChange={(e) => setAdvisor({ ...advisor, phone: e.target.value.replace(/[^0-9]/g, "").slice(0, 10) })} />
+              <input className={inputCls} type="email" placeholder="อีเมลที่ปรึกษา *" value={advisor.email} onChange={(e) => setAdvisor({ ...advisor, email: e.target.value })} />
             </div>
           </div>
         )}
