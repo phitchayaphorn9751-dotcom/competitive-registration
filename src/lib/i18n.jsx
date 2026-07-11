@@ -107,7 +107,7 @@ const T = {
   "myreg.closeWindow": { th: "ปิดหน้าต่าง", en: "Close" },
   // สถานะ
   "myreg.st.confirmed": { th: "ยืนยันแล้ว", en: "Confirmed" },
-  "myreg.st.pending_review": { th: "รอตรวจสอบสลิป", en: "Reviewing slip" },
+  "myreg.st.pending_review": { th: "รอตรวจสอบ", en: "Reviewing slip" },
   "myreg.st.pending_payment": { th: "รอชำระเงิน", en: "Pending payment" },
   "myreg.st.held": { th: "รออนุมัติ", en: "Pending approval" },
   "myreg.st.waitlist": { th: "คิวสำรอง", en: "Waitlist" },
