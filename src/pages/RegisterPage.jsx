@@ -42,6 +42,20 @@ function periodOf(time) {
   return hour < 12 ? "เช้า" : "บ่าย"
 }
 
+// เช็คว่าระดับชั้นผู้สมัครตรงกับที่วิชากำหนดไหม — รองรับค่าพิเศษ
+// course.level (ดรอปดาวน์): "ประถมศึกษา"/"มัธยมศึกษาตอนต้น"/"มัธยมศึกษาตอนปลาย" = prefix ตรงกับ grade_level
+//   + ค่าพิเศษ "มัธยมต้น + ปลาย" (รับ ม.ต้น+ม.ปลาย) และ "ทุกระดับ" (รับหมด)
+// grade_level ผู้สมัคร เช่น "มัธยมศึกษาตอนปลาย ม.6"
+function gradeAllowed(courseLevel, gradeLevel) {
+  if (!courseLevel) return true            // วิชาไม่กำหนดระดับ = รับทุกคน
+  if (!gradeLevel) return true             // ผู้สมัครไม่มีข้อมูลระดับชั้น = ไม่บล็อก
+  if (courseLevel === "ทุกระดับ") return true
+  if (courseLevel === "มัธยมต้น + ปลาย") {
+    return gradeLevel.startsWith("มัธยมศึกษาตอนต้น") || gradeLevel.startsWith("มัธยมศึกษาตอนปลาย")
+  }
+  return gradeLevel.startsWith(courseLevel)
+}
+
 export default function RegisterPage() {
   const { courseId } = useParams()
   const navigate = useNavigate()
@@ -142,8 +156,8 @@ export default function RegisterPage() {
       return setError("กรุณากรอกประวัติสมาชิกให้ครบทุกส่วน (รวมแบบสอบถาม) ก่อนสมัคร")
     }
     // เช็คระดับชั้น — คอร์สที่กำหนด level ต้องรับเฉพาะระดับนั้น (level ว่าง = รับทุกระดับ)
-    // เทียบจากหัวหน้าธีม/เจ้าของ profile (grade_level เช่น "ประถมศึกษา ป.3" ต้องขึ้นต้นด้วย course.level)
-    if (course.level && profile?.grade_level && !profile.grade_level.startsWith(course.level)) {
+    // ใช้ gradeAllowed() รองรับค่าพิเศษ "มัธยมต้น + ปลาย" และ "ทุกระดับ"
+    if (!gradeAllowed(course.level, profile?.grade_level)) {
       return setError(`วิชานี้รับเฉพาะระดับ "${course.level}" — ระดับชั้นของคุณคือ "${profile.grade_level}" จึงสมัครไม่ได้`)
     }
     for (const m of extraMembers) {
