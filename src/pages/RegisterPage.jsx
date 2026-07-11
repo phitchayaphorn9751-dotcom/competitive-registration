@@ -141,6 +141,11 @@ export default function RegisterPage() {
     if (!profile?.survey_done) {
       return setError("กรุณากรอกประวัติสมาชิกให้ครบทุกส่วน (รวมแบบสอบถาม) ก่อนสมัคร")
     }
+    // เช็คระดับชั้น — คอร์สที่กำหนด level ต้องรับเฉพาะระดับนั้น (level ว่าง = รับทุกระดับ)
+    // เทียบจากหัวหน้าธีม/เจ้าของ profile (grade_level เช่น "ประถมศึกษา ป.3" ต้องขึ้นต้นด้วย course.level)
+    if (course.level && profile?.grade_level && !profile.grade_level.startsWith(course.level)) {
+      return setError(`วิชานี้รับเฉพาะระดับ "${course.level}" — ระดับชั้นของคุณคือ "${profile.grade_level}" จึงสมัครไม่ได้`)
+    }
     for (const m of extraMembers) {
       if (!m.full_name.trim()) return setError(t("reg.needName"))
       // บังคับเลขบัตร 13 หลัก — กันสมัครซ้ำ/สวมสิทธิ์ (ต้องมีเพื่อเช็คซ้ำได้)
