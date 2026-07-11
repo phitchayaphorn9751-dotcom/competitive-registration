@@ -764,8 +764,7 @@ export async function setCourseInstructors(courseId, names) {
 export async function fetchCourseParticipants(courseId) {
   const { data, error } = await supabase
     .from("registrations")
-    .select("id, status, submitter_email, seats_held, session_id, created_at, advisors(full_name,phone), participants(id,full_name,school,grade_level,phone,email,national_id,participant_code,checkins(id,scanned_at))")
-    .eq("course_id", courseId)
+.select("id, status, submitter_email, seats_held, session_id, theme_name, created_at, advisors(full_name,phone), participants(id,full_name,school,grade_level,phone,email,national_id,participant_code,checkins(id,scanned_at))")    .eq("course_id", courseId)
     .order("created_at", { ascending: true })
   if (error) throw error
   return data || []

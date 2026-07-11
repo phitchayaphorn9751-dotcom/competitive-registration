@@ -1051,7 +1051,7 @@ function CourseModal({ course, types, onSave, onClose }) {
     </div>
   )
 }
-// Modal ดูผู้สมัคร + export CSV (คง logic เดิม)
+// Modal ดูผู้สมัคร + export CSV จัดกลุ่มธีม
 function ParticipantsModal({ course, onClose }) {
   const [regs, setRegs] = useState(null)
   const [err, setErr] = useState(null)
@@ -1062,16 +1062,19 @@ function ParticipantsModal({ course, onClose }) {
   useEffect(() => { fetchCourseParticipants(course.id).then(setRegs).catch((e) => setErr(e.message)) }, [course])
 
   const hasSessions = Array.isArray(course.sessions) && course.sessions.length > 0
+  const isTeamCourse = course.count_mode === "team"
   const sessionLabel = (sid) => {
     if (!sid) return ""
     const s = (course.sessions || []).find((x) => x.id === sid)
     return s ? (s.label || "รอบ") : ""
   }
 
+  // แถวรายคน (สำหรับตาราง + filter) — คง reg_id, theme_name เพื่อจัดกลุ่มตอน export
   const allRows = []
   ;(regs || []).forEach((r) => {
     (r.participants || []).forEach((p) => {
       allRows.push({
+        reg_id: r.id, theme_name: r.theme_name || "",
         name: p.full_name, school: p.school || "", grade: p.grade_level || "",
         phone: p.phone || "", email: r.submitter_email || "",
         advisor: r.advisors?.[0]?.full_name || "", status: r.status,
@@ -1085,14 +1088,67 @@ function ParticipantsModal({ course, onClose }) {
   const statuses = [...new Set(allRows.map((r) => r.status).filter(Boolean))].sort()
   const rows = allRows.filter((r) => (!fSchool || r.school === fSchool) && (!fStatus || r.status === fStatus) && (!fSession || r.sessionId === fSession))
 
+  // ── จัดกลุ่มทีม (ตาม reg_id) สำหรับ export ──
+  // วิชาทีม: reg_id เดียว = ทีมเดียว (สมาชิกหลายคน) · วิชาเดี่ยว: กลุ่มละ 1 คน
+  function groupTeams(list) {
+    const groups = []
+    const byReg = new Map()
+    for (const r of list) {
+      const key = isTeamCourse && r.reg_id ? `reg:${r.reg_id}` : `solo:${r.reg_id}:${r.name}:${Math.random()}`
+      if (!byReg.has(key)) {
+        const g = { theme: r.theme_name || "", members: [] }
+        byReg.set(key, g); groups.push(g)
+      }
+      byReg.get(key).members.push(r)
+    }
+    return groups
+  }
+
+  // Export CSV จัดกลุ่มธีม
+  // วิชาทีม: จำนวนธีม | ชื่อธีม | ชื่อวิชา | จำนวนคน | ชื่อคน | + ที่เหลือ
+  // วิชาเดี่ยว: ตัดคอลัมน์ธีม/จำนวนคน → ชื่อวิชา | ชื่อคน | + ที่เหลือ
   function exportCsv() {
-    const headers = ["คอร์ส", "ชื่อ-สกุล", "โรงเรียน", "ระดับชั้น", ...(hasSessions ? ["รอบ"] : []), "เบอร์โทร", "อีเมลผู้สมัคร", "ครูที่ปรึกษา", "สถานะ", "เช็คอิน"]
-    const lines = [headers.join(",")]
-    rows.forEach((r) => {
-      const vals = [course.title, r.name, r.school, r.grade, ...(hasSessions ? [r.sessionName] : []), r.phone, r.email, r.advisor, r.status, r.checkedIn ? "เช็คอินแล้ว" : "ยังไม่"]
-        .map((v) => `"${String(v).replace(/"/g, '""')}"`)
-      lines.push(vals.join(","))
-    })
+    const restCols = [
+      ["โรงเรียน", (r) => r.school],
+      ["ระดับชั้น", (r) => r.grade],
+      ...(hasSessions ? [["รอบ", (r) => r.sessionName]] : []),
+      ["เบอร์โทร", (r) => r.phone],
+      ["อีเมลผู้สมัคร", (r) => r.email],
+      ["ครูที่ปรึกษา", (r) => r.advisor],
+      ["สถานะ", (r) => r.status],
+      ["เช็คอิน", (r) => r.checkedIn ? "เช็คอินแล้ว" : "ยังไม่"],
+    ]
+    const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`
+    let header, lines
+
+    if (isTeamCourse) {
+      // วิชาทีม — จัดกลุ่มธีม
+      header = ["จำนวนธีม", "ชื่อธีม", "ชื่อวิชา", "จำนวนคน", "ชื่อคน", ...restCols.map(([h]) => h)]
+      lines = [header.map(esc).join(",")]
+      const groups = groupTeams(rows)
+      groups.forEach((g, gi) => {
+        g.members.forEach((r, mi) => {
+          const row = [
+            mi === 0 ? gi + 1 : "",           // จำนวนธีม (ครั้งเดียว/ทีม)
+            mi === 0 ? g.theme : "",           // ชื่อธีม (แถวแรก)
+            mi === 0 ? course.title : "",      // ชื่อวิชา (แถวแรก)
+            mi + 1,                            // จำนวนคน (เลขในทีม)
+            r.name,                            // ชื่อคน
+            ...restCols.map(([, fn]) => fn(r)),
+          ]
+          lines.push(row.map(esc).join(","))
+        })
+      })
+    } else {
+      // วิชาเดี่ยว — ไม่มีคอลัมน์ธีม
+      header = ["ลำดับ", "ชื่อวิชา", "ชื่อคน", ...restCols.map(([h]) => h)]
+      lines = [header.map(esc).join(",")]
+      rows.forEach((r, i) => {
+        const row = [i + 1, course.title, r.name, ...restCols.map(([, fn]) => fn(r))]
+        lines.push(row.map(esc).join(","))
+      })
+    }
+
     const blob = new Blob(["\ufeff" + lines.join("\n")], { type: "text/csv;charset=utf-8;" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a"); a.href = url; a.download = `ผู้สมัคร_${course.title}.csv`; a.click()
@@ -1145,6 +1201,7 @@ function ParticipantsModal({ course, onClose }) {
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 sticky top-0 border-b border-slate-100">
                   <tr className="text-[10px] text-slate-400 uppercase">
+                    {isTeamCourse && <th className="px-4 py-3 text-left">ธีม</th>}
                     <th className="px-4 py-3 text-left">ชื่อ-สกุล</th>
                     <th className="px-4 py-3 text-left">โรงเรียน</th>
                     {hasSessions && <th className="px-4 py-3 text-left">รอบ</th>}
@@ -1156,6 +1213,7 @@ function ParticipantsModal({ course, onClose }) {
                 <tbody className="divide-y divide-slate-50">
                   {rows.map((r, i) => (
                     <tr key={i} className="hover:bg-orange-50/40">
+                      {isTeamCourse && <td className="px-4 py-3 text-slate-600 max-w-[160px]"><span className="line-clamp-1 text-[11px] font-medium text-[#F15A24]">{r.theme_name || "—"}</span></td>}
                       <td className="px-4 py-3 font-medium text-slate-800">{r.name}</td>
                       <td className="px-4 py-3 text-slate-600">{r.school}</td>
                       {hasSessions && <td className="px-4 py-3">{r.sessionName ? <span className="text-[11px] font-bold bg-orange-50 text-[#F15A24] px-2 py-0.5 rounded-full">{r.sessionName}</span> : <span className="text-slate-300">—</span>}</td>}
