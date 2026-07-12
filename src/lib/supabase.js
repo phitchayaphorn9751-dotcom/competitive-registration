@@ -1054,12 +1054,20 @@ export async function updatePassword(newPassword) {
   if (error) throw error
 }
 
+
+// เช็คซ้ำก่อน import user (email/เลขบัตร/เบอร์/ชื่อ) เทียบ pending_profiles + profiles
+export async function checkImportDuplicates(rows) {
+  const { data, error } = await supabase.rpc("check_import_duplicates", {
+    p_rows: rows,
+  })
+  if (error) throw error
+  return data || []
+}
 // ═══ เฟส 1: นำเข้า user (โปรไฟล์ล่วงหน้า) ═══
 // admin import users (batch) → เก็บลง pending_profiles (match ด้วย email)
 // user กด Google login ด้วย email เดียวกัน → claim_pending_profile() ดึงมาเป็น profile จริง
 // (ไม่ใช้ Edge Function แล้ว — insert ตรงผ่าน RLS ที่อนุญาตเฉพาะ admin)
-export async function importUsersBatch(users) {
-  const { data: { session } } = await supabase.auth.getSession()
+export async function importUsersBatch(users, skipEmails = []) {  const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error("ยังไม่ได้ login")
 
   // ฟิลด์ที่ตรงกับตาราง pending_profiles เท่านั้น (กันคอลัมน์แปลกปลอม)
@@ -1071,13 +1079,16 @@ export async function importUsersBatch(users) {
     "district", "province", "zipcode", "pdpa_consent",
   ]
 
+  const skipSet = new Set((skipEmails || []).map((e) => String(e).trim().toLowerCase()))
   const rows = []
   const errors = []
   const seen = new Set()
+  let skipped = 0
 
   for (const u of users) {
     const email = String(u.email || "").trim().toLowerCase()
     if (!email) { errors.push("ไม่มีอีเมล"); continue }
+    if (skipSet.has(email)) { skipped++; continue }   // admin เลือกข้าม
     if (seen.has(email)) { continue }   // กันซ้ำในไฟล์เดียวกัน
     seen.add(email)
 
@@ -1090,8 +1101,8 @@ export async function importUsersBatch(users) {
     rows.push({ email, data: dataObj, claimed: false })
   }
 
-  if (rows.length === 0) {
-    return { ok: 0, fail: errors.length, errors }
+if (rows.length === 0) {
+    return { ok: 0, fail: errors.length, skipped, errors }
   }
 
   // upsert เข้า pending_profiles (email เป็น primary key → นำเข้าซ้ำได้ทับของเดิม)
@@ -1101,7 +1112,7 @@ export async function importUsersBatch(users) {
 
   if (error) throw new Error(error.message)
 
-  return { ok: rows.length, fail: errors.length, errors }
+return { ok: rows.length, fail: errors.length, skipped, errors }
 }
 
 // user เรียกหลัง login ครั้งแรก — ดึง pending profile มาผูก (ถ้ามี)

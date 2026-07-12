@@ -3,7 +3,7 @@ import { useOutletContext } from "react-router-dom"
 import {
   fetchCoursesAdmin, importExternalParticipant, fetchCourseParticipants,
   deleteImportedParticipant, deleteImportedByCourse, importUsersBatch,
-  fetchImportedUsers, deletePendingProfile,
+  fetchImportedUsers, deletePendingProfile, checkImportDuplicates,
   fetchAllSchools, searchSchools,
 } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
@@ -768,6 +768,8 @@ function UserImportSection({ allSchools }) {
   const [uMode, setUMode] = useState("file")
   const [uManual, setUManual] = useState([])
   const [uForm, setUForm] = useState({ email: "", title: "", first_name: "", last_name: "", nickname: "", grade_level: "", school: "", phone: "", national_id: "" })
+  const [checking, setChecking] = useState(false)
+  const [dupModal, setDupModal] = useState(null)   // { dups:[...], source:[...] } | null
 
   async function handleFile(e) {
     const file = e.target.files?.[0]
@@ -813,17 +815,48 @@ function UserImportSection({ allSchools }) {
   }
   function removeUManual(idx) { setUManual((prev) => prev.filter((_, i) => i !== idx)) }
 
+  // กด "นำเข้า" → เช็คซ้ำก่อน · ถ้าซ้ำ → เปิด modal ให้เลือก · ไม่ซ้ำ → import เลย
   async function doImport() {
     const source = uMode === "manual" ? uManual : mapped
     if (source.length === 0) return toast("ยังไม่มีข้อมูล", "error")
+    setChecking(true)
+    try {
+      const dups = await checkImportDuplicates(source)
+      if (dups && dups.length > 0) {
+        // ตั้งค่าเริ่มต้น: ทุกรายที่ซ้ำ = "update" (ทับ) · ถ้าเลือก skip ค่อยเปลี่ยน
+        setDupModal({ dups, source, choices: Object.fromEntries(dups.map((d) => [d.email, "update"])) })
+        setChecking(false)
+        return
+      }
+      // ไม่ซ้ำ → import ทั้งหมด
+      await runImport(source, [])
+    } catch (e) {
+      toast("เช็คข้อมูลซ้ำไม่สำเร็จ: " + e.message, "error")
+    } finally { setChecking(false) }
+  }
+
+  // import จริง — skipEmails = อีเมลที่ admin เลือก "ข้าม"
+  async function runImport(source, skipEmails) {
     setImporting(true)
     try {
-      const res = await importUsersBatch(source)
+      const res = await importUsersBatch(source, skipEmails)
       setResult(res)
-      toast(`นำเข้าเสร็จ — สำเร็จ ${res.ok} คน${res.fail ? ` · ผิดพลาด ${res.fail}` : ""}`, res.fail ? "error" : "success")
+      const skipMsg = res.skipped ? ` · ข้าม ${res.skipped}` : ""
+      toast(`นำเข้าเสร็จ — สำเร็จ ${res.ok} คน${skipMsg}${res.fail ? ` · ผิดพลาด ${res.fail}` : ""}`, res.fail ? "error" : "success")
       if (uMode === "manual") setUManual([])
     } catch (e) { toast("นำเข้าไม่สำเร็จ: " + e.message, "error") }
     finally { setImporting(false) }
+  }
+
+  // ยืนยันจาก modal → import ตามที่เลือก (skip รายที่เลือก "ข้าม")
+  async function confirmDupModal() {
+    if (!dupModal) return
+    const skipEmails = Object.entries(dupModal.choices)
+      .filter(([, action]) => action === "skip")
+      .map(([email]) => email)
+    const src = dupModal.source
+    setDupModal(null)
+    await runImport(src, skipEmails)
   }
 
   const uInput = "w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-800 bg-white focus:border-violet-400 focus:ring-1 focus:ring-violet-400 outline-none transition"
@@ -940,15 +973,15 @@ function UserImportSection({ allSchools }) {
       )}
 
       {uCount > 0 && (
-        <button onClick={doImport} disabled={importing}
+        <button onClick={doImport} disabled={importing || checking}
           className="w-full mt-4 bg-violet-500 hover:bg-violet-600 text-white font-bold py-3 rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-2">
-          <Ico.users className="w-4 h-4" /> {importing ? "กำลังนำเข้า…" : `นำเข้า ${uCount} คน`}
+          <Ico.users className="w-4 h-4" /> {checking ? "กำลังตรวจข้อมูลซ้ำ…" : importing ? "กำลังนำเข้า…" : `นำเข้า ${uCount} คน`}
         </button>
       )}
 
       {result && (
         <div className={`mt-3 rounded-xl border p-3 text-sm ${result.fail ? "border-amber-200 bg-amber-50" : "border-emerald-200 bg-emerald-50"}`}>
-          <p className="font-bold text-slate-700">นำเข้าสำเร็จ {result.ok} คน{result.fail ? ` · ผิดพลาด ${result.fail} คน` : ""}</p>
+          <p className="font-bold text-slate-700">นำเข้าสำเร็จ {result.ok} คน{result.skipped ? ` · ข้าม ${result.skipped} คน` : ""}{result.fail ? ` · ผิดพลาด ${result.fail} คน` : ""}</p>
           {result.errors?.length > 0 && (
             <ul className="mt-1.5 text-[11px] text-rose-600 space-y-0.5 max-h-32 overflow-y-auto">
               {result.errors.slice(0, 10).map((e, i) => <li key={i}>• {e}</li>)}
@@ -956,6 +989,113 @@ function UserImportSection({ allSchools }) {
           )}
         </div>
       )}
+
+      {/* Modal เลือกจัดการข้อมูลซ้ำ */}
+      {dupModal && (
+        <DuplicateModal
+          dupModal={dupModal}
+          setChoice={(email, action) => setDupModal((m) => ({ ...m, choices: { ...m.choices, [email]: action } }))}
+          setAll={(action) => setDupModal((m) => ({ ...m, choices: Object.fromEntries(m.dups.map((d) => [d.email, action])) }))}
+          onCancel={() => setDupModal(null)}
+          onConfirm={confirmDupModal}
+        />
+      )}
     </section>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Modal จัดการข้อมูลซ้ำ — โชว์รายชื่อที่ซ้ำ + เลือกต่อราย (อัปเดต/ข้าม)
+// ═══════════════════════════════════════════════════════════════════
+function DuplicateModal({ dupModal, setChoice, setAll, onCancel, onConfirm }) {
+  const { dups, choices } = dupModal
+  const skipCount = Object.values(choices).filter((a) => a === "skip").length
+  const updateCount = dups.length - skipCount
+
+  // สรุป field ที่ซ้ำของแต่ละราย
+  function matchLabels(matches) {
+    const has = { email: false, nid: false, phone: false, name: false }
+    ;(matches || []).forEach((m) => {
+      if (m.match_email) has.email = true
+      if (m.match_nid) has.nid = true
+      if (m.match_phone) has.phone = true
+      if (m.match_name) has.name = true
+    })
+    const out = []
+    if (has.email) out.push("อีเมล")
+    if (has.nid) out.push("เลขบัตร")
+    if (has.phone) out.push("เบอร์")
+    if (has.name) out.push("ชื่อ")
+    return out
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={onCancel}>
+      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="p-4 sm:p-5 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <span className="w-8 h-8 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0"><Ico.alert className="w-4 h-4" /></span>
+            <div>
+              <h3 className="font-bold text-slate-800">พบข้อมูลซ้ำ {dups.length} คน</h3>
+              <p className="text-[11px] text-slate-400">เลือกว่าจะอัปเดต (ทับข้อมูลเดิม) หรือข้าม (ไม่นำเข้า) แต่ละคน</p>
+            </div>
+          </div>
+          {/* เลือกทั้งหมด */}
+          <div className="flex items-center gap-2 mt-3">
+            <span className="text-[11px] text-slate-400 font-bold">ตั้งทั้งหมด:</span>
+            <button onClick={() => setAll("update")} className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-violet-100 text-violet-700 hover:bg-violet-200 transition">อัปเดตทั้งหมด</button>
+            <button onClick={() => setAll("skip")} className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition">ข้ามทั้งหมด</button>
+          </div>
+        </div>
+
+        {/* รายการซ้ำ */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-2.5">
+          {dups.map((d) => {
+            const labels = matchLabels(d.matches)
+            const existing = (d.matches || [])[0]
+            const action = choices[d.email] || "update"
+            return (
+              <div key={d.email} className="border border-slate-100 rounded-xl p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-sm text-slate-800 truncate">{d.name || d.email}</p>
+                    <p className="text-[11px] text-violet-600 font-mono truncate">{d.email}</p>
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {labels.map((l) => (
+                        <span key={l} className="text-[10px] font-bold bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded">ซ้ำ{l}</span>
+                      ))}
+                    </div>
+                    {existing && (
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        ซ้ำกับ: {existing.source === "profile" ? "คนสมัครเอง" : "ที่นำเข้าไว้"}
+                        {existing.name ? ` · ${existing.name}` : ""}
+                        {existing.claimed ? " · เข้าระบบแล้ว" : ""}
+                      </p>
+                    )}
+                  </div>
+                  {/* ปุ่มเลือก */}
+                  <div className="flex bg-slate-100 p-0.5 rounded-lg shrink-0">
+                    <button onClick={() => setChoice(d.email, "update")}
+                      className={`px-2.5 py-1.5 rounded-md text-[11px] font-bold transition ${action === "update" ? "bg-violet-500 text-white shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>อัปเดต</button>
+                    <button onClick={() => setChoice(d.email, "skip")}
+                      className={`px-2.5 py-1.5 rounded-md text-[11px] font-bold transition ${action === "skip" ? "bg-slate-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>ข้าม</button>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 sm:p-5 border-t border-slate-100">
+          <p className="text-[11px] text-slate-500 mb-3 text-center">จะอัปเดต <b className="text-violet-600">{updateCount}</b> คน · ข้าม <b className="text-slate-600">{skipCount}</b> คน{updateCount === 0 ? "" : " · คนที่ไม่ซ้ำจะถูกนำเข้าทั้งหมด"}</p>
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={onCancel} className="py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition text-sm">ยกเลิก</button>
+            <button onClick={onConfirm} className="py-3 bg-violet-500 text-white rounded-xl font-bold hover:bg-violet-600 transition text-sm">ยืนยันนำเข้า</button>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
