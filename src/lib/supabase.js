@@ -898,7 +898,7 @@ export async function searchThaiAddress(query) {
 // ===== นำเข้าผู้สมัครจากระบบนอก =====
 
 // import ผู้สมัครจากระบบนอก (เช็คอินอย่างเดียว — ไม่กินที่นั่ง)
-export async function importExternalParticipant(courseId, row) {
+export async function importExternalParticipant(courseId, row, seatMode = "reserve") {
   const { data, error } = await supabase.rpc("import_external_participant", {
     p_course_id: courseId,
     p_full_name: row.full_name,
@@ -907,6 +907,7 @@ export async function importExternalParticipant(courseId, row) {
     p_phone: row.phone || null,
     p_email: row.email || null,
     p_national_id: row.national_id || null,
+    p_seat_mode: seatMode,
   })
   if (error) throw error
   return data
@@ -1127,4 +1128,30 @@ export async function fetchDashboardCourses(eventId) {
   const { data, error } = await supabase.rpc("dashboard_courses", { p_event_id: eventId })
   if (error) throw error
   return data
+}
+
+// ── ดึงรายชื่อ user ที่ import (pending_profiles) — ทั้ง claim แล้ว/ยัง ──
+export async function fetchImportedUsers() {
+  const { data, error } = await supabase
+    .from("pending_profiles")
+    .select("email, data, claimed, created_at")
+    .order("created_at", { ascending: false })
+  if (error) throw error
+  // แตก data (jsonb) เป็น field ระดับบน
+  return (data || []).map((r) => ({
+    email: r.email,
+    claimed: r.claimed,
+    created_at: r.created_at,
+    ...(r.data || {}),
+  }))
+}
+
+// ── ลบ user ที่ import (pending_profiles) รายคน ──
+export async function deletePendingProfile(email) {
+  const { error } = await supabase
+    .from("pending_profiles")
+    .delete()
+    .eq("email", email)
+  if (error) throw error
+  return true
 }
