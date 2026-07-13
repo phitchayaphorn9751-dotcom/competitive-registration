@@ -114,6 +114,7 @@ export default function AdminImport() {
   const [results, setResults] = useState([])
   const [mode, setMode] = useState("file")          // file | manual — โหมดกรอก section 2
   const [seatMode, setSeatMode] = useState("reserve")  // reserve=กันที่นั่ง · extra=เพิ่มที่นั่ง
+  const [sessionId, setSessionId] = useState("")       // รอบที่เลือก (คอร์สที่มีหลายรอบ)
   const [allSchools, setAllSchools] = useState([])
 
   // กรอกเอง (manual) section 2
@@ -177,7 +178,7 @@ export default function AdminImport() {
   }, [tab3])
 
   function onSelectCourse(cid) {
-    setCourseId(cid); setResults([])
+    setCourseId(cid); setResults([]); setSessionId("")
   }
   function onView3Course(cid) {
     setView3CourseId(cid); loadImported(cid)
@@ -223,6 +224,8 @@ export default function AdminImport() {
   // นำเข้า (ไฟล์ หรือ manual) — ส่ง seatMode
   async function doImport() {
     if (!courseId) return toast("เลือกคอร์สก่อน", "error")
+    // คอร์สมีหลายรอบ แต่ยังไม่เลือกรอบ → เตือน
+    if (courseSessions.length > 0 && !sessionId) return toast("คอร์สนี้มีหลายรอบ — เลือกรอบก่อน", "error")
     const source = mode === "manual" ? manualList : rows.map((r) => r.mapped)
     const rawSource = mode === "manual" ? manualList : rows.map((r) => r.raw)
     if (source.length === 0) return toast("ยังไม่มีรายชื่อ", "error")
@@ -232,7 +235,7 @@ export default function AdminImport() {
       const mapped = source[i]
       const raw = rawSource[i]
       try {
-        const res = await importExternalParticipant(courseId, mapped, seatMode)
+        const res = await importExternalParticipant(courseId, mapped, seatMode, sessionId || null)
         out.push({ raw, mapped, participant_code: res.participant_code, status: res.status })
       } catch (e) { out.push({ raw, mapped, participant_code: "", error: e.message }) }
       setProgress({ done: i + 1, total: source.length }); setResults([...out])
@@ -353,6 +356,7 @@ export default function AdminImport() {
   const view3Course = courses.find((c) => c.id === view3CourseId)
   const prefix = selectedCourse?.base_id || "P"
   const sourceCount = mode === "manual" ? manualList.length : rows.length
+  const courseSessions = Array.isArray(selectedCourse?.sessions) ? selectedCourse.sessions : []
   const inputCls = "w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-800 bg-white focus:border-[#F15A24] focus:ring-1 focus:ring-[#F15A24] outline-none transition"
 
   return (
@@ -412,6 +416,33 @@ export default function AdminImport() {
             </button>
           </div>
         </div>
+
+        {/* เลือกรอบ (เฉพาะคอร์สที่มีหลายรอบ) */}
+        {courseSessions.length > 0 && (
+          <div className="mt-4">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wide block mb-1.5">
+              เลือกรอบ <span className="text-rose-500">*</span>
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {courseSessions.map((s) => {
+                const full = s.capacity && s.taken >= s.capacity
+                return (
+                  <button key={s.id} type="button" onClick={() => setSessionId(s.id)}
+                    className={`p-3 rounded-xl border-2 text-left transition ${sessionId === s.id ? "border-[#F15A24] bg-orange-50/40 shadow-sm" : "border-slate-200 bg-white hover:border-slate-300"}`}>
+                    <div className="font-bold text-sm text-slate-800 flex items-center gap-1.5">
+                      <Ico.clock className="w-4 h-4 text-[#F15A24]" /> {s.label || s.time}
+                    </div>
+                    <div className="text-[11px] text-slate-500 mt-0.5">
+                      {s.time}
+                      {s.capacity ? <span className={full ? "text-rose-500 font-bold ml-1" : "text-slate-400 ml-1"}> · {s.taken || 0}/{s.capacity}{full ? " (เต็ม)" : ""}</span> : null}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1.5">คอร์สนี้มีหลายรอบ — ต้องเลือกรอบก่อนนำเข้า</p>
+          </div>
+        )}
 
         {/* Tab สลับโหมดกรอก */}
         <div className="mt-4 flex bg-slate-100 p-1 rounded-xl gap-0.5 w-fit">

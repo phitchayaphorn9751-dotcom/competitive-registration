@@ -898,7 +898,7 @@ export async function searchThaiAddress(query) {
 // ===== นำเข้าผู้สมัครจากระบบนอก =====
 
 // import ผู้สมัครจากระบบนอก (เช็คอินอย่างเดียว — ไม่กินที่นั่ง)
-export async function importExternalParticipant(courseId, row, seatMode = "reserve") {
+export async function importExternalParticipant(courseId, row, seatMode = "reserve", sessionId = null) {
   const { data, error } = await supabase.rpc("import_external_participant", {
     p_course_id: courseId,
     p_full_name: row.full_name,
@@ -908,6 +908,7 @@ export async function importExternalParticipant(courseId, row, seatMode = "reser
     p_email: row.email || null,
     p_national_id: row.national_id || null,
     p_seat_mode: seatMode,
+    p_session_id: sessionId || null,
   })
   if (error) throw error
   return data
