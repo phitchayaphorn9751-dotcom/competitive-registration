@@ -4,7 +4,7 @@ import {
   fetchCoursesAdmin, importExternalParticipant, fetchCourseParticipants,
   deleteImportedParticipant, deleteImportedByCourse, importUsersBatch,
   fetchImportedUsers, deletePendingProfile, checkImportDuplicates,
-  fetchAllSchools, searchSchools,
+  fetchAllSchools, searchSchools, matchCourseAndSession,
 } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
 import { Ico } from "../../lib/icons.jsx"
@@ -16,6 +16,8 @@ const HEADER_MAP = {
   "เบอร์โทร": "phone", "เบอร์": "phone", "phone": "phone", "tel": "phone",
   "อีเมล": "email", "email": "email", "e-mail": "email",
   "เลขบัตรประชาชน": "national_id", "เลขบัตร": "national_id", "national_id": "national_id", "id_card": "national_id",
+  "คอร์ส": "course", "วิชา": "course", "เวิร์คช็อป": "course", "เวิร์คชอป": "course", "course": "course", "workshop": "course",
+  "รอบ": "round", "session": "round", "round": "round", "เวลา": "round",
 }
 
 function splitLine(line) {
@@ -112,10 +114,16 @@ export default function AdminImport() {
   const [importing, setImporting] = useState(false)
   const [progress, setProgress] = useState({ done: 0, total: 0 })
   const [results, setResults] = useState([])
-  const [mode, setMode] = useState("file")          // file | manual — โหมดกรอก section 2
+  const [mode, setMode] = useState("file")          // file | manual | auto — โหมดกรอก section 2
   const [seatMode, setSeatMode] = useState("reserve")  // reserve=กันที่นั่ง · extra=เพิ่มที่นั่ง
   const [sessionId, setSessionId] = useState("")       // รอบที่เลือก (คอร์สที่มีหลายรอบ)
   const [allSchools, setAllSchools] = useState([])
+
+  // auto-import (โหมดอัตโนมัติ — อ่านคอลัมน์คอร์ส+รอบ)
+  const [autoRows, setAutoRows] = useState([])       // แถวดิบจากไฟล์ auto
+  const [autoHeaders, setAutoHeaders] = useState([])
+  const [autoFileName, setAutoFileName] = useState("")
+  const [autoResults, setAutoResults] = useState(null)  // { success:[...], errors:[...], summary:{} }
 
   // กรอกเอง (manual) section 2
   const [manualList, setManualList] = useState([])
@@ -248,6 +256,81 @@ export default function AdminImport() {
     if (mode === "manual") setManualList([])
     // ถ้า section 3 กำลังดูคอร์สนี้ → รีเฟรช
     if (view3CourseId === courseId) loadImported(courseId)
+  }
+
+  // ── โหมด AUTO: อ่านไฟล์ (ต้องมีคอลัมน์ คอร์ส + รอบ) ──
+  function onAutoFile(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setAutoFileName(file.name); setAutoResults(null)
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      try {
+        const parsed = parseCsv(ev.target.result)
+        if (!parsed.fields.includes("full_name")) {
+          toast("ไม่พบคอลัมน์ชื่อ (ชื่อ-สกุล)", "error"); setAutoRows([]); setAutoHeaders([]); return
+        }
+        if (!parsed.fields.includes("course")) {
+          toast("ไม่พบคอลัมน์คอร์ส — โหมดอัตโนมัติต้องมีคอลัมน์ 'คอร์ส'", "error"); setAutoRows([]); setAutoHeaders([]); return
+        }
+        setAutoHeaders(parsed.headers); setAutoRows(parsed.rows)
+        if (parsed.rows.length === 0) toast("ไม่พบข้อมูลในไฟล์", "error")
+      } catch (err) { toast("อ่านไฟล์ไม่สำเร็จ: " + err.message, "error") }
+    }
+    reader.readAsText(file, "UTF-8")
+    e.target.value = ""
+  }
+
+  // ── โหมด AUTO: import (map คอร์ส+รอบ จากไฟล์ → เรียก RPC ต่อแถว) ──
+  async function doAutoImport() {
+    if (autoRows.length === 0) return toast("ยังไม่มีรายชื่อ", "error")
+    setImporting(true); setProgress({ done: 0, total: autoRows.length })
+    const success = []
+    const errors = []
+    for (let i = 0; i < autoRows.length; i++) {
+      const { mapped } = autoRows[i]
+      const name = mapped.full_name || `แถว ${i + 1}`
+      // map ชื่อคอร์ส + รอบ → id
+      const m = matchCourseAndSession(courses, mapped.course, mapped.round)
+      if (m.error) {
+        errors.push({ row: i + 1, name, reason: m.error })
+        setProgress({ done: i + 1, total: autoRows.length }); continue
+      }
+      try {
+        const res = await importExternalParticipant(m.courseId, mapped, seatMode, m.sessionId)
+        success.push({
+          row: i + 1, name, code: res.participant_code,
+          course: m.courseTitle, session: m.sessionLabel || "", status: res.status,
+        })
+      } catch (e) {
+        errors.push({ row: i + 1, name, reason: e.message })
+      }
+      setProgress({ done: i + 1, total: autoRows.length })
+    }
+    setImporting(false)
+
+    // สรุปแยกตามคอร์ส+รอบ
+    const summary = {}
+    success.forEach((s) => {
+      const key = s.session ? `${s.course} — ${s.session}` : s.course
+      summary[key] = (summary[key] || 0) + 1
+    })
+    setAutoResults({ success, errors, summary })
+    toast(`เสร็จ: สำเร็จ ${success.length}${errors.length ? ` · ผิดพลาด ${errors.length}` : ""}`, errors.length ? "error" : "success")
+    // รีเฟรช section 3 ถ้าดูคอร์สที่เพิ่ง import
+    if (view3CourseId) loadImported(view3CourseId)
+  }
+
+  // export ผล auto (พร้อมรหัส)
+  function exportAutoResults() {
+    if (!autoResults) return
+    const head = ["รหัสผู้สมัคร", "ชื่อ-สกุล", "คอร์ส", "รอบ", "สถานะ"]
+    const lines = [head.join(",")]
+    autoResults.success.forEach((s) => {
+      const vals = [s.code, s.name, s.course, s.session, s.status === "waitlist" ? "คิวสำรอง" : "สำเร็จ"]
+      lines.push(vals.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
+    })
+    downloadCsv(lines, "ผลนำเข้าอัตโนมัติ_พร้อมรหัส.csv")
   }
 
   function downloadCsv(lines, filename) {
@@ -385,7 +468,8 @@ export default function AdminImport() {
           </div>
         </div>
 
-        {/* เลือกคอร์ส */}
+        {/* เลือกคอร์ส (ซ่อนในโหมด auto — อ่านจากไฟล์) */}
+        {mode !== "auto" && (
         <div className="mt-4">
           <label className="text-xs font-bold text-slate-500 uppercase tracking-wide block mb-1.5">คอร์สปลายทาง</label>
           <select value={courseId} onChange={(e) => onSelectCourse(e.target.value)}
@@ -399,6 +483,7 @@ export default function AdminImport() {
             <p className="text-[11px] text-slate-400 mt-1.5">รหัสจะขึ้นต้นด้วย <span className="font-mono font-bold text-[#F15A24]">{prefix}-001</span>, {prefix}-002, …</p>
           )}
         </div>
+        )}
 
         {/* เลือกโหมดที่นั่ง */}
         <div className="mt-4">
@@ -417,8 +502,8 @@ export default function AdminImport() {
           </div>
         </div>
 
-        {/* เลือกรอบ (เฉพาะคอร์สที่มีหลายรอบ) */}
-        {courseSessions.length > 0 && (
+        {/* เลือกรอบ (เฉพาะคอร์สที่มีหลายรอบ · ไม่ใช่โหมด auto) */}
+        {mode !== "auto" && courseSessions.length > 0 && (
           <div className="mt-4">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wide block mb-1.5">
               เลือกรอบ <span className="text-rose-500">*</span>
@@ -453,6 +538,10 @@ export default function AdminImport() {
           <button onClick={() => setMode("manual")}
             className={`px-4 py-2 rounded-lg text-xs font-bold transition ${mode === "manual" ? "bg-white text-[#F15A24] shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
             <span className="inline-flex items-center gap-1.5"><Ico.pencil className="w-3.5 h-3.5" /> กรอกเอง</span>
+          </button>
+          <button onClick={() => setMode("auto")}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition ${mode === "auto" ? "bg-white text-[#F15A24] shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
+            <span className="inline-flex items-center gap-1.5"><Ico.folder className="w-3.5 h-3.5" /> อัตโนมัติ (หลายคอร์ส)</span>
           </button>
         </div>
 
@@ -552,8 +641,108 @@ export default function AdminImport() {
           </div>
         )}
 
+        {/* โหมดอัตโนมัติ */}
+        {mode === "auto" && (
+          <div className="mt-4">
+            <div className="bg-amber-50/60 border border-amber-100 rounded-xl p-3 mb-3 text-[11px] text-slate-600 leading-relaxed">
+              <span className="font-bold text-amber-700">โหมดอัตโนมัติ:</span> ไฟล์ต้องมีคอลัมน์ <b>คอร์ส</b> (ชื่อเต็มหรือรหัส เช่น RM) + <b>รอบ</b> (รอบเช้า/รอบบ่าย — เฉพาะคอร์สหลายรอบ) · ระบบแยกเข้าคอร์สให้อัตโนมัติ · <b>1 ไฟล์ = 1 โรงเรียน</b> ใช้โหมดที่นั่งเดียวกันทั้งไฟล์
+            </div>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wide block mb-1.5">ไฟล์ CSV (มีคอลัมน์คอร์ส+รอบ)</label>
+            <input type="file" accept=".csv,text/csv" onChange={onAutoFile}
+              className="block w-full text-sm text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-orange-100 file:text-orange-700 hover:file:bg-orange-200 transition" />
+            {autoFileName && <p className="text-xs text-slate-500 mt-1.5 inline-flex items-center gap-1"><Ico.folder className="w-3.5 h-3.5" /> {autoFileName} — พบ {autoRows.length} รายชื่อ</p>}
+
+            {/* preview auto */}
+            {autoRows.length > 0 && (
+              <div className="mt-4 border border-slate-100 rounded-xl overflow-hidden">
+                <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/50">
+                  <span className="text-xs font-bold text-slate-600">ตัวอย่าง ({autoRows.length} คน)</span>
+                </div>
+                <div className="overflow-x-auto max-h-64 overflow-y-auto">
+                  <table className="w-full text-left text-sm whitespace-nowrap">
+                    <thead className="bg-slate-50 sticky top-0">
+                      <tr className="text-[10px] text-slate-400 uppercase">
+                        <th className="px-3 py-2.5">#</th><th className="px-3 py-2.5">ชื่อ-สกุล</th>
+                        <th className="px-3 py-2.5">คอร์ส</th><th className="px-3 py-2.5">รอบ</th><th className="px-3 py-2.5">โรงเรียน</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {autoRows.slice(0, 50).map((r, i) => (
+                        <tr key={i} className="hover:bg-orange-50/40">
+                          <td className="px-3 py-2 text-xs text-slate-400 font-mono">{i + 1}</td>
+                          <td className="px-3 py-2 text-xs font-medium text-slate-700">{r.mapped.full_name}</td>
+                          <td className="px-3 py-2 text-xs text-[#F15A24] font-medium">{r.mapped.course || <span className="text-rose-400">ไม่ระบุ</span>}</td>
+                          <td className="px-3 py-2 text-xs text-slate-500">{r.mapped.round || <span className="text-slate-300">—</span>}</td>
+                          <td className="px-3 py-2 text-xs text-slate-500">{r.mapped.school || <span className="text-slate-300">—</span>}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* ปุ่ม + progress auto */}
+            {autoRows.length > 0 && (
+              <div className="mt-4">
+                {importing ? (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs text-slate-500"><span>กำลังนำเข้า…</span><span className="font-bold">{progress.done} / {progress.total}</span></div>
+                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden"><div className="h-full bg-gradient-to-r from-[#fb923c] to-[#F15A24] transition-all duration-200" style={{ width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%` }} /></div>
+                  </div>
+                ) : (
+                  <button onClick={doAutoImport}
+                    className="w-full inline-flex items-center justify-center gap-2 bg-[#F15A24] text-white px-4 py-3 rounded-xl font-bold hover:bg-[#c44215] shadow-sm shadow-orange-500/20 transition text-sm">
+                    <Ico.folder className="w-4 h-4" /> นำเข้าอัตโนมัติ {autoRows.length} คน ({seatMode === "extra" ? "เพิ่มที่นั่ง" : "กันที่นั่ง"})
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* สรุปผล auto */}
+            {autoResults && !importing && (
+              <div className="mt-4 space-y-3">
+                {/* สรุปแยกคอร์ส */}
+                <div className="border border-emerald-100 rounded-xl overflow-hidden">
+                  <div className="px-4 py-2.5 border-b border-emerald-100 bg-emerald-50/40 flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-600">สำเร็จ {autoResults.success.length} คน</span>
+                    {autoResults.success.length > 0 && (
+                      <button onClick={exportAutoResults} className="inline-flex items-center gap-1.5 bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-700 transition"><Ico.download className="w-3.5 h-3.5" /> ดาวน์โหลด (พร้อมรหัส)</button>
+                    )}
+                  </div>
+                  <div className="p-3">
+                    {Object.entries(autoResults.summary).map(([k, n]) => (
+                      <div key={k} className="flex items-center justify-between text-xs py-1 border-b border-slate-50 last:border-0">
+                        <span className="text-slate-600">{k}</span>
+                        <span className="font-bold text-[#F15A24]">{n} คน</span>
+                      </div>
+                    ))}
+                    {Object.keys(autoResults.summary).length === 0 && <p className="text-xs text-slate-400 text-center py-2">ไม่มีรายการสำเร็จ</p>}
+                  </div>
+                </div>
+
+                {/* รายการผิดพลาด */}
+                {autoResults.errors.length > 0 && (
+                  <div className="border border-rose-100 rounded-xl overflow-hidden">
+                    <div className="px-4 py-2.5 border-b border-rose-100 bg-rose-50/40">
+                      <span className="text-xs font-bold text-rose-600">⚠️ ผิดพลาด {autoResults.errors.length} คน — ต้องแก้ไฟล์แล้ว import ใหม่</span>
+                    </div>
+                    <div className="max-h-48 overflow-y-auto p-2">
+                      {autoResults.errors.map((e, i) => (
+                        <div key={i} className="text-xs px-2 py-1.5 border-b border-rose-50 last:border-0">
+                          <span className="font-bold text-slate-700">แถว {e.row} ({e.name}):</span> <span className="text-rose-600">{e.reason}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ปุ่มนำเข้า + progress */}
-        {sourceCount > 0 && (
+        {mode !== "auto" && sourceCount > 0 && (
           <div className="mt-4">
             {importing ? (
               <div className="space-y-2">
@@ -570,7 +759,7 @@ export default function AdminImport() {
         )}
 
         {/* ผลนำเข้า */}
-        {results.length > 0 && !importing && (
+        {mode !== "auto" && results.length > 0 && !importing && (
           <div className="mt-4 border border-emerald-100 rounded-xl overflow-hidden">
             <div className="px-4 py-2.5 border-b border-emerald-100 bg-emerald-50/40 flex items-center justify-between">
               <span className="text-xs font-bold text-slate-600">ผลการนำเข้า ({results.length})</span>

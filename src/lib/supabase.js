@@ -1167,3 +1167,35 @@ export async function deletePendingProfile(email) {
   if (error) throw error
   return true
 }
+
+// ── หา course_id + session_id จากชื่อในไฟล์ (สำหรับ auto-import) ──
+// courses = ผลจาก fetchCoursesAdmin (มี id, title, base_id, sessions)
+export function matchCourseAndSession(courses, courseName, roundName) {
+  const cn = String(courseName || "").trim().toLowerCase()
+  if (!cn) return { error: "ไม่ระบุคอร์ส" }
+
+  // 1. หาคอร์ส: ชื่อเต็มตรง → base_id ตรง → ชื่อบางส่วน
+  let course = courses.find((c) => (c.title || "").trim().toLowerCase() === cn)
+  if (!course) course = courses.find((c) => (c.base_id || "").trim().toLowerCase() === cn)
+  if (!course) course = courses.find((c) => (c.title || "").trim().toLowerCase().includes(cn) || cn.includes((c.title || "").trim().toLowerCase()))
+  if (!course) return { error: `ไม่พบคอร์ส "${courseName}"` }
+
+  const sessions = Array.isArray(course.sessions) ? course.sessions : []
+
+  // คอร์สไม่มีรอบ → ไม่ต้อง map รอบ
+  if (sessions.length === 0) {
+    return { courseId: course.id, sessionId: null, courseTitle: course.title }
+  }
+
+  // คอร์สมีรอบ → ต้อง map รอบ
+  const rn = String(roundName || "").trim().toLowerCase()
+  if (!rn) return { error: `คอร์ส "${course.title}" มีหลายรอบ — ต้องระบุรอบ`, courseTitle: course.title }
+
+  // หารอบ: label ตรง → label บางส่วน → time ตรง
+  let sess = sessions.find((s) => (s.label || "").trim().toLowerCase() === rn)
+  if (!sess) sess = sessions.find((s) => (s.label || "").trim().toLowerCase().includes(rn) || rn.includes((s.label || "").trim().toLowerCase()))
+  if (!sess) sess = sessions.find((s) => (s.time || "").trim().toLowerCase() === rn || (s.time || "").replace(/\s/g, "").includes(rn.replace(/\s/g, "")))
+  if (!sess) return { error: `ไม่พบรอบ "${roundName}" ในคอร์ส "${course.title}"`, courseTitle: course.title }
+
+  return { courseId: course.id, sessionId: sess.id, courseTitle: course.title, sessionLabel: sess.label || sess.time }
+}
