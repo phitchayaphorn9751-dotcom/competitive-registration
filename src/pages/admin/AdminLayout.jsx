@@ -38,6 +38,7 @@ const NAV = [
   { to: "/admin/attendance", label: "สรุปการมาเรียน", icon: "clipboard" },
   { to: "/admin/students", label: "จัดการนักเรียน", icon: "cap" },
   { to: "/admin/import", label: "นำเข้าผู้สมัคร", icon: "upload" },
+  { to: "/admin/surveys", label: "แบบประเมิน", icon: "clipboard" },
   { to: "/admin/certificate", label: "ออกเกียรติบัตร", icon: "award" },
   { to: "/admin/settings", label: "ตั้งค่าเว็บ", icon: "gear" },
 ]
