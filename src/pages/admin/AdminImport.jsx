@@ -408,10 +408,20 @@ export default function AdminImport() {
 
   // export section 3 course — จัดกลุ่มธีม
   function exportImported() {
+    const data = importedFiltered   // ← ตามตัวกรอง (วิชา + โรงเรียน)
+    if (data.length === 0) { toast("ไม่มีข้อมูลให้ดาวน์โหลด", "error"); return }
+    // ชื่อไฟล์ตามตัวกรอง
+    const fnParts = ["นำเข้า"]
+    if (view3CourseFilter) fnParts.push(view3CourseFilter)
+    else fnParts.push("ทุกวิชา")
+    if (view3School) fnParts.push(view3School)
+    const fname = fnParts.join("_") + ".csv"
+    const showCourse = !view3CourseFilter   // โชว์คอลัมน์วิชาเมื่อไม่กรองวิชา
+
     const isTeam = view3Course?.count_mode === "team"
     if (isTeam) {
       const groups = []; const byReg = new Map()
-      for (const p of imported) {
+      for (const p of data) {
         const key = p.reg_id || `solo:${p.id}`
         if (!byReg.has(key)) { const g = { theme: p.theme_name || "", members: [] }; byReg.set(key, g); groups.push(g) }
         byReg.get(key).members.push(p)
@@ -421,23 +431,23 @@ export default function AdminImport() {
       groups.forEach((g, gi) => {
         g.members.forEach((p, mi) => {
           const { title, name } = splitTitle(p.full_name)
-          const vals = [mi === 0 ? gi + 1 : "", mi === 0 ? g.theme : "", mi === 0 ? (view3Course?.title || "") : "",
+          const vals = [mi === 0 ? gi + 1 : "", mi === 0 ? g.theme : "", mi === 0 ? (p.courseTitle || "") : "",
             mi + 1, p.code, title, name, p.school, p.grade, p.phone, p.email,
             p.seatMode === "extra" ? "เพิ่มที่นั่ง" : "กันที่นั่ง", p.status, p.checkedIn ? "เช็คอินแล้ว" : "ยังไม่"]
           lines.push(vals.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
         })
       })
-      downloadCsv(lines, `นำเข้า_${view3Course?.title || "course"}.csv`)
+      downloadCsv(lines, fname)
     } else {
-      const head = ["ลำดับ", "รหัสผู้สมัคร", "คำนำหน้า", "ชื่อ-สกุล", "โรงเรียน", "ระดับชั้น", "เบอร์โทร", "อีเมล", "โหมด", "สถานะ", "เช็คอิน"]
+      const head = ["ลำดับ", "รหัสผู้สมัคร", ...(showCourse ? ["วิชา"] : []), "คำนำหน้า", "ชื่อ-สกุล", "โรงเรียน", "ระดับชั้น", "เบอร์โทร", "อีเมล", "โหมด", "สถานะ", "เช็คอิน"]
       const lines = [head.join(",")]
-      imported.forEach((p, i) => {
+      data.forEach((p, i) => {
         const { title, name } = splitTitle(p.full_name)
-        const vals = [i + 1, p.code, title, name, p.school, p.grade, p.phone, p.email,
+        const vals = [i + 1, p.code, ...(showCourse ? [p.courseTitle || ""] : []), title, name, p.school, p.grade, p.phone, p.email,
           p.seatMode === "extra" ? "เพิ่มที่นั่ง" : "กันที่นั่ง", p.status, p.checkedIn ? "เช็คอินแล้ว" : "ยังไม่"]
         lines.push(vals.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
       })
-      downloadCsv(lines, `นำเข้า_${view3Course?.title || "course"}.csv`)
+      downloadCsv(lines, fname)
     }
   }
 
