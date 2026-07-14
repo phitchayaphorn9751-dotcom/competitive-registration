@@ -449,7 +449,7 @@ export default function AdminImport() {
     autoRows.forEach((r, i) => {
       const m = matchCourseAndSession(courses, r.mapped.course, r.mapped.round)
       if (m.error) { errs.push({ row: i + 1, name: r.mapped.full_name || `แถว ${i + 1}`, reason: m.error }); return }
-      const label = m.sessionLabel || "(รอบเดียว)"
+      const label = (m.sessionLabel || "(รอบเดียว)").trim()
       if (!courseMap[m.courseTitle]) courseMap[m.courseTitle] = { course: m.courseTitle, sessions: {} }
       if (!courseMap[m.courseTitle].sessions[label]) {
         // หา capacity + taken ของรอบ
@@ -472,10 +472,10 @@ export default function AdminImport() {
     return { cols, rows, errors: errs }
   })()
 
-  // ที่นั่งหลังใช้โหมด: extra → taken+count (ขยายพอดี) · reserve → cap เดิม
+  // ที่นั่งหลังใช้โหมด: extra → cap เดิม + count (ขยายที่นั่งตามคนเพิ่ม) · reserve → cap เดิม
   const seatAfter = (cell) => {
     if (!cell) return 0
-    if (seatMode === "extra") return cell.taken + cell.count
+    if (seatMode === "extra") return cell.cap + cell.count
     return cell.cap
   }
   const isOver = (cell) => cell && seatMode === "reserve" && cell.cap > 0 && cell.taken + cell.count > cell.cap
@@ -771,7 +771,7 @@ export default function AdminImport() {
                 </div>
                 {/* คำอธิบาย + เตือนกันที่นั่งล้น */}
                 <div className="px-3 py-1.5 bg-slate-50/50 border-t border-slate-100 text-[10px] text-slate-400">
-                  เดิม<span className="text-slate-400">+</span><span className="text-slate-700 font-bold">ใหม่</span> / ที่นั่ง{seatMode === "extra" ? "หลังเพิ่ม" : "ทั้งหมด"}
+                  เดิม<span className="text-slate-400">+</span><span className="text-slate-700 font-bold">ใหม่</span> / ที่นั่ง{seatMode === "extra" ? "หลังเพิ่ม (เดิม+ใหม่)" : "เดิม"}
                 </div>
                 {seatMode === "reserve" && autoPreview.rows.some((r) => Object.values(r.sessions).some((c) => isOver(c))) && (
                   <div className="px-3 py-1.5 bg-amber-50 border-t border-amber-100 text-[10px] text-amber-700 flex items-start gap-1">
