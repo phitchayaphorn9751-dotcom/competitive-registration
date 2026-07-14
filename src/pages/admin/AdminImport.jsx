@@ -451,20 +451,18 @@ export default function AdminImport() {
         </div>
         <div>
           <h1 className="text-xl sm:text-2xl font-extrabold bg-gradient-to-r from-[#F15A24] to-amber-500 bg-clip-text text-transparent leading-tight">นำเข้าข้อมูล</h1>
-          <p className="text-slate-400 text-xs mt-0.5">นำเข้า User + ผู้สมัครเข้าคอร์ส · อัปโหลดไฟล์ หรือกรอกเอง</p>
         </div>
       </div>
 
       {/* ═══════ SECTION 1: นำเข้า USER ═══════ */}
       <UserImportSection allSchools={allSchools} />
 
-      {/* ═══════ SECTION 2: นำเข้าผู้สมัคร (เข้าคอร์ส) ═══════ */}
+      {/* ═══════ SECTION 2: นำเข้าผู้สมัคร ═══════ */}
       <section className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 sm:p-5">
         <div className="flex items-center gap-2 mb-1">
           <span className="w-6 h-6 rounded-lg bg-[#F15A24] text-white flex items-center justify-center text-xs font-extrabold shrink-0">2</span>
           <div>
-            <h2 className="text-sm font-bold text-slate-700">นำเข้าผู้สมัคร (เข้าคอร์ส)</h2>
-            <p className="text-[11px] text-slate-400">เพิ่มผู้สมัครเข้าคอร์ส + สร้างรหัสเช็คอิน · ใส่อีเมลตรง account = ผู้สมัคร login เห็นเอง</p>
+            <h2 className="text-sm font-bold text-slate-700">นำเข้าผู้สมัคร</h2>
           </div>
         </div>
 
@@ -549,8 +547,11 @@ export default function AdminImport() {
         {mode === "file" && (
           <div className="mt-4">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wide block mb-1.5">ไฟล์ CSV</label>
-            <input type="file" accept=".csv,text/csv" onChange={onFile}
-              className="block w-full text-sm text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-orange-100 file:text-orange-700 hover:file:bg-orange-200 transition" />
+            <label className="cursor-pointer flex items-center justify-center gap-2 border-2 border-dashed border-slate-200 hover:border-[#F15A24] hover:bg-orange-50/40 rounded-xl px-4 py-6 transition">
+              <Ico.upload className="w-5 h-5 text-slate-400" />
+              <span className="text-sm font-bold text-slate-600">{fileName || "คลิกเพื่ออัปโหลด CSV"}</span>
+              <input type="file" accept=".csv,text/csv" onChange={onFile} className="hidden" />
+            </label>
             {fileName && <p className="text-xs text-slate-500 mt-1.5 inline-flex items-center gap-1"><Ico.folder className="w-3.5 h-3.5" /> {fileName} — พบ {rows.length} รายชื่อ</p>}
             <p className="text-[11px] text-slate-400 mt-2 flex items-start gap-1"><Ico.alert className="w-3 h-3 shrink-0 mt-0.5 text-amber-400" /> คอลัมน์: ชื่อ-สกุล (จำเป็น) · โรงเรียน · ระดับชั้น · เบอร์โทร · อีเมล · เลขบัตร · <b>ใส่อีเมลถ้าอยากให้ผู้สมัคร login เห็นเอง</b></p>
 
@@ -647,9 +648,12 @@ export default function AdminImport() {
             <div className="bg-amber-50/60 border border-amber-100 rounded-xl p-3 mb-3 text-[11px] text-slate-600 leading-relaxed">
               <span className="font-bold text-amber-700">โหมดอัตโนมัติ:</span> ไฟล์ต้องมีคอลัมน์ <b>คอร์ส</b> (ชื่อเต็มหรือรหัส เช่น RM) + <b>รอบ</b> (รอบเช้า/รอบบ่าย — เฉพาะคอร์สหลายรอบ) · ระบบแยกเข้าคอร์สให้อัตโนมัติ · <b>1 ไฟล์ = 1 โรงเรียน</b> ใช้โหมดที่นั่งเดียวกันทั้งไฟล์
             </div>
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wide block mb-1.5">ไฟล์ CSV (มีคอลัมน์คอร์ส+รอบ)</label>
-            <input type="file" accept=".csv,text/csv" onChange={onAutoFile}
-              className="block w-full text-sm text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-orange-100 file:text-orange-700 hover:file:bg-orange-200 transition" />
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wide block mb-1.5">ไฟล์ CSV</label>
+            <label className="cursor-pointer flex items-center justify-center gap-2 border-2 border-dashed border-slate-200 hover:border-[#F15A24] hover:bg-orange-50/40 rounded-xl px-4 py-6 transition">
+              <Ico.upload className="w-5 h-5 text-slate-400" />
+              <span className="text-sm font-bold text-slate-600">{autoFileName || "คลิกเพื่ออัปโหลด CSV"}</span>
+              <input type="file" accept=".csv,text/csv" onChange={onAutoFile} className="hidden" />
+            </label>
             {autoFileName && <p className="text-xs text-slate-500 mt-1.5 inline-flex items-center gap-1"><Ico.folder className="w-3.5 h-3.5" /> {autoFileName} — พบ {autoRows.length} รายชื่อ</p>}
 
             {/* preview auto */}
@@ -795,7 +799,6 @@ export default function AdminImport() {
           <span className="w-6 h-6 rounded-lg bg-[#F15A24] text-white flex items-center justify-center text-xs font-extrabold shrink-0">3</span>
           <div>
             <h2 className="text-sm font-bold text-slate-700">ดูข้อมูลการนำเข้า</h2>
-            <p className="text-[11px] text-slate-400">รายชื่อที่นำเข้าเท่านั้น (ไม่รวมคนสมัครเอง)</p>
           </div>
         </div>
 
@@ -1087,8 +1090,7 @@ function UserImportSection({ allSchools }) {
       <div className="flex items-center gap-2 mb-3">
         <span className="w-6 h-6 rounded-lg bg-violet-500 text-white flex items-center justify-center text-xs font-extrabold shrink-0">1</span>
         <div>
-          <h2 className="text-sm font-bold text-slate-700">นำเข้า User (โปรไฟล์ล่วงหน้า)</h2>
-          <p className="text-[11px] text-slate-400">สร้าง account ล่วงหน้า — user กด Google login (อีเมลเดียวกัน) เข้าใช้ได้เลย</p>
+          <h2 className="text-sm font-bold text-slate-700">นำเข้า User</h2>
         </div>
       </div>
 
@@ -1106,7 +1108,7 @@ function UserImportSection({ allSchools }) {
       {uMode === "file" && (
         <>
           <div className="bg-violet-50/60 border border-violet-100 rounded-xl p-3 mb-3 text-[11px] text-slate-600 leading-relaxed">
-            <span className="font-bold text-violet-700">คอลัมน์ที่รองรับ:</span> ต้องมี <span className="font-bold">อีเมล/email</span> (จำเป็น) · ชื่อ · นามสกุล · ชื่อเล่น · อายุ · ระดับชั้น · โรงเรียน · เบอร์โทร · เลขบัตร · ที่อยู่ · ตำบล · อำเภอ · จังหวัด · รหัสไปรษณีย์ · ผู้ปกครอง ฯลฯ (ไทย/อังกฤษ)
+            <span className="font-bold text-violet-700">คอลัมน์ที่รองรับ:</span> ต้องมี <span className="font-bold">อีเมล</span> · ชื่อ · นามสกุล · ชื่อเล่น · อายุ · ระดับชั้น · โรงเรียน · เบอร์โทร · เลขบัตร
           </div>
           <label className="cursor-pointer flex items-center justify-center gap-2 border-2 border-dashed border-slate-200 hover:border-violet-400 hover:bg-violet-50/40 rounded-xl px-4 py-6 transition">
             <Ico.upload className="w-5 h-5 text-slate-400" />
