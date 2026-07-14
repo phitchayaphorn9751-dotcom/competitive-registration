@@ -133,6 +133,7 @@ export default function AdminImport() {
   const [tab3, setTab3] = useState("course")        // course | user
   const [view3CourseId, setView3CourseId] = useState("")
   const [imported, setImported] = useState([])
+  const [view3School, setView3School] = useState("")   // filter โรงเรียนใน section 3
   const [loadingImported, setLoadingImported] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [importedUsers, setImportedUsers] = useState([])
@@ -143,7 +144,7 @@ export default function AdminImport() {
     fetchAllSchools().then(setAllSchools).catch(() => {})
   }, [event?.id])
 
-  // ── Section 3: โหลดผู้สมัคร import ในคอร์ส (เฉพาะ is_imported) ──
+  // ── Section 3: โหลดผู้สมัคร import ในคอร์ส ──
   async function loadImported(cid) {
     if (!cid) { setImported([]); return }
     setLoadingImported(true)
@@ -151,8 +152,11 @@ export default function AdminImport() {
       const regs = await fetchCourseParticipants(cid)
       const list = []
       ;(regs || []).forEach((r) => {
-        // เฉพาะคน import — is_imported จาก RPC/select (ถ้า field ไม่มี ให้ fallback ดู seats_held ไม่ได้แล้ว ใช้ is_imported)
-        if (!r.is_imported) return
+        // เช็คว่าเป็นคน import: is_imported=true · หรือ (fallback) มี import_seat_mode · หรือ email @import.local
+        const isImp = r.is_imported === true
+          || (r.import_seat_mode != null && r.import_seat_mode !== "")
+          || (typeof r.submitter_email === "string" && r.submitter_email.includes("@import.local"))
+        if (!isImp) return
         (r.participants || []).forEach((p) => {
           list.push({
             id: p.id, reg_id: r.id, theme_name: r.theme_name || "",
@@ -189,7 +193,7 @@ export default function AdminImport() {
     setCourseId(cid); setResults([]); setSessionId("")
   }
   function onView3Course(cid) {
-    setView3CourseId(cid); loadImported(cid)
+    setView3CourseId(cid); setView3School(""); loadImported(cid)
   }
 
   function onFile(e) {
@@ -437,6 +441,9 @@ export default function AdminImport() {
 
   const selectedCourse = courses.find((c) => c.id === courseId)
   const view3Course = courses.find((c) => c.id === view3CourseId)
+  // รายชื่อโรงเรียนใน imported (สำหรับ dropdown filter) + list ที่กรองแล้ว
+  const view3Schools = [...new Set(imported.map((p) => p.school).filter(Boolean))].sort()
+  const importedFiltered = view3School ? imported.filter((p) => p.school === view3School) : imported
   const prefix = selectedCourse?.base_id || "P"
   const sourceCount = mode === "manual" ? manualList.length : rows.length
   const courseSessions = Array.isArray(selectedCourse?.sessions) ? selectedCourse.sessions : []
@@ -945,7 +952,23 @@ export default function AdminImport() {
                 </div>
               )}
             </div>
-            {view3CourseId && <p className="text-xs text-slate-400 mb-2">{imported.length} คน (เฉพาะที่นำเข้า)</p>}
+            {view3CourseId && imported.length > 0 && (
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                {view3Schools.length > 1 && (
+                  <select value={view3School} onChange={(e) => setView3School(e.target.value)}
+                    className="px-3 py-2 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 bg-white focus:border-[#F15A24] outline-none transition">
+                    <option value="">ทุกโรงเรียน ({imported.length})</option>
+                    {view3Schools.map((s) => {
+                      const n = imported.filter((p) => p.school === s).length
+                      return <option key={s} value={s}>{s} ({n})</option>
+                    })}
+                  </select>
+                )}
+                <p className="text-xs text-slate-400">
+                  {view3School ? `${importedFiltered.length} คน · ${view3School}` : `${imported.length} คน (เฉพาะที่นำเข้า)`}
+                </p>
+              </div>
+            )}
 
             {!view3CourseId ? (
               <div className="py-12 text-center text-sm text-slate-400">เลือกคอร์สเพื่อดูรายชื่อที่นำเข้า</div>
@@ -972,7 +995,7 @@ export default function AdminImport() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
-                      {imported.map((p) => (
+                      {importedFiltered.map((p) => (
                         <tr key={p.id} className="hover:bg-orange-50/40">
                           <td className="px-3 py-2 font-mono font-bold text-[#F15A24]">{p.code || "—"}{p.status === "waitlist" && <span className="ml-1 text-[9px] bg-violet-100 text-violet-600 px-1 py-0.5 rounded">สำรอง</span>}</td>
                           {view3Course?.count_mode === "team" && <td className="px-3 py-2 text-xs font-medium text-[#F15A24] max-w-[140px]"><span className="line-clamp-1">{p.theme_name || <span className="text-slate-300">—</span>}</span></td>}
