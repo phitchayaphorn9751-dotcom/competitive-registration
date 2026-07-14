@@ -145,6 +145,12 @@ export default function AdminImport() {
     fetchAllSchools().then(setAllSchools).catch(() => {})
   }, [event?.id])
 
+  // โหลด import ทุกคอร์สอัตโนมัติเมื่อ courses พร้อม (Section 3 tab course)
+  useEffect(() => {
+    if (tab3 === "course" && courses.length > 0) loadAllImported()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab3, courses.length])
+
   // แปลง registration → รายการ imported (ใช้ร่วมทั้งโหมดคอร์สเดียว/ทุกคอร์ส)
   function regsToImported(regs, courseTitle, courseId) {
     const list = []
@@ -286,8 +292,8 @@ export default function AdminImport() {
     const wait = out.filter((r) => r.status === "waitlist").length
     toast(`เสร็จ: สำเร็จ ${ok}${wait ? ` (คิวสำรอง ${wait})` : ""}${fail ? ` · ผิดพลาด ${fail}` : ""}`, fail > 0 ? "error" : "success")
     if (mode === "manual") setManualList([])
-    // ถ้า section 3 กำลังดูคอร์สนี้ → รีเฟรช
-    if (view3CourseId === courseId) loadImported(courseId)
+    // refresh section 3 (โหลดทั้งหมด)
+    if (tab3 === "course") loadAllImported()
   }
 
   // ── โหมด AUTO: อ่านไฟล์ (ต้องมีคอลัมน์ คอร์ส + รอบ) ──
@@ -349,8 +355,8 @@ export default function AdminImport() {
     })
     setAutoResults({ success, errors, summary })
     toast(`เสร็จ: สำเร็จ ${success.length}${errors.length ? ` · ผิดพลาด ${errors.length}` : ""}`, errors.length ? "error" : "success")
-    // รีเฟรช section 3 ถ้าดูคอร์สที่เพิ่ง import
-    if (view3CourseId) loadImported(view3CourseId)
+    // รีเฟรช section 3 (โหลดทั้งหมด)
+    if (tab3 === "course") loadAllImported()
   }
 
   // export ผล auto (พร้อมรหัส)
@@ -449,7 +455,7 @@ export default function AdminImport() {
   async function doDeleteOne(p) {
     const ok = await confirm({ title: "ลบผู้สมัครคนนี้?", message: `ลบ "${p.full_name}" (${p.code}) ออกจากคอร์ส\nข้อมูลและการเช็คอินจะหายไป`, confirmText: "ลบ", tone: "danger" })
     if (!ok) return
-    try { await deleteImportedParticipant(p.id); toast("ลบแล้ว", "success"); loadImported(view3CourseId) }
+    try { await deleteImportedParticipant(p.id); toast("ลบแล้ว", "success"); loadAllImported() }
     catch (e) { toast(e.message?.includes("NOT_IMPORTED") ? "ลบได้เฉพาะผู้สมัครที่นำเข้า" : "ลบไม่สำเร็จ: " + e.message, "error") }
   }
   async function doDeleteAll() {
@@ -468,13 +474,14 @@ export default function AdminImport() {
   }
 
   const selectedCourse = courses.find((c) => c.id === courseId)
-  const view3Course = courses.find((c) => c.id === view3CourseId)
-  // รายชื่อโรงเรียนใน imported (สำหรับ dropdown filter) + list ที่กรองแล้ว
-  const view3Schools = [...new Set(imported.map((p) => p.school).filter(Boolean))].sort()
-  // ในโหมดทุกวิชา — filter ตามวิชาได้อีกชั้น
+  // Section 3: filter 2 ชั้น — วิชา + โรงเรียน (ว่าง = ทั้งหมด)
   const view3Courses = [...new Set(imported.map((p) => p.courseTitle).filter(Boolean))].sort()
+  // view3Course = คอร์สที่กรองอยู่ (ถ้ากรองวิชาเดียว) — ใช้เช็ค team/export
+  const view3Course = view3CourseFilter ? courses.find((c) => c.title === view3CourseFilter) : null
   let importedFiltered = imported
-  if (view3CourseId === "__all__" && view3CourseFilter) importedFiltered = importedFiltered.filter((p) => p.courseTitle === view3CourseFilter)
+  if (view3CourseFilter) importedFiltered = importedFiltered.filter((p) => p.courseTitle === view3CourseFilter)
+  // รายชื่อโรงเรียน (ขึ้นกับวิชาที่กรองอยู่)
+  const view3Schools = [...new Set((view3CourseFilter ? imported.filter((p) => p.courseTitle === view3CourseFilter) : imported).map((p) => p.school).filter(Boolean))].sort()
   if (view3School) importedFiltered = importedFiltered.filter((p) => p.school === view3School)
   const prefix = selectedCourse?.base_id || "P"
   const sourceCount = mode === "manual" ? manualList.length : rows.length
@@ -969,60 +976,43 @@ export default function AdminImport() {
         {tab3 === "course" && (
           <div>
             <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
-              <div className="flex-1 min-w-[200px]">
-                <select value={view3CourseId} onChange={(e) => onView3Course(e.target.value)}
-                  className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 bg-slate-50 focus:bg-white focus:border-[#F15A24] outline-none transition">
-                  <option value="">— เลือกคอร์สที่จะดู —</option>
-                  <option value="__all__">📋 ดูทั้งหมดที่นำเข้า (ทุกวิชา)</option>
-                  {courses.map((c) => <option key={c.id} value={c.id}>{c.title}{c.base_id ? ` (${c.base_id})` : ""}</option>)}
+              <div className="flex items-center gap-2 flex-wrap flex-1">
+                {/* กรองวิชา */}
+                <select value={view3CourseFilter} onChange={(e) => { setView3CourseFilter(e.target.value); setView3School("") }}
+                  className="px-3 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 bg-slate-50 focus:bg-white focus:border-[#F15A24] outline-none transition min-w-[160px]">
+                  <option value="">ทุกวิชา ({imported.length})</option>
+                  {view3Courses.map((ct) => {
+                    const n = imported.filter((p) => p.courseTitle === ct).length
+                    return <option key={ct} value={ct}>{ct} ({n})</option>
+                  })}
                 </select>
-              </div>
-              {view3CourseId && imported.length > 0 && (
-                <div className="flex items-center gap-1.5">
-                  <button onClick={() => view3CourseId === "__all__" ? loadAllImported() : loadImported(view3CourseId)} className="inline-flex items-center gap-1 text-slate-500 hover:text-[#F15A24] px-2.5 py-1.5 rounded-lg hover:bg-slate-100 transition text-xs font-bold"><Ico.rotate className="w-3.5 h-3.5" /> รีเฟรช</button>
-                  <button onClick={exportImported} className="inline-flex items-center gap-1.5 bg-slate-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-slate-800 transition"><Ico.download className="w-3.5 h-3.5" /> ดาวน์โหลด</button>
-                  {view3CourseId !== "__all__" && (
-                    <button onClick={doDeleteAll} disabled={deleting} className="inline-flex items-center gap-1.5 bg-rose-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-rose-700 transition disabled:opacity-50"><Ico.trash className="w-3.5 h-3.5" /> {deleting ? "กำลังลบ…" : "ลบทั้งหมด"}</button>
-                  )}
-                </div>
-              )}
-            </div>
-            {view3CourseId && imported.length > 0 && (
-              <div className="flex items-center gap-2 mb-2 flex-wrap">
-                {view3CourseId === "__all__" && view3Courses.length > 1 && (
-                  <select value={view3CourseFilter} onChange={(e) => setView3CourseFilter(e.target.value)}
-                    className="px-3 py-2 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 bg-white focus:border-[#F15A24] outline-none transition">
-                    <option value="">ทุกวิชา ({imported.length})</option>
-                    {view3Courses.map((ct) => {
-                      const n = imported.filter((p) => p.courseTitle === ct).length
-                      return <option key={ct} value={ct}>{ct} ({n})</option>
-                    })}
-                  </select>
-                )}
-                {view3Schools.length > 1 && (
+                {/* กรองโรงเรียน */}
+                {view3Schools.length > 0 && (
                   <select value={view3School} onChange={(e) => setView3School(e.target.value)}
-                    className="px-3 py-2 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 bg-white focus:border-[#F15A24] outline-none transition">
-                    <option value="">ทุกโรงเรียน ({view3CourseFilter ? imported.filter((p) => p.courseTitle === view3CourseFilter).length : imported.length})</option>
+                    className="px-3 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 bg-slate-50 focus:bg-white focus:border-[#F15A24] outline-none transition min-w-[160px]">
+                    <option value="">ทุกโรงเรียน</option>
                     {view3Schools.map((s) => {
                       const base = view3CourseFilter ? imported.filter((p) => p.courseTitle === view3CourseFilter) : imported
                       const n = base.filter((p) => p.school === s).length
-                      if (n === 0) return null
                       return <option key={s} value={s}>{s} ({n})</option>
                     })}
                   </select>
                 )}
-                <p className="text-xs text-slate-400">
-                  แสดง {importedFiltered.length} คน
-                </p>
               </div>
-            )}
-
-            {!view3CourseId ? (
-              <div className="py-12 text-center text-sm text-slate-400">เลือกคอร์สเพื่อดูรายชื่อที่นำเข้า</div>
-            ) : loadingImported ? (
+              {imported.length > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <button onClick={loadAllImported} className="inline-flex items-center gap-1 text-slate-500 hover:text-[#F15A24] px-2.5 py-1.5 rounded-lg hover:bg-slate-100 transition text-xs font-bold"><Ico.rotate className="w-3.5 h-3.5" /> รีเฟรช</button>
+                  <button onClick={exportImported} className="inline-flex items-center gap-1.5 bg-slate-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-slate-800 transition"><Ico.download className="w-3.5 h-3.5" /> ดาวน์โหลด</button>
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-slate-400 mb-2">แสดง {importedFiltered.length} คน{view3CourseFilter ? ` · ${view3CourseFilter}` : " (ทุกวิชา)"}{view3School ? ` · ${view3School}` : ""}</p>
+            {loadingImported ? (
               <div className="py-12 text-center text-sm text-slate-400">กำลังโหลด…</div>
             ) : imported.length === 0 ? (
-              <div className="py-12 text-center text-sm text-slate-400">คอร์สนี้ยังไม่มีผู้สมัครที่นำเข้า</div>
+              <div className="py-12 text-center text-sm text-slate-400">ยังไม่มีผู้สมัครที่นำเข้า</div>
+            ) : importedFiltered.length === 0 ? (
+              <div className="py-12 text-center text-sm text-slate-400">ไม่มีคนตรงตัวกรอง</div>
             ) : (
               <div className="border border-slate-100 rounded-xl overflow-hidden">
                 <div className="overflow-x-auto max-h-[30rem] overflow-y-auto">
@@ -1030,7 +1020,7 @@ export default function AdminImport() {
                     <thead className="bg-slate-50 sticky top-0">
                       <tr className="text-[10px] text-slate-400 uppercase">
                         <th className="px-3 py-2.5">รหัส</th>
-                        {view3CourseId === "__all__" && <th className="px-3 py-2.5">วิชา</th>}
+                        {!view3CourseFilter && <th className="px-3 py-2.5">วิชา</th>}
                         {view3Course?.count_mode === "team" && <th className="px-3 py-2.5">ธีม</th>}
                         <th className="px-3 py-2.5">ชื่อ-สกุล</th>
                         <th className="px-3 py-2.5">โรงเรียน</th>
@@ -1046,7 +1036,7 @@ export default function AdminImport() {
                       {importedFiltered.map((p) => (
                         <tr key={p.id} className="hover:bg-orange-50/40">
                           <td className="px-3 py-2 font-mono font-bold text-[#F15A24]">{p.code || "—"}{p.status === "waitlist" && <span className="ml-1 text-[9px] bg-violet-100 text-violet-600 px-1 py-0.5 rounded">สำรอง</span>}</td>
-                          {view3CourseId === "__all__" && <td className="px-3 py-2 text-xs text-slate-600 font-medium">{p.courseTitle || <span className="text-slate-300">—</span>}</td>}
+                          {!view3CourseFilter && <td className="px-3 py-2 text-xs text-slate-600 font-medium">{p.courseTitle || <span className="text-slate-300">—</span>}</td>}
                           {view3Course?.count_mode === "team" && <td className="px-3 py-2 text-xs font-medium text-[#F15A24] max-w-[140px]"><span className="line-clamp-1">{p.theme_name || <span className="text-slate-300">—</span>}</span></td>}
                           <td className="px-3 py-2 font-medium text-slate-700">{p.full_name}</td>
                           <td className="px-3 py-2 text-xs text-slate-500">{p.school || <span className="text-slate-300">—</span>}</td>
