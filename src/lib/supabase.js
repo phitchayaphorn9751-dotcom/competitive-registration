@@ -1269,15 +1269,6 @@ export async function saveSurveyQuestions(surveyId, questions) {
   return data || []
 }
 
-export async function fetchCourseTypes(eventId) {
-  const { data, error } = await supabase
-    .from("course_types")
-    .select("id, code, label, color")
-    .eq("event_id", eventId)
-    .order("label", { ascending: true })
-  if (error) throw error
-  return data || []
-}
 
 export async function fetchCoursesByType(eventId, typeId) {
   let q = supabase.from("courses").select("id, title, base_id, type_id").eq("event_id", eventId)
