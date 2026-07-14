@@ -1200,3 +1200,114 @@ export function matchCourseAndSession(courses, courseName, roundName) {
 
   return { courseId: course.id, sessionId: sess.id, courseTitle: course.title, sessionLabel: sess.label || sess.time }
 }
+
+// ═══════════════════════════════════════════
+// SURVEY — ระบบแบบประเมิน
+// ═══════════════════════════════════════════
+
+export async function fetchSurveys(eventId) {
+  const { data, error } = await supabase
+    .from("surveys")
+    .select("*, survey_questions(id), survey_responses(id)")
+    .eq("event_id", eventId)
+    .order("created_at", { ascending: false })
+  if (error) throw error
+  return (data || []).map((s) => ({
+    ...s,
+    question_count: s.survey_questions?.length || 0,
+    response_count: s.survey_responses?.length || 0,
+  }))
+}
+
+export async function createSurvey(eventId, { title, type_id, description }) {
+  const { data, error } = await supabase
+    .from("surveys")
+    .insert({ event_id: eventId, title, type_id: type_id || null, description: description || "" })
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function updateSurvey(surveyId, fields) {
+  const { error } = await supabase
+    .from("surveys")
+    .update({ ...fields, updated_at: new Date().toISOString() })
+    .eq("id", surveyId)
+  if (error) throw error
+}
+
+export async function deleteSurvey(surveyId) {
+  const { error } = await supabase.from("surveys").delete().eq("id", surveyId)
+  if (error) throw error
+}
+
+export async function fetchSurveyQuestions(surveyId) {
+  const { data, error } = await supabase
+    .from("survey_questions")
+    .select("*")
+    .eq("survey_id", surveyId)
+    .order("order_index", { ascending: true })
+  if (error) throw error
+  return data || []
+}
+
+export async function saveSurveyQuestions(surveyId, questions) {
+  const { error: delErr } = await supabase.from("survey_questions").delete().eq("survey_id", surveyId)
+  if (delErr) throw delErr
+  if (!questions.length) return []
+  const rows = questions.map((q, i) => ({
+    survey_id: surveyId,
+    question_text: q.question_text || "",
+    question_type: q.question_type || "rating",
+    options: q.options || [],
+    required: !!q.required,
+    order_index: i,
+  }))
+  const { data, error } = await supabase.from("survey_questions").insert(rows).select()
+  if (error) throw error
+  return data || []
+}
+
+export async function fetchCourseTypes(eventId) {
+  const { data, error } = await supabase
+    .from("course_types")
+    .select("id, code, label, color")
+    .eq("event_id", eventId)
+    .order("label", { ascending: true })
+  if (error) throw error
+  return data || []
+}
+
+export async function fetchCoursesByType(eventId, typeId) {
+  let q = supabase.from("courses").select("id, title, base_id, type_id").eq("event_id", eventId)
+  if (typeId) q = q.eq("type_id", typeId)
+  const { data, error } = await q.order("title", { ascending: true })
+  if (error) throw error
+  return data || []
+}
+
+export async function getSurveyForm(surveyId, courseId = null) {
+  const { data, error } = await supabase.rpc("get_survey_form", {
+    p_survey_id: surveyId, p_course_id: courseId,
+  })
+  if (error) throw error
+  return data
+}
+
+export async function submitSurveyResponse(surveyId, courseId, answers, respondentName = "") {
+  const { data, error } = await supabase.rpc("submit_survey_response", {
+    p_survey_id: surveyId, p_course_id: courseId,
+    p_answers: answers, p_respondent_name: respondentName,
+  })
+  if (error) throw error
+  return data
+}
+
+export async function getSurveyResults(surveyId, courseId = null) {
+  const { data, error } = await supabase.rpc("get_survey_results", {
+    p_survey_id: surveyId, p_course_id: courseId,
+  })
+  if (error) throw error
+  return data
+}
