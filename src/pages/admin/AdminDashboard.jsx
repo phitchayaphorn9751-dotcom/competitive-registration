@@ -84,8 +84,7 @@ export default function AdminDashboard() {
   const [expandedTeams, setExpandedTeams] = useState({})  // {groupKey: true} — ทีมที่กางดูสมาชิก
   const [selectedUser, setSelectedUser] = useState(null)
   const [courseDetail, setCourseDetail] = useState(null)
-  const [allCourses, setAllCourses] = useState([])  // ทุกวิชาในงาน (รวม 0 คน) — สำหรับ "จำนวนผู้สมัคร"
-
+  const [showAllSchools, setShowAllSchools] = useState(false)  // ดูโรงเรียนทั้งหมด (ไม่จำกัด 10)
   useEffect(() => {
     if (!event?.id) { setLoading(false); return }
     setLoading(true)
@@ -231,11 +230,12 @@ export default function AdminDashboard() {
   }, [filtered])
 
 
-  const schoolRanking = useMemo(() => {
+const schoolRanking = useMemo(() => {
     const c = {}
-    uniqueUsers.forEach((r) => { c[r.school] = (c[r.school] || 0) + 1 })
-    return Object.entries(c).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 10)
+    uniqueUsers.forEach((r) => { if (r.school) c[r.school] = (c[r.school] || 0) + 1 })
+    return Object.entries(c).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value)
   }, [uniqueUsers])
+  const schoolRankingShown = showAllSchools ? schoolRanking : schoolRanking.slice(0, 10)
 
   const provinceData = useMemo(() => {
     const c = {}; const seen = new Map()
@@ -599,9 +599,15 @@ export default function AdminDashboard() {
             </ResponsiveContainer>
           </div>
         </SectionCard>
-        <SectionCard title="อันดับโรงเรียน (Top 10)" icon={Ico.school}>
+        <SectionCard title={showAllSchools ? `อันดับโรงเรียน (ทั้งหมด ${schoolRanking.length})` : "อันดับโรงเรียน (Top 10)"} icon={Ico.school}
+          action={schoolRanking.length > 10 && (
+            <button onClick={() => setShowAllSchools((v) => !v)}
+              className="text-xs font-bold text-[#F15A24] hover:bg-orange-50 px-2.5 py-1 rounded-lg transition">
+              {showAllSchools ? "ย่อ Top 10" : `ดูทั้งหมด (${schoolRanking.length})`}
+            </button>
+          )}>
           <div className="overflow-y-auto max-h-56 space-y-1">
-            {schoolRanking.map((s, i) => {
+            {schoolRankingShown.map((s, i) => { 
               const pct = Math.round((s.value / (schoolRanking[0]?.value || 1)) * 100)
               return (
                 <div key={i} onClick={() => drillDown(`โรงเรียน: ${s.name}`, (r) => r.school === s.name)}
