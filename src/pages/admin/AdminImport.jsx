@@ -1117,22 +1117,42 @@ function UserImportSection({ allSchools }) {
           </label>
           {mapped.length > 0 && (
             <div className="mt-3">
-              <p className="text-xs text-slate-500 mb-2">พบ <span className="font-bold text-slate-700">{mapped.length}</span> คน (มีอีเมล) — ตัวอย่าง 3 คนแรก:</p>
-              <div className="overflow-x-auto rounded-xl border border-slate-100">
-                <table className="w-full text-xs">
-                  <thead className="bg-slate-50 text-slate-500"><tr><th className="px-2 py-1.5 text-left">อีเมล</th><th className="px-2 py-1.5 text-left">ชื่อ</th><th className="px-2 py-1.5 text-left">นามสกุล</th><th className="px-2 py-1.5 text-left">โรงเรียน</th></tr></thead>
+              <p className="text-xs text-slate-500 mb-2">พบ <span className="font-bold text-slate-700">{mapped.length}</span> คน (มีอีเมล) — แสดง {Math.min(mapped.length, 20)} แถวแรก:</p>
+              <div className="overflow-x-auto rounded-xl border border-slate-100 max-h-80 overflow-y-auto">
+                <table className="w-full text-xs whitespace-nowrap">
+                  <thead className="bg-slate-50 text-slate-500 sticky top-0">
+                    <tr>
+                      <th className="px-2 py-1.5 text-left">อีเมล</th>
+                      <th className="px-2 py-1.5 text-left">คำนำหน้า</th>
+                      <th className="px-2 py-1.5 text-left">ชื่อ</th>
+                      <th className="px-2 py-1.5 text-left">นามสกุล</th>
+                      <th className="px-2 py-1.5 text-left">ชื่อเล่น</th>
+                      <th className="px-2 py-1.5 text-left">อายุ</th>
+                      <th className="px-2 py-1.5 text-left">ระดับชั้น</th>
+                      <th className="px-2 py-1.5 text-left">โรงเรียน</th>
+                      <th className="px-2 py-1.5 text-left">เบอร์โทร</th>
+                      <th className="px-2 py-1.5 text-left">เลขบัตร</th>
+                    </tr>
+                  </thead>
                   <tbody>
-                    {mapped.slice(0, 3).map((p, i) => (
+                    {mapped.slice(0, 20).map((p, i) => (
                       <tr key={i} className="border-t border-slate-50">
                         <td className="px-2 py-1.5 font-mono text-violet-600">{p.email}</td>
+                        <td className="px-2 py-1.5">{p.title || "-"}</td>
                         <td className="px-2 py-1.5">{p.first_name || "-"}</td>
                         <td className="px-2 py-1.5">{p.last_name || "-"}</td>
+                        <td className="px-2 py-1.5">{p.nickname || "-"}</td>
+                        <td className="px-2 py-1.5">{p.age || "-"}</td>
+                        <td className="px-2 py-1.5">{p.grade_level || "-"}</td>
                         <td className="px-2 py-1.5">{p.school || "-"}</td>
+                        <td className="px-2 py-1.5">{p.phone || "-"}</td>
+                        <td className="px-2 py-1.5 font-mono">{p.national_id || "-"}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+              {mapped.length > 20 && <p className="text-[11px] text-slate-400 mt-1.5 text-center">…และอีก {mapped.length - 20} คน</p>}
             </div>
           )}
         </>
