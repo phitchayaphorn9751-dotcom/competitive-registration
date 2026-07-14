@@ -441,29 +441,44 @@ export default function AdminImport() {
   const sourceCount = mode === "manual" ? manualList.length : rows.length
   const courseSessions = Array.isArray(selectedCourse?.sessions) ? selectedCourse.sessions : []
 
-  // สรุปโหมด auto ก่อน import — นับแต่ละคอร์ส+รอบ + เช็ค capacity + หา error ล่วงหน้า
+  // สรุปโหมด auto ก่อน import — จัดเป็นตาราง วิชา × รอบ (เช้า/บ่าย) + taken + capacity + error
   const autoPreview = (() => {
     if (mode !== "auto" || autoRows.length === 0) return null
-    const groups = {}   // key: courseTitle||sessionLabel → { course, session, courseId, sessionId, count, cap, taken }
+    const courseMap = {}   // courseTitle → { course, sessions: { label → {count, cap, taken} } }
     const errs = []
     autoRows.forEach((r, i) => {
       const m = matchCourseAndSession(courses, r.mapped.course, r.mapped.round)
       if (m.error) { errs.push({ row: i + 1, name: r.mapped.full_name || `แถว ${i + 1}`, reason: m.error }); return }
-      const key = `${m.courseTitle}||${m.sessionLabel || ""}`
-      if (!groups[key]) {
-        // หา capacity + taken ของรอบ (ถ้ามี session)
+      const label = m.sessionLabel || "(รอบเดียว)"
+      if (!courseMap[m.courseTitle]) courseMap[m.courseTitle] = { course: m.courseTitle, sessions: {} }
+      if (!courseMap[m.courseTitle].sessions[label]) {
+        // หา capacity + taken ของรอบ
         const c = courses.find((cc) => cc.id === m.courseId)
         let cap = c?.capacity || 0, taken = 0
         if (m.sessionId && Array.isArray(c?.sessions)) {
           const s = c.sessions.find((ss) => ss.id === m.sessionId)
           if (s) { cap = s.capacity || 0; taken = s.taken || 0 }
         }
-        groups[key] = { course: m.courseTitle, session: m.sessionLabel || "", count: 0, cap, taken }
+        courseMap[m.courseTitle].sessions[label] = { count: 0, cap, taken }
       }
-      groups[key].count++
+      courseMap[m.courseTitle].sessions[label].count++
     })
-    return { groups: Object.values(groups), errors: errs }
+    // หา label รอบทั้งหมดที่มี (เรียงเช้า→บ่าย→อื่น)
+    const allLabels = new Set()
+    Object.values(courseMap).forEach((c) => Object.keys(c.sessions).forEach((l) => allLabels.add(l)))
+    const orderLabel = (l) => (l.includes("เช้า") ? 0 : l.includes("บ่าย") ? 1 : 2)
+    const cols = [...allLabels].sort((a, b) => orderLabel(a) - orderLabel(b) || a.localeCompare(b))
+    const rows = Object.values(courseMap).sort((a, b) => a.course.localeCompare(b.course))
+    return { cols, rows, errors: errs }
   })()
+
+  // ที่นั่งหลังใช้โหมด: extra → taken+count (ขยายพอดี) · reserve → cap เดิม
+  const seatAfter = (cell) => {
+    if (!cell) return 0
+    if (seatMode === "extra") return cell.taken + cell.count
+    return cell.cap
+  }
+  const isOver = (cell) => cell && seatMode === "reserve" && cell.cap > 0 && cell.taken + cell.count > cell.cap
   const inputCls = "w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-800 bg-white focus:border-[#F15A24] focus:ring-1 focus:ring-[#F15A24] outline-none transition"
 
   return (
@@ -710,41 +725,58 @@ export default function AdminImport() {
               </div>
             )}
 
-            {/* สรุปก่อน import — แต่ละคอร์ส/รอบ กี่คน + เตือน capacity */}
-            {autoPreview && autoPreview.groups.length > 0 && (
+            {/* สรุปก่อน import — ตาราง วิชา × รอบ */}
+            {autoPreview && autoPreview.rows.length > 0 && (
               <div className="mt-4 border border-orange-100 rounded-xl overflow-hidden">
-                <div className="px-4 py-2.5 border-b border-orange-100 bg-orange-50/50">
-                  <span className="text-xs font-bold text-slate-600">สรุปก่อนนำเข้า — แต่ละคอร์ส/รอบ</span>
+                <div className={`px-3 py-2 border-b flex items-center justify-between ${seatMode === "extra" ? "border-orange-100 bg-orange-50/50" : "border-blue-100 bg-blue-50/50"}`}>
+                  <span className="text-xs font-bold text-slate-600">สรุปก่อนนำเข้า</span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-bold inline-flex items-center gap-1 ${seatMode === "extra" ? "bg-white text-[#F15A24]" : "bg-white text-blue-600"}`}>
+                    {seatMode === "extra" ? <><Ico.plus className="w-3 h-3" /> เพิ่มที่นั่ง</> : <><Ico.clock className="w-3 h-3" /> กันที่นั่ง</>}
+                  </span>
                 </div>
-                <div className="p-2">
-                  {autoPreview.groups
-                    .sort((a, b) => (a.course + a.session).localeCompare(b.course + b.session))
-                    .map((g, i) => {
-                      const over = g.cap > 0 && g.taken + g.count > g.cap
-                      const willWait = over ? (g.taken + g.count - g.cap) : 0
-                      return (
-                        <div key={i} className="flex items-center justify-between text-xs px-2 py-2 border-b border-slate-50 last:border-0">
-                          <div className="min-w-0 flex-1">
-                            <span className="font-medium text-slate-700">{g.course}</span>
-                            {g.session && <span className="text-slate-400"> — {g.session}</span>}
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className="font-bold text-[#F15A24]">{g.count} คน</span>
-                            {g.cap > 0 && (
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded ${over ? "bg-rose-50 text-rose-600 font-bold" : "bg-slate-100 text-slate-400"}`}>
-                                ที่นั่ง {g.taken}+{g.count}/{g.cap}{over ? ` · ล้น ${willWait}` : ""}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    })}
+                <div className="max-h-56 overflow-y-auto">
+                  <table className="w-full text-xs">
+                    <thead className="bg-slate-50 text-slate-500 sticky top-0">
+                      <tr>
+                        <th className="text-left px-3 py-2 font-bold">วิชา</th>
+                        {autoPreview.cols.map((c) => (
+                          <th key={c} className="text-center px-2 py-2 font-bold">{c}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {autoPreview.rows.map((row, ri) => (
+                        <tr key={ri} className="border-t border-slate-50">
+                          <td className="px-3 py-2.5 text-slate-700 font-medium">{row.course}</td>
+                          {autoPreview.cols.map((label) => {
+                            const cell = row.sessions[label]
+                            if (!cell) return <td key={label} className="text-center px-2 py-2.5 text-slate-300">—</td>
+                            const over = isOver(cell)
+                            const after = seatAfter(cell)
+                            const wait = over ? (cell.taken + cell.count - cell.cap) : 0
+                            return (
+                              <td key={label} className="text-center px-2 py-2.5">
+                                <span className="text-slate-400">{cell.taken}</span>
+                                <span className="text-slate-300">+</span>
+                                <span className={`font-bold ${over ? "text-rose-600" : "text-slate-800"}`}>{cell.count}</span>
+                                <span className="text-slate-400 text-[11px]"> / {after}</span>
+                                {over && <div className="text-[10px] text-rose-600 font-bold">สำรอง {wait}</div>}
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-                {/* เตือนรวมถ้ามีคอร์สล้น (เฉพาะโหมดกันที่นั่ง) */}
-                {seatMode === "reserve" && autoPreview.groups.some((g) => g.cap > 0 && g.taken + g.count > g.cap) && (
-                  <div className="px-4 py-2 bg-amber-50 border-t border-amber-100 text-[11px] text-amber-700 flex items-start gap-1">
-                    <Ico.alert className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                    <span>มีคอร์ส/รอบที่คนเกินที่นั่ง — โหมด<b>กันที่นั่ง</b>จะให้คนส่วนเกินเข้า<b>คิวสำรอง</b> · ถ้าไม่ต้องการ เปลี่ยนเป็น<b>เพิ่มที่นั่ง</b></span>
+                {/* คำอธิบาย + เตือนกันที่นั่งล้น */}
+                <div className="px-3 py-1.5 bg-slate-50/50 border-t border-slate-100 text-[10px] text-slate-400">
+                  เดิม<span className="text-slate-400">+</span><span className="text-slate-700 font-bold">ใหม่</span> / ที่นั่ง{seatMode === "extra" ? "หลังเพิ่ม" : "ทั้งหมด"}
+                </div>
+                {seatMode === "reserve" && autoPreview.rows.some((r) => Object.values(r.sessions).some((c) => isOver(c))) && (
+                  <div className="px-3 py-1.5 bg-amber-50 border-t border-amber-100 text-[10px] text-amber-700 flex items-start gap-1">
+                    <Ico.alert className="w-3 h-3 shrink-0 mt-0.5" />
+                    <span>บางรอบเกินที่นั่ง — ส่วนเกินเข้า<b>คิวสำรอง</b> · เปลี่ยนเป็น<b>เพิ่มที่นั่ง</b>ถ้าไม่ต้องการ</span>
                   </div>
                 )}
               </div>
@@ -753,10 +785,10 @@ export default function AdminImport() {
             {/* เตือน error ล่วงหน้า (map ไม่ได้) */}
             {autoPreview && autoPreview.errors.length > 0 && (
               <div className="mt-3 border border-rose-100 rounded-xl overflow-hidden">
-                <div className="px-4 py-2 bg-rose-50/50 border-b border-rose-100">
-                  <span className="text-xs font-bold text-rose-600">⚠️ {autoPreview.errors.length} แถวจะ import ไม่ได้ (ต้องแก้ก่อน)</span>
+                <div className="px-3 py-1.5 bg-rose-50/50 border-b border-rose-100">
+                  <span className="text-xs font-bold text-rose-600">⚠️ {autoPreview.errors.length} แถว import ไม่ได้</span>
                 </div>
-                <div className="max-h-32 overflow-y-auto p-2">
+                <div className="max-h-28 overflow-y-auto p-2">
                   {autoPreview.errors.map((e, i) => (
                     <div key={i} className="text-[11px] px-2 py-1 border-b border-rose-50 last:border-0">
                       <span className="font-bold text-slate-700">แถว {e.row} ({e.name}):</span> <span className="text-rose-600">{e.reason}</span>
