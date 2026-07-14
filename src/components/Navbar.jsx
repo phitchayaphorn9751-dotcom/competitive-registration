@@ -61,7 +61,7 @@ export default function Navbar() {
 
   const lineId = settings.line_id || "@camtcmu"
   const phone = settings.phone || "063-525-0248"
-  const siteTitle = settings.site_title || "CAMT SUMMER COURSE"
+  const siteTitle = settings.site_title || "CAMT Digital Contest 2026"
   const lineUrl = `https://line.me/ti/p/~${lineId}`
   const telHref = `tel:${phone.replace(/[^0-9+]/g, "")}`
 
