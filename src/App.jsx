@@ -27,7 +27,6 @@ import AdminEvents from "./pages/admin/AdminEvents.jsx"
 import AdminImport from "./pages/admin/AdminImport.jsx"
 import AdminCertificate from "./pages/admin/AdminCertificate.jsx"
 import AdminSurveys from "./pages/admin/AdminSurveys.jsx"
-<Route path="surveys" element={<AdminSurveys />} />
 export default function App() {
   const location = useLocation()
 
@@ -80,6 +79,7 @@ export default function App() {
         <Route path="attendance" element={<AdminAttendance />} />
         <Route path="checkin" element={<AdminCheckIn />} />
         <Route path="import" element={<AdminImport />} />
+        <Route path="surveys" element={<AdminSurveys />} />
         <Route path="certificate" element={<AdminCertificate />} />
         <Route path="settings" element={<AdminSettings />} />
       </Route>
