@@ -84,8 +84,8 @@ export default function AdminDashboard() {
   const [expandedTeams, setExpandedTeams] = useState({})  // {groupKey: true} — ทีมที่กางดูสมาชิก
   const [selectedUser, setSelectedUser] = useState(null)
   const [courseDetail, setCourseDetail] = useState(null)
-  const [showAllSchools, setShowAllSchools] = useState(false)  // ดูโรงเรียนทั้งหมด (ไม่จำกัด 10)
-  useEffect(() => {
+const [allCourses, setAllCourses] = useState([])  // ทุกวิชาในงาน (รวม 0 คน) — สำหรับ "จำนวนผู้สมัคร"
+  const [showAllSchools, setShowAllSchools] = useState(false)  // ดูโรงเรียนทั้งหมด (ไม่จำกัด 10)  useEffect(() => {
     if (!event?.id) { setLoading(false); return }
     setLoading(true)
     Promise.all([
