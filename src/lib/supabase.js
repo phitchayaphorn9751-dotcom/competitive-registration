@@ -288,7 +288,7 @@ export async function uploadSlip(file, registrationId) {
   if (error) throw error
   const { data } = supabase.storage.from("slips").getPublicUrl(path)
   return data.publicUrl
-}ห
+}
 
 // schema จริง: attach_slip(p_registration_id, p_slip_url, p_amount int)
 export async function attachSlip(registrationId, slipUrl, amount) {
