@@ -284,11 +284,11 @@ export async function uploadSlip(file, registrationId) {
   const path = `${registrationId}.${ext}`
   const { error } = await supabase.storage
     .from("slips")
-    .upload(path, file, { upsert: true })
+    .upload(path, file, { upsert: true, cacheControl: "31536000" })   // ← cache 1 ปี
   if (error) throw error
   const { data } = supabase.storage.from("slips").getPublicUrl(path)
   return data.publicUrl
-}
+}ห
 
 // schema จริง: attach_slip(p_registration_id, p_slip_url, p_amount int)
 export async function attachSlip(registrationId, slipUrl, amount) {
@@ -576,10 +576,12 @@ export async function fetchCoursesAdmin(eventId) {
 }
 
 // อัปโหลดรูป/ไฟล์ของวิชาขึ้น Storage (bucket: course-assets) → คืน public URL
-export async function uploadCourseAsset(file, folder = "images") {
-  const ext = file.name.split(".").pop()
+export async function uploadCourseAsset(file, folder) {
+  const compressed = await compressImage(file)          // ← บีบก่อน
+  const ext = compressed.name.split(".").pop()
   const path = `${folder}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`
-  const { error } = await supabase.storage.from("course-assets").upload(path, file, { upsert: false })
+  const { error } = await supabase.storage.from("course-assets")
+    .upload(path, compressed, { upsert: false, cacheControl: "31536000" })  // ← cache 1 ปี
   if (error) throw error
   const { data } = supabase.storage.from("course-assets").getPublicUrl(path)
   return data.publicUrl
@@ -1301,4 +1303,31 @@ export async function getSurveyResults(surveyId, courseId = null) {
   })
   if (error) throw error
   return data
+}
+// ── บีบอัดรูปก่อนอัป (ลด egress) ──
+async function compressImage(file, maxWidth = 1600, quality = 0.82) {
+  // ไม่ใช่รูป → คืนไฟล์เดิม (pdf, ฯลฯ)
+  if (!file.type.startsWith("image/")) return file
+  
+  const img = await new Promise((res, rej) => {
+    const i = new Image()
+    i.onload = () => res(i)
+    i.onerror = rej
+    i.src = URL.createObjectURL(file)
+  })
+  
+  // คำนวณขนาดใหม่ (ไม่ขยาย ถ้าเล็กอยู่แล้ว)
+  const scale = Math.min(1, maxWidth / img.width)
+  const w = Math.round(img.width * scale)
+  const h = Math.round(img.height * scale)
+  
+  const canvas = document.createElement("canvas")
+  canvas.width = w; canvas.height = h
+  canvas.getContext("2d").drawImage(img, 0, 0, w, h)
+  URL.revokeObjectURL(img.src)
+  
+  const blob = await new Promise((res) => canvas.toBlob(res, "image/webp", quality))
+  if (!blob || blob.size >= file.size) return file   // บีบแล้วไม่เล็กลง → ใช้เดิม
+  
+  return new File([blob], file.name.replace(/\.\w+$/, ".webp"), { type: "image/webp" })
 }
