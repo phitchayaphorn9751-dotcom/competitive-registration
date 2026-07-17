@@ -86,6 +86,8 @@ export default function AdminDashboard() {
   const [courseDetail, setCourseDetail] = useState(null)
 const [allCourses, setAllCourses] = useState([])  // ทุกวิชาในงาน (รวม 0 คน) — สำหรับ "จำนวนผู้สมัคร"
   const [showAllSchools, setShowAllSchools] = useState(false)  // ดูโรงเรียนทั้งหมด (ไม่จำกัด 10)
+  const [exportOpen, setExportOpen] = useState(false)  // modal เลือกโหมด export
+  const [exportMode, setExportMode] = useState("combined")  // "combined" | "split"
 
   useEffect(() => {
     if (!event?.id) { setLoading(false); return }
@@ -306,49 +308,88 @@ const schoolRanking = useMemo(() => {
   // จัดกลุ่มทีม (สำหรับแสดงใน drill — ทีมยุบ 1 แถว)
   const drillGroups = useMemo(() => groupByTeam(drillList), [drillList])
 
-  // ── Export CSV จัดกลุ่มธีม ──
-  // คอลัมน์: จำนวนธีม | ชื่อธีม | ชื่อวิชา | จำนวนคน | ชื่อคน | + ที่เหลือทั้งหมด
-  // วิชาทีม (reg_id เดียว) → เลขธีมนับ 1 ครั้ง/ทีม, เลขคนนับในทีม, ชื่อธีมเขียนแถวแรกของทีม
-  // วิชาเดี่ยว → ชื่อธีมเว้นว่าง, จำนวนคน=1
-  function exportXlsx(list, name) {
-    const groups = groupByTeam(list)
-    // คอลัมน์ท้าย (หลังชื่อคน) — ข้อมูลรายคน
-    const restCols = [
-      ["วันที่สมัคร", (r) => r.created ? r.created.toLocaleString("th-TH") : "-"],
-      ["เลขประจำตัว", (r) => r.participant_code || "-"],
-      ["ชื่อเล่น", (r) => r.nickname || "-"],
-      ["ระดับชั้น", (r) => r.grade_level || "-"],
-      ["โรงเรียน", (r) => r.school || "-"],
-      ["จังหวัด", (r) => r.province || "-"],
-      ["หมวดวิชา", (r) => r.course_category || "-"],
-      ["ราคา", (r) => Number(r.price || 0)],
-      ["สถานะ", (r) => STATUS_CFG[r.status]?.label || r.status],
-      ["เบอร์โทร", (r) => r.phone || "-"],
-      ["อีเมล", (r) => r.submitter_email || "-"],
+  // ── Export CSV — แยก section ตามวิชา ──
+  const csvEscape = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`
+
+  // จัดกลุ่มรายชื่อตามวิชา — เรียงตามหมวด แล้วชื่อวิชา
+  function groupByCourse(list) {
+    const map = new Map()
+    for (const r of list) {
+      const key = r.course_id != null ? `id:${r.course_id}` : `name:${r.course_name || "-"}`
+      if (!map.has(key)) map.set(key, { courseName: r.course_name || "(ไม่ระบุวิชา)", category: r.course_category || "อื่นๆ", regs: [] })
+      map.get(key).regs.push(r)
+    }
+    return Array.from(map.values()).sort((a, b) =>
+      a.category.localeCompare(b.category, "th") || a.courseName.localeCompare(b.courseName, "th"))
+  }
+
+  // สร้างบรรทัด CSV ของ 1 วิชา (section header + column header + rows)
+  // วิชาทีม (count_mode==='team') → เพิ่มคอลัมน์ ธีม/ชื่อธีม นำหน้า (เขียนแถวแรกของทีมเท่านั้น)
+  function buildCourseSection(courseName, regs) {
+    const isTeam = regs[0]?.count_mode === "team"
+    const groups = groupByTeam(regs)
+    const personCols = (r) => [
+      r.participant_code || "-",
+      r.full_name || "-",
+      r.nickname || "-",
+      r.grade_level || "-",
+      r.school || "-",
+      r.province || "-",
+      r.phone || "-",
+      STATUS_CFG[r.status]?.label || r.status || "-",
     ]
-    const header = ["จำนวนธีม", "ชื่อธีม", "ชื่อวิชา", "จำนวนคน", "ชื่อคน", ...restCols.map(([h]) => h)]
-    const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`
-    const lines = [header.map(esc).join(",")]
-
-    groups.forEach((g, gi) => {
-      const themeNo = gi + 1
-      g.members.forEach((r, mi) => {
-        const row = [
-          mi === 0 ? themeNo : "",                       // จำนวนธีม (เขียนครั้งเดียว/ทีม)
-          mi === 0 ? (g.isTeam ? g.theme : "") : "",      // ชื่อธีม (แถวแรกของทีม · เดี่ยว=ว่าง)
-          mi === 0 ? g.course_name : "",                  // ชื่อวิชา (แถวแรก)
-          mi + 1,                                         // จำนวนคน (เลขคนในทีม)
-          r.full_name || "-",                             // ชื่อคน
-          ...restCols.map(([, fn]) => fn(r)),
-        ]
-        lines.push(row.map(esc).join(","))
+    const lines = []
+    if (isTeam) {
+      lines.push(csvEscape(`=== ${courseName} (${groups.length} ธีม · ${regs.length} คน) ===`))
+      lines.push(["ธีม", "ชื่อธีม", "#", "รหัส", "ชื่อ-สกุล", "ชื่อเล่น", "ระดับชั้น", "โรงเรียน", "จังหวัด", "เบอร์", "สถานะ"].map(csvEscape).join(","))
+      groups.forEach((g, gi) => {
+        g.members.forEach((r, mi) => {
+          lines.push([
+            mi === 0 ? gi + 1 : "",           // เลขธีม (แถวแรกของทีม)
+            mi === 0 ? (g.theme || "") : "",   // ชื่อธีม (แถวแรกของทีม)
+            mi + 1,                            // ลำดับคนในทีม
+            ...personCols(r),
+          ].map(csvEscape).join(","))
+        })
       })
-    })
+    } else {
+      lines.push(csvEscape(`=== ${courseName} (${regs.length} คน) ===`))
+      lines.push(["#", "รหัส", "ชื่อ-สกุล", "ชื่อเล่น", "ระดับชั้น", "โรงเรียน", "จังหวัด", "เบอร์", "สถานะ"].map(csvEscape).join(","))
+      let n = 0
+      groups.forEach((g) => {
+        g.members.forEach((r) => {
+          n += 1
+          lines.push([n, ...personCols(r)].map(csvEscape).join(","))
+        })
+      })
+    }
+    return lines
+  }
 
+  function downloadCsv(lines, name) {
     const blob = new Blob(["\ufeff" + lines.join("\n")], { type: "text/csv;charset=utf-8;" })
     const url = URL.createObjectURL(blob); const a = document.createElement("a")
-    const safe = name.replace(/[\\/:*?"<>|]/g, "_").slice(0, 40)
+    const safe = String(name).replace(/[\\/:*?"<>|]/g, "_").slice(0, 60)
     a.href = url; a.download = `${safe}_${new Date().toISOString().split("T")[0]}.csv`; a.click(); URL.revokeObjectURL(url)
+  }
+
+  // \u0e23\u0e27\u0e21\u0e17\u0e38\u0e01\u0e27\u0e34\u0e0a\u0e32\u0e40\u0e1b\u0e47\u0e19\u0e44\u0e1f\u0e25\u0e4c\u0e40\u0e14\u0e35\u0e22\u0e27 \u2014 \u0e41\u0e15\u0e48\u0e25\u0e30 section \u0e04\u0e31\u0e48\u0e19\u0e14\u0e49\u0e27\u0e22\u0e1a\u0e23\u0e23\u0e17\u0e31\u0e14\u0e27\u0e48\u0e32\u0e07
+  function exportCombined(list, name) {
+    const courses = groupByCourse(list)
+    const lines = []
+    courses.forEach((c, i) => {
+      if (i > 0) lines.push("")
+      lines.push(...buildCourseSection(c.courseName, c.regs))
+    })
+    downloadCsv(lines, name)
+  }
+
+  // \u0e41\u0e22\u0e01\u0e44\u0e1f\u0e25\u0e4c\u0e25\u0e30\u0e27\u0e34\u0e0a\u0e32 \u2014 \u0e14\u0e32\u0e27\u0e19\u0e4c\u0e42\u0e2b\u0e25\u0e14\u0e2b\u0e25\u0e32\u0e22\u0e44\u0e1f\u0e25\u0e4c (\u0e2b\u0e19\u0e48\u0e27\u0e07\u0e01\u0e31\u0e19 browser \u0e1a\u0e25\u0e47\u0e2d\u0e01)
+  function exportSplit(list) {
+    const courses = groupByCourse(list)
+    courses.forEach((c, i) => {
+      setTimeout(() => downloadCsv(buildCourseSection(c.courseName, c.regs), c.courseName), i * 350)
+    })
   }
 
   if (!event) return <div className="bg-white rounded-2xl p-12 text-center text-slate-400 shadow-sm border border-slate-200">ยังไม่มีงาน — สร้างงานในเมนูตั้งค่าเว็บ</div>
@@ -400,7 +441,7 @@ const schoolRanking = useMemo(() => {
               <p className="text-xs text-slate-400 mt-0.5 truncate">{event.name} {event.year} — ภาพรวม & วิเคราะห์</p>
             </div>
           </div>
-          <button onClick={() => exportXlsx(filtered, `Dashboard_${timeLabels[timeFilter]}`)}
+          <button onClick={() => setExportOpen(true)}
             className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 px-3 py-2 rounded-xl text-xs font-bold shadow-sm transition active:scale-95 whitespace-nowrap shrink-0">
             <Ico.download className="w-4 h-4 text-[#F15A24]" /> <span className="hidden sm:inline">Export</span>
           </button>
@@ -783,7 +824,7 @@ const schoolRanking = useMemo(() => {
             <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/80 flex justify-between items-center shrink-0">
               <span className="text-xs text-slate-400">{drillGroups.length} ทีม/คน · {drillList.length} รายชื่อ</span>
               <div className="flex gap-2">
-                <button onClick={() => exportXlsx(drillList, drill.title)} className="flex items-center gap-1.5 px-4 py-2 bg-orange-50 hover:bg-orange-100 border border-orange-200 text-[#F15A24] rounded-xl text-sm font-bold transition"><Ico.download className="w-4 h-4" /> Export</button>
+                <button onClick={() => exportCombined(drillList, drill.title)} className="flex items-center gap-1.5 px-4 py-2 bg-orange-50 hover:bg-orange-100 border border-orange-200 text-[#F15A24] rounded-xl text-sm font-bold transition"><Ico.download className="w-4 h-4" /> Export</button>
                 <button onClick={() => setDrill(null)} className="px-5 py-2 bg-[#F15A24] hover:bg-[#c44215] text-white rounded-xl text-sm font-bold transition">ปิด</button>
               </div>
             </div>
@@ -893,12 +934,50 @@ const schoolRanking = useMemo(() => {
               </div>
             </div>
             <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/80 flex justify-between items-center shrink-0">
-              <button onClick={() => exportXlsx(courseDetail.regs, `วิชา_${courseDetail.courseName}`)} className="flex items-center gap-1.5 px-4 py-2 bg-orange-50 hover:bg-orange-100 border border-orange-200 text-[#F15A24] rounded-xl text-sm font-bold transition"><Ico.download className="w-4 h-4" /> Export Excel</button>
+              <button onClick={() => exportCombined(courseDetail.regs, `วิชา_${courseDetail.courseName}`)} className="flex items-center gap-1.5 px-4 py-2 bg-orange-50 hover:bg-orange-100 border border-orange-200 text-[#F15A24] rounded-xl text-sm font-bold transition"><Ico.download className="w-4 h-4" /> Export</button>
               <button onClick={() => setCourseDetail(null)} className="px-5 py-2 bg-[#F15A24] hover:bg-[#c44215] text-white rounded-xl text-sm font-bold transition">ปิด</button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Export modal — เลือกโหมด รวม / แยก */}
+      {exportOpen && (() => {
+        const courseCount = groupByCourse(filtered).length
+        const opts = [
+          { key: "combined", title: "รวมทุกวิชา (1 ไฟล์)", desc: "แยก section ตามวิชาในไฟล์เดียว" },
+          { key: "split", title: "แยกไฟล์ตามวิชา", desc: `ดาวน์โหลด ${courseCount} ไฟล์ (ไฟล์ละวิชา)` },
+        ]
+        return (
+          <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/60 backdrop-blur-sm" onClick={(e) => e.target === e.currentTarget && setExportOpen(false)}>
+            <div className="bg-white w-full sm:rounded-2xl sm:max-w-md flex flex-col shadow-2xl rounded-t-2xl overflow-hidden">
+              <div className="bg-gradient-to-r from-[#F15A24] to-amber-500 px-5 py-4 flex justify-between items-center shrink-0">
+                <h3 className="text-base font-bold text-white flex items-center gap-2"><Ico.download className="w-4 h-4" /> Export ข้อมูล</h3>
+                <button onClick={() => setExportOpen(false)} className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xl font-bold flex items-center justify-center">×</button>
+              </div>
+              <div className="p-5 space-y-3">
+                {opts.map((o) => (
+                  <button key={o.key} onClick={() => setExportMode(o.key)}
+                    className={`w-full text-left rounded-xl border p-4 transition flex items-start gap-3 ${exportMode === o.key ? "border-[#F15A24] bg-orange-50" : "border-slate-200 hover:bg-slate-50"}`}>
+                    <span className={`mt-0.5 w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${exportMode === o.key ? "border-[#F15A24]" : "border-slate-300"}`}>
+                      {exportMode === o.key && <span className="w-2 h-2 rounded-full bg-[#F15A24]" />}
+                    </span>
+                    <span>
+                      <span className="block text-sm font-bold text-slate-800">{o.title}</span>
+                      <span className="block text-xs text-slate-500 mt-0.5">{o.desc}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/80 flex justify-end gap-2 shrink-0">
+                <button onClick={() => setExportOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl text-sm font-bold transition">ยกเลิก</button>
+                <button onClick={() => { exportMode === "combined" ? exportCombined(filtered, `Dashboard_${timeLabels[timeFilter]}`) : exportSplit(filtered); setExportOpen(false) }}
+                  className="flex items-center gap-1.5 px-5 py-2 bg-[#F15A24] hover:bg-[#c44215] text-white rounded-xl text-sm font-bold transition"><Ico.download className="w-4 h-4" /> Export</button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
     </div>
   )
