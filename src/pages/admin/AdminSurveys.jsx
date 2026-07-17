@@ -180,7 +180,7 @@ export default function AdminSurveys() {
 
   // ── โหมด list (2 แท็บ) ──
   return (
-    <div className="space-y-4 pb-24 lg:pb-6 max-w-4xl">
+    <div className="space-y-4 pb-24 lg:pb-6 max-w-4xl mx-auto">
       {toast && (
         <div className={`fixed top-4 right-4 z-50 px-4 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg ${toast.ok ? "bg-emerald-500" : "bg-rose-500"}`}>{toast.msg}</div>
       )}
@@ -507,7 +507,7 @@ function SurveyBuilder({ survey, isTemplate, courseLabel, onBack, flash }) {
   if (loading) return <div className="p-12 text-center text-slate-400">กำลังโหลด…</div>
 
   return (
-    <div className="space-y-4 pb-24 lg:pb-6 max-w-3xl">
+    <div className="space-y-4 pb-24 lg:pb-6 max-w-3xl mx-auto">
       {/* header — ปุ่มนอก section (ไม่มีกรอบ) */}
       <div className="flex items-center justify-between gap-2">
         <button onClick={onBack} className="inline-flex items-center gap-1 text-slate-500 hover:text-[#F15A24] text-sm font-bold">{IC.back} กลับ</button>
