@@ -1228,14 +1228,26 @@ export async function fetchSurveys(eventId) {
   }))
 }
 
-export async function createSurvey(eventId, { title, type_id, description }) {
+export async function createSurvey(eventId, { title, type_id, description, pattern }) {
   const { data, error } = await supabase
     .from("surveys")
-    .insert({ event_id: eventId, title, type_id: type_id || null, description: description || "" })
+    .insert({ event_id: eventId, title, type_id: type_id || null, description: description || "", pattern: pattern || null })
     .select()
     .single()
   if (error) throw error
   return data
+}
+
+// ทำสำเนาแบบประเมิน (ใช้เป็นเทมเพลต) — คัดลอกทั้งฟอร์ม + คำถาม
+export async function duplicateSurvey(surveyId) {
+  const { data: src, error: e1 } = await supabase.from("surveys").select("*").eq("id", surveyId).single()
+  if (e1) throw e1
+  const copy = await createSurvey(src.event_id, {
+    title: `${src.title} (สำเนา)`, type_id: src.type_id, description: src.description, pattern: src.pattern,
+  })
+  const qs = await fetchSurveyQuestions(surveyId)
+  if (qs.length) await saveSurveyQuestions(copy.id, qs)
+  return copy
 }
 
 export async function updateSurvey(surveyId, fields) {

@@ -11,6 +11,7 @@ import PayPage from "./pages/PayPage.jsx"
 import MyRegistrationPage from "./pages/MyRegistrationPage.jsx"
 import ResetPasswordPage from "./pages/ResetPasswordPage.jsx"
 import CheckInPage from "./pages/CheckInPage.jsx"
+import SurveyFormPage from "./pages/SurveyFormPage.jsx"
 
 // Admin
 import AdminLayout from "./pages/admin/AdminLayout.jsx"
@@ -47,7 +48,7 @@ export default function App() {
   }, [])
 
   // ซ่อน Navbar เฉพาะหน้า checkin และ admin (หน้าเหล่านี้มี layout เต็มจอของตัวเอง)
-  const hideNavbar = location.pathname.startsWith("/checkin") || location.pathname.startsWith("/admin")
+  const hideNavbar = location.pathname.startsWith("/checkin") || location.pathname.startsWith("/admin") || location.pathname.startsWith("/survey")
 
   return (
     <>
@@ -62,6 +63,7 @@ export default function App() {
       <Route path="/pay/:regId" element={<PayPage />} />
       <Route path="/my-registration" element={<MyRegistrationPage />} />
       <Route path="/checkin" element={<CheckInPage />} />
+      <Route path="/survey/:surveyId/:courseId?" element={<SurveyFormPage />} />
 
       {/* /admin ชี้ไปหน้า login (guard ใน AdminLayout) */}
       <Route path="/admin/login" element={<LoginPage />} />

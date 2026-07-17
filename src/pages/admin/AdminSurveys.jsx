@@ -2,11 +2,18 @@ import { useState, useEffect, useMemo } from "react"
 import { useOutletContext } from "react-router-dom"
 import {
   fetchSurveys, createSurvey, updateSurvey, deleteSurvey,
-  fetchSurveyQuestions, saveSurveyQuestions,
-  fetchCourseTypes, fetchCoursesByType,
+  fetchSurveyQuestions, saveSurveyQuestions, duplicateSurvey,
 } from "../../lib/supabase.js"
 
 const BRAND = "#F15A24"
+
+// 3 แพทเทิร์นแบบประเมิน (tag ให้แอดมินสร้าง/ทำสำเนาเป็นเทมเพลตเองได้)
+const PATTERNS = [
+  { key: "booth", label: "บูท", emoji: "🏬" },
+  { key: "competition", label: "แข่งขัน", emoji: "🏆" },
+  { key: "workshop", label: "Workshop", emoji: "🛠" },
+]
+const PATTERN_LABEL = Object.fromEntries(PATTERNS.map((p) => [p.key, p.label]))
 
 // ชนิดคำถาม (เหมือน Google Form)
 const Q_TYPES = [
@@ -43,7 +50,6 @@ export default function AdminSurveys() {
   const { event } = useOutletContext()
   const [surveys, setSurveys] = useState([])
   const [loading, setLoading] = useState(true)
-  const [types, setTypes] = useState([])
   const [editing, setEditing] = useState(null)   // survey ที่กำลังแก้ (builder) | null = list
   const [toast, setToast] = useState(null)
   const [showCreate, setShowCreate] = useState(false)   // modal สร้างใหม่
@@ -53,8 +59,8 @@ export default function AdminSurveys() {
 
   useEffect(() => {
     if (!event?.id) { setLoading(false); return }
-    Promise.all([fetchSurveys(event.id), fetchCourseTypes(event.id)])
-      .then(([s, t]) => { setSurveys(s); setTypes(t) })
+    fetchSurveys(event.id)
+      .then(setSurveys)
       .catch((e) => flash("โหลดไม่สำเร็จ: " + e.message, false))
       .finally(() => setLoading(false))
   }, [event?.id])
@@ -65,15 +71,28 @@ export default function AdminSurveys() {
 
   function onCreate() { setShowCreate(true) }
 
-  async function doCreate({ title, typeId }) {
+  async function doCreate({ title, pattern, fromId }) {
     setCreating(true)
     try {
-      const s = await createSurvey(event.id, { title: title.trim(), type_id: typeId || null })
+      let s
+      if (fromId) {
+        // เริ่มจากฟอร์มเดิม (ทำสำเนา) แล้วปรับชื่อ/แพทเทิร์น
+        s = await duplicateSurvey(fromId)
+        await updateSurvey(s.id, { title: title.trim(), pattern: pattern || null })
+        s = { ...s, title: title.trim(), pattern: pattern || null }
+      } else {
+        s = await createSurvey(event.id, { title: title.trim(), pattern: pattern || null })
+      }
       setShowCreate(false)
       await reload()
       setEditing(s)   // เปิด builder ทันที
     } catch (e) { flash("สร้างไม่สำเร็จ: " + e.message, false) }
     finally { setCreating(false) }
+  }
+
+  async function onDuplicate(s) {
+    try { const c = await duplicateSurvey(s.id); await reload(); flash("ทำสำเนาแล้ว"); setEditing(c) }
+    catch (e) { flash("ทำสำเนาไม่สำเร็จ: " + e.message, false) }
   }
 
   async function onDelete(s) {
@@ -92,7 +111,7 @@ export default function AdminSurveys() {
 
   // ── โหมด builder ──
   if (editing) {
-    return <SurveyBuilder survey={editing} types={types} event={event}
+    return <SurveyBuilder survey={editing}
       onBack={() => { setEditing(null); reload() }} flash={flash} />
   }
 
@@ -103,7 +122,7 @@ export default function AdminSurveys() {
         <div className={`fixed top-4 right-4 z-50 px-4 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg ${toast.ok ? "bg-emerald-500" : "bg-rose-500"}`}>{toast.msg}</div>
       )}
       {showCreate && (
-        <CreateModal types={types} creating={creating} onClose={() => setShowCreate(false)} onCreate={doCreate} />
+        <CreateModal surveys={surveys} creating={creating} onClose={() => setShowCreate(false)} onCreate={doCreate} />
       )}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex items-center justify-between">
         <div>
@@ -123,14 +142,14 @@ export default function AdminSurveys() {
       ) : (
         <div className="space-y-3">
           {surveys.map((s) => {
-            const typeName = types.find((t) => t.id === s.type_id)?.label
+            const patternLabel = PATTERN_LABEL[s.pattern]
             return (
               <div key={s.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-bold text-slate-800 truncate">{s.title}</h3>
-                      {typeName && <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-orange-50 text-[#F15A24] border border-orange-100">{typeName}</span>}
+                      {patternLabel && <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-orange-50 text-[#F15A24] border border-orange-100">{patternLabel}</span>}
                       <button onClick={() => onToggleOpen(s)}
                         className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${s.is_open ? "bg-emerald-50 text-emerald-600 border-emerald-200" : "bg-slate-100 text-slate-400 border-slate-200"}`}>
                         {s.is_open ? "เปิดรับ" : "ปิดรับ"}
@@ -140,6 +159,7 @@ export default function AdminSurveys() {
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <button onClick={() => setEditing(s)} title="แก้ไข/ลิงก์" className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-[#F15A24]">{IC.edit}</button>
+                    <button onClick={() => onDuplicate(s)} title="ทำสำเนา (ใช้เป็นเทมเพลต)" className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-[#F15A24]">{IC.copy}</button>
                     <button onClick={() => onDelete(s)} title="ลบ" className="p-2 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-500">{IC.trash}</button>
                   </div>
                 </div>
@@ -155,15 +175,16 @@ export default function AdminSurveys() {
 // ═══════════════════════════════════════════
 // Create Modal — เลือกหมวด + ตั้งชื่อ (แทน prompt)
 // ═══════════════════════════════════════════
-function CreateModal({ types, creating, onClose, onCreate }) {
-  const [typeId, setTypeId] = useState("")
+function CreateModal({ surveys, creating, onClose, onCreate }) {
+  const [pattern, setPattern] = useState("")
   const [title, setTitle] = useState("")
+  const [fromId, setFromId] = useState("")   // เริ่มจากฟอร์มเดิม (ทำสำเนา)
 
-  // ตั้งชื่ออัตโนมัติตามหมวด (แก้ทีหลังได้)
-  function pickType(id) {
-    setTypeId(id)
-    const label = types.find((t) => t.id === id)?.label
-    if (label && !title.trim()) setTitle(`ประเมิน ${label}`)
+  // ตั้งชื่ออัตโนมัติตามแพทเทิร์น (แก้ทีหลังได้)
+  function pickPattern(key) {
+    setPattern(key)
+    const label = PATTERN_LABEL[key]
+    if (label && !title.trim()) setTitle(`ประเมิน${label}`)
   }
 
   const canCreate = title.trim().length > 0
@@ -176,24 +197,18 @@ function CreateModal({ types, creating, onClose, onCreate }) {
           <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white flex items-center justify-center">{IC.x}</button>
         </div>
         <div className="p-5 space-y-4">
-          {/* เลือกหมวด (การ์ด) */}
+          {/* เลือกแพทเทิร์น */}
           <div>
-            <label className="text-xs font-bold text-slate-500 block mb-2">เลือกหมวดหมู่ <span className="text-slate-300 font-normal">(ไม่บังคับ · ตั้งทีหลังได้)</span></label>
-            {types.length === 0 ? (
-              <p className="text-xs text-slate-400">ยังไม่มีหมวดหมู่ในงานนี้</p>
-            ) : (
-              <div className="grid grid-cols-2 gap-2">
-                {types.map((t) => (
-                  <button key={t.id} onClick={() => pickType(t.id)}
-                    className={`text-left px-3 py-2.5 rounded-xl border-2 transition ${typeId === t.id ? "border-[#F15A24] bg-orange-50" : "border-slate-200 hover:border-slate-300"}`}>
-                    <div className="flex items-center gap-2">
-                      <span className="w-3 h-3 rounded-full shrink-0" style={{ background: t.color || "#94a3b8" }} />
-                      <span className={`text-sm font-bold truncate ${typeId === t.id ? "text-[#F15A24]" : "text-slate-700"}`}>{t.label}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
+            <label className="text-xs font-bold text-slate-500 block mb-2">เลือกแพทเทิร์น</label>
+            <div className="grid grid-cols-3 gap-2">
+              {PATTERNS.map((p) => (
+                <button key={p.key} onClick={() => pickPattern(p.key)}
+                  className={`px-2 py-3 rounded-xl border-2 transition text-center ${pattern === p.key ? "border-[#F15A24] bg-orange-50" : "border-slate-200 hover:border-slate-300"}`}>
+                  <div className="text-2xl leading-none mb-1">{p.emoji}</div>
+                  <span className={`text-xs font-bold ${pattern === p.key ? "text-[#F15A24]" : "text-slate-700"}`}>{p.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* ชื่อ */}
@@ -202,12 +217,24 @@ function CreateModal({ types, creating, onClose, onCreate }) {
             <input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus
               placeholder="เช่น ประเมิน Workshop"
               className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 bg-slate-50 focus:bg-white focus:border-[#F15A24] outline-none transition"
-              onKeyDown={(e) => { if (e.key === "Enter" && canCreate) onCreate({ title, typeId }) }} />
+              onKeyDown={(e) => { if (e.key === "Enter" && canCreate) onCreate({ title, pattern, fromId }) }} />
           </div>
+
+          {/* เริ่มจากฟอร์มเดิม (ทำสำเนาเป็นเทมเพลต) */}
+          {surveys.length > 0 && (
+            <div>
+              <label className="text-xs font-bold text-slate-500 block mb-1.5">เริ่มจากฟอร์มเดิม <span className="text-slate-300 font-normal">(ไม่บังคับ · ก็อปคำถามมาแก้ต่อ)</span></label>
+              <select value={fromId} onChange={(e) => setFromId(e.target.value)}
+                className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 bg-slate-50 focus:bg-white focus:border-[#F15A24] outline-none">
+                <option value="">— เริ่มจากฟอร์มเปล่า —</option>
+                {surveys.map((s) => <option key={s.id} value={s.id}>{s.title} ({s.question_count} คำถาม)</option>)}
+              </select>
+            </div>
+          )}
         </div>
         <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/80 flex justify-end gap-2">
           <button onClick={onClose} className="px-4 py-2 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-100 transition">ยกเลิก</button>
-          <button onClick={() => onCreate({ title, typeId })} disabled={!canCreate || creating}
+          <button onClick={() => onCreate({ title, pattern, fromId })} disabled={!canCreate || creating}
             className="inline-flex items-center gap-1.5 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-sm transition active:scale-95 disabled:opacity-40" style={{ background: BRAND }}>
             {IC.plus} {creating ? "กำลังสร้าง…" : "สร้างและทำคำถาม"}
           </button>
@@ -220,15 +247,14 @@ function CreateModal({ types, creating, onClose, onCreate }) {
 // ═══════════════════════════════════════════
 // Survey Builder — สร้างคำถาม (Google Form style)
 // ═══════════════════════════════════════════
-function SurveyBuilder({ survey, types, event, onBack, flash }) {
+function SurveyBuilder({ survey, onBack, flash }) {
   const [title, setTitle] = useState(survey.title || "")
-  const [typeId, setTypeId] = useState(survey.type_id || "")
+  const [pattern, setPattern] = useState(survey.pattern || "")
   const [desc, setDesc] = useState(survey.description || "")
   const [questions, setQuestions] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [tab, setTab] = useState("build")   // build | share
-  const [courses, setCourses] = useState([])
 
   useEffect(() => {
     fetchSurveyQuestions(survey.id)
@@ -236,12 +262,6 @@ function SurveyBuilder({ survey, types, event, onBack, flash }) {
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [survey.id])
-
-  // โหลด courses ในหมวด (สำหรับ tab share)
-  useEffect(() => {
-    if (!typeId) { setCourses([]); return }
-    fetchCoursesByType(event.id, typeId).then(setCourses).catch(() => setCourses([]))
-  }, [typeId, event.id])
 
   function addQuestion(type = "rating") {
     setQuestions((qs) => [...qs, { question_text: "", question_type: type, options: hasOptions(type) ? ["ตัวเลือก 1"] : [], required: false, _new: true }])
@@ -265,7 +285,7 @@ function SurveyBuilder({ survey, types, event, onBack, flash }) {
   function removeOpt(i, k) { setQuestions((qs) => qs.map((q, j) => j === i ? { ...q, options: q.options.filter((_, m) => m !== k) } : q)) }
 
   async function saveMeta() {
-    await updateSurvey(survey.id, { title: title.trim() || "แบบประเมิน", type_id: typeId || null, description: desc })
+    await updateSurvey(survey.id, { title: title.trim() || "แบบประเมิน", pattern: pattern || null, description: desc })
   }
   async function onSave() {
     // validate
@@ -312,13 +332,12 @@ function SurveyBuilder({ survey, types, event, onBack, flash }) {
             <textarea value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="คำอธิบาย (ไม่บังคับ)" rows={2}
               className="w-full text-sm text-slate-600 border-0 border-b border-slate-100 focus:border-[#F15A24] outline-none resize-none bg-transparent" />
             <div>
-              <label className="text-xs font-bold text-slate-400 block mb-1">ผูกกับหมวด</label>
-              <select value={typeId} onChange={(e) => setTypeId(e.target.value)}
+              <label className="text-xs font-bold text-slate-400 block mb-1">แพทเทิร์น</label>
+              <select value={pattern} onChange={(e) => setPattern(e.target.value)}
                 className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 bg-slate-50 focus:bg-white focus:border-[#F15A24] outline-none">
-                <option value="">— เลือกหมวด —</option>
-                {types.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+                <option value="">— เลือกแพทเทิร์น —</option>
+                {PATTERNS.map((p) => <option key={p.key} value={p.key}>{p.emoji} {p.label}</option>)}
               </select>
-              <p className="text-[11px] text-slate-400 mt-1">ทุกกิจกรรมในหมวดนี้จะได้ลิงก์/QR (ใช้คำถามชุดเดียวกัน)</p>
             </div>
           </div>
 
@@ -392,64 +411,41 @@ function SurveyBuilder({ survey, types, event, onBack, flash }) {
         </>
       ) : (
         /* ── TAB: ลิงก์/QR ── */
-        <ShareTab survey={survey} typeId={typeId} courses={courses} baseUrl={baseUrl} flash={flash} />
+        <ShareTab survey={survey} baseUrl={baseUrl} flash={flash} />
       )}
     </div>
   )
 }
 
 // ═══════════════════════════════════════════
-// Share Tab — เจนลิงก์/QR แต่ละกิจกรรม
+// Share Tab — 1 ลิงก์ + 1 QR ต่อฟอร์ม
 // ═══════════════════════════════════════════
-function ShareTab({ survey, typeId, courses, baseUrl, flash }) {
-  function linkFor(courseId) { return `${baseUrl}/survey/${survey.id}/${courseId}` }
-  function copyLink(courseId) {
-    navigator.clipboard?.writeText(linkFor(courseId)).then(() => flash("คัดลอกลิงก์แล้ว")).catch(() => flash("คัดลอกไม่สำเร็จ", false))
-  }
-  // ลิงก์รวม (ไม่ระบุ course)
-  const generalLink = `${baseUrl}/survey/${survey.id}`
-
-  if (!typeId) {
-    return <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center text-sm text-slate-400">
-      เลือกหมวดในแท็บ "สร้างคำถาม" ก่อน<br />เพื่อให้ระบบเจนลิงก์แต่ละกิจกรรม
-    </div>
+function ShareTab({ survey, baseUrl, flash }) {
+  const link = `${baseUrl}/survey/${survey.id}`
+  const qrSmall = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(link)}`
+  const qrBig = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=${encodeURIComponent(link)}&download=1`
+  function copyLink() {
+    navigator.clipboard?.writeText(link).then(() => flash("คัดลอกลิงก์แล้ว")).catch(() => flash("คัดลอกไม่สำเร็จ", false))
   }
 
   return (
-    <div className="space-y-3">
-      {/* ลิงก์รวม */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
-        <p className="text-xs font-bold text-slate-400 mb-2">ลิงก์รวม (ไม่ระบุกิจกรรม)</p>
-        <div className="flex items-center gap-2">
-          <code className="flex-1 text-xs text-slate-600 bg-slate-50 rounded-lg px-3 py-2 truncate">{generalLink}</code>
-          <button onClick={() => navigator.clipboard?.writeText(generalLink).then(() => flash("คัดลอกแล้ว"))} className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-[#F15A24]">{IC.copy}</button>
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+      <p className="text-sm font-bold text-slate-700 mb-4">ลิงก์แบบประเมิน</p>
+      <div className="flex flex-col sm:flex-row items-center gap-5">
+        {/* QR */}
+        <div className="w-40 h-40 bg-white border border-slate-200 rounded-2xl p-2 shrink-0">
+          <img alt="QR" className="w-full h-full" src={qrSmall} />
+        </div>
+        <div className="flex-1 min-w-0 w-full">
+          <code className="block text-xs text-slate-600 bg-slate-50 rounded-lg px-3 py-2.5 break-all">{link}</code>
+          <div className="flex gap-2 mt-3">
+            <button onClick={copyLink} className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 border border-slate-200 rounded-lg px-3 py-2 hover:border-[#F15A24] hover:text-[#F15A24]">{IC.copy} คัดลอกลิงก์</button>
+            <a href={qrBig} download={`qr_survey_${survey.id}.png`}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 border border-slate-200 rounded-lg px-3 py-2 hover:border-[#F15A24] hover:text-[#F15A24]">{IC.qr} ดาวน์โหลด QR</a>
+          </div>
+          <p className="text-[11px] text-slate-400 mt-3">แชร์ลิงก์นี้หรือให้ผู้ร่วมงานสแกน QR เพื่อตอบแบบประเมิน</p>
         </div>
       </div>
-
-      {/* แต่ละกิจกรรม */}
-      <p className="text-xs font-bold text-slate-400 px-1">กิจกรรมในหมวดนี้ ({courses.length})</p>
-      {courses.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center text-sm text-slate-400">ยังไม่มีกิจกรรมในหมวดนี้</div>
-      ) : courses.map((c) => (
-        <div key={c.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
-          <div className="flex items-center gap-3">
-            {/* QR */}
-            <div className="w-20 h-20 bg-white border border-slate-200 rounded-xl p-1.5 shrink-0">
-              <img alt="QR" className="w-full h-full"
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(linkFor(c.id))}`} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-bold text-slate-800 text-sm truncate">{c.title}{c.base_id ? ` (${c.base_id})` : ""}</div>
-              <code className="text-[11px] text-slate-400 block truncate mt-0.5">{linkFor(c.id)}</code>
-              <div className="flex gap-2 mt-2">
-                <button onClick={() => copyLink(c.id)} className="inline-flex items-center gap-1 text-xs font-bold text-slate-600 border border-slate-200 rounded-lg px-2.5 py-1.5 hover:border-[#F15A24] hover:text-[#F15A24]">{IC.copy} คัดลอกลิงก์</button>
-                <a href={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(linkFor(c.id))}&download=1`} download={`qr_${c.base_id || c.id}.png`}
-                  className="inline-flex items-center gap-1 text-xs font-bold text-slate-600 border border-slate-200 rounded-lg px-2.5 py-1.5 hover:border-[#F15A24] hover:text-[#F15A24]">{IC.qr} ดาวน์โหลด QR</a>
-              </div>
-            </div>
-          </div>
-        </div>
-      ))}
     </div>
   )
 }
