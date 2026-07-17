@@ -11,20 +11,20 @@ const BRAND = "#F15A24"
 
 // 3 แพทเทิร์นแบบประเมิน (tag ให้แอดมินสร้าง/ทำสำเนาเป็นเทมเพลตเองได้)
 const PATTERNS = [
-  { key: "booth", label: "บูท", emoji: "🏬" },
-  { key: "competition", label: "แข่งขัน", emoji: "🏆" },
-  { key: "workshop", label: "Workshop", emoji: "🛠" },
+  { key: "booth", label: "บูท" },
+  { key: "competition", label: "แข่งขัน" },
+  { key: "workshop", label: "Workshop" },
 ]
 const PATTERN_LABEL = Object.fromEntries(PATTERNS.map((p) => [p.key, p.label]))
 
 // ชนิดคำถาม (เหมือน Google Form)
 const Q_TYPES = [
-  { key: "linear_scale", label: "⭐ สเกลคะแนน" },
-  { key: "radio", label: "🔘 หลายตัวเลือก" },
-  { key: "checkbox", label: "☑️ ช่องทำเครื่องหมาย" },
-  { key: "dropdown", label: "🔽 รายการเลื่อนลง" },
-  { key: "short_text", label: "📝 ข้อความสั้น" },
-  { key: "long_text", label: "📃 ย่อหน้า" },
+  { key: "linear_scale", label: "สเกลคะแนน" },
+  { key: "radio", label: "หลายตัวเลือก" },
+  { key: "checkbox", label: "ช่องทำเครื่องหมาย" },
+  { key: "dropdown", label: "รายการเลื่อนลง" },
+  { key: "short_text", label: "ข้อความสั้น" },
+  { key: "long_text", label: "ย่อหน้า" },
 ]
 const hasOptions = (t) => t === "radio" || t === "checkbox" || t === "dropdown"
 const isScale = (t) => t === "linear_scale"
@@ -61,6 +61,20 @@ const IC = {
   edit: <I d={<><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></>} />,
   x: <I d={<><path d="M18 6 6 18M6 6l12 12"/></>} />,
   save: <I d={<><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></>} />,
+  store: <I d={<><path d="m2 7 2-4h16l2 4M4 7v13a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V7M2 7h20"/><path d="M8 7v3a2 2 0 0 0 4 0V7M12 7v3a2 2 0 0 0 4 0V7"/></>} />,
+  trophy: <I d={<><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22M18 2H6v7a6 6 0 0 0 12 0V2Z"/></>} />,
+  tool: <I d={<><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76Z"/></>} />,
+  grid: <I d={<><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></>} />,
+}
+// ไอคอนแทน emoji (แพทเทิร์น / ชนิดคำถาม)
+const PATICON = { booth: IC.store, competition: IC.trophy, workshop: IC.tool }
+const QICON = {
+  linear_scale: <I d={<><polygon points="12 2 15 9 22 9 17 14 19 21 12 17 5 21 7 14 2 9 9 9"/></>} />,
+  radio: <I d={<><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none"/></>} />,
+  checkbox: <I d={<><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m8 12 3 3 5-6"/></>} />,
+  dropdown: <I d={<><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m8 11 4 4 4-4"/></>} />,
+  short_text: <I d={<><line x1="4" y1="12" x2="15" y2="12"/><line x1="4" y1="7" x2="20" y2="7"/></>} />,
+  long_text: <I d={<><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="14" y2="18"/></>} />,
 }
 
 const tabCls = (on) => `px-4 py-1.5 rounded-lg text-xs font-bold transition ${on ? "bg-white text-[#F15A24] shadow-sm" : "text-slate-500"}`
@@ -246,10 +260,11 @@ function FormList({ forms, courseName, templates, hasTemplates, onNew, onEdit, o
       {forms.length === 0 ? (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-12 text-center text-sm text-slate-400">ยังไม่มีแบบฟอร์ม</div>
       ) : (
-        [...groups.filter((g) => g.items.length), ...(other.length ? [{ key: "other", label: "อื่นๆ", emoji: "📋", items: other }] : [])].map((g) => (
+        [...groups.filter((g) => g.items.length), ...(other.length ? [{ key: "other", label: "อื่นๆ", items: other }] : [])].map((g) => (
           <div key={g.key} className="space-y-2">
             <div className="flex items-center gap-2 px-1 pt-1">
-              <span className="text-sm font-bold text-slate-600">{g.emoji} {g.label}</span>
+              <span className="text-[#F15A24]">{PATICON[g.key] || IC.grid}</span>
+              <span className="text-sm font-bold text-slate-600">{g.label}</span>
               <span className="text-[11px] text-slate-400">{g.items.length}</span>
             </div>
             {g.items.map((f) => (
@@ -303,8 +318,8 @@ function TemplateModal({ busy, onClose, onCreate }) {
           <div className="grid grid-cols-3 gap-2">
             {PATTERNS.map((p) => (
               <button key={p.key} onClick={() => pickPattern(p.key)}
-                className={`px-2 py-3 rounded-xl border-2 transition text-center ${pattern === p.key ? "border-[#F15A24] bg-orange-50" : "border-slate-200 hover:border-slate-300"}`}>
-                <div className="text-2xl leading-none mb-1">{p.emoji}</div>
+                className={`px-2 py-3 rounded-xl border-2 transition flex flex-col items-center gap-1.5 ${pattern === p.key ? "border-[#F15A24] bg-orange-50 text-[#F15A24]" : "border-slate-200 hover:border-slate-300 text-slate-500"}`}>
+                <span className="[&_svg]:w-6 [&_svg]:h-6">{PATICON[p.key]}</span>
                 <span className={`text-xs font-bold ${pattern === p.key ? "text-[#F15A24]" : "text-slate-700"}`}>{p.label}</span>
               </button>
             ))}
@@ -347,7 +362,7 @@ function FormModal({ templates, courses, busy, onClose, onCreate }) {
                 <span className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${templateId === t.id ? "border-[#F15A24]" : "border-slate-300"}`}>
                   {templateId === t.id && <span className="w-2 h-2 rounded-full bg-[#F15A24]" />}
                 </span>
-                <span className="text-lg">{PATTERNS.find((p) => p.key === t.pattern)?.emoji || "📋"}</span>
+                <span className="text-[#F15A24]">{PATICON[t.pattern] || IC.grid}</span>
                 <span className="min-w-0">
                   <span className="block text-sm font-bold text-slate-800 truncate">{t.title}</span>
                   <span className="block text-[11px] text-slate-400">{PATTERN_LABEL[t.pattern] || "ทั่วไป"} · {t.question_count} คำถาม</span>
@@ -493,53 +508,53 @@ function SurveyBuilder({ survey, isTemplate, courseLabel, onBack, flash }) {
 
   return (
     <div className="space-y-4 pb-24 lg:pb-6 max-w-3xl">
-      {/* header */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <button onClick={onBack} className="inline-flex items-center gap-1 text-slate-500 hover:text-[#F15A24] text-sm font-bold">{IC.back} กลับ</button>
-          <button onClick={onSave} disabled={saving} className="inline-flex items-center gap-1.5 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-sm transition active:scale-95 disabled:opacity-50" style={{ background: BRAND }}>
-            {IC.save} {saving ? "กำลังบันทึก…" : "บันทึก"}
-          </button>
-        </div>
-        {/* tabs — เทมเพลตไม่มีการตอบกลับ/ลิงก์/QR */}
-        {!isTemplate ? (
-          <div className="flex bg-slate-100 p-1 rounded-xl gap-0.5 w-fit">
-            <button onClick={() => setTab("build")} className={tabCls(tab === "build")}>สร้างคำถาม</button>
-            <button onClick={() => setTab("responses")} className={tabCls(tab === "responses")}>การตอบกลับ</button>
-            <button onClick={() => setTab("share")} className={tabCls(tab === "share")}>ลิงก์ / QR</button>
-          </div>
-        ) : (
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#F15A24] bg-orange-50 border border-orange-100 px-2.5 py-1 rounded-lg">เทมเพลต · ใช้แตกเป็นแบบฟอร์ม</span>
-        )}
+      {/* header — ปุ่มนอก section (ไม่มีกรอบ) */}
+      <div className="flex items-center justify-between gap-2">
+        <button onClick={onBack} className="inline-flex items-center gap-1 text-slate-500 hover:text-[#F15A24] text-sm font-bold">{IC.back} กลับ</button>
+        <button onClick={onSave} disabled={saving} className="inline-flex items-center gap-1.5 text-white px-5 py-2 rounded-xl text-sm font-bold shadow-sm transition active:scale-95 disabled:opacity-50" style={{ background: BRAND }}>
+          {IC.save} {saving ? "กำลังบันทึก…" : "บันทึก"}
+        </button>
       </div>
+
+      {/* tabs / badge */}
+      {!isTemplate ? (
+        <div className="flex bg-slate-100 p-1 rounded-xl gap-0.5 w-fit">
+          <button onClick={() => setTab("build")} className={tabCls(tab === "build")}>สร้างคำถาม</button>
+          <button onClick={() => setTab("responses")} className={tabCls(tab === "responses")}>การตอบกลับ</button>
+          <button onClick={() => setTab("share")} className={tabCls(tab === "share")}>ลิงก์ / QR</button>
+        </div>
+      ) : (
+        <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-[#F15A24] bg-orange-50 border border-orange-100 px-2.5 py-1 rounded-lg w-fit">เทมเพลต · ใช้แตกเป็นแบบฟอร์ม</span>
+      )}
 
       {tab === "build" || isTemplate ? (
         <>
-          {/* meta — สไตล์ Google Forms: การ์ดหัวเรื่องใหญ่ + ขอบบนหนา */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden border-t-[10px]" style={{ borderTopColor: BRAND }}>
-            <div className="p-6 space-y-4">
-              <div className="space-y-2">
-                <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="ระบุหัวข้อแบบฟอร์มประเมิน"
-                  className="w-full text-2xl sm:text-3xl font-bold text-slate-900 border-b border-transparent hover:border-slate-200 focus:border-[#F15A24] outline-none py-1 transition" />
-                <textarea value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="คำชี้แจง / รายละเอียดเพิ่มเติมเกี่ยวกับแบบประเมิน" rows={2}
-                  className="w-full text-sm text-slate-500 border-b border-transparent hover:border-slate-200 focus:border-[#F15A24] outline-none py-1 resize-none transition" />
-              </div>
-              {isTemplate ? (
-                <div className="pt-3 border-t border-slate-100">
-                  <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">ประเภทกิจกรรม</label>
-                  <select value={pattern} onChange={(e) => setPattern(e.target.value)}
-                    className="w-full sm:w-1/2 px-3 py-2 rounded-lg border border-slate-200 bg-white text-xs font-bold focus:outline-none focus:ring-1 focus:ring-[#F15A24]">
-                    <option value="">— เลือกประเภท —</option>
-                    {PATTERNS.map((p) => <option key={p.key} value={p.key}>{p.emoji} {p.label}</option>)}
-                  </select>
+          {/* meta — การ์ดหัวเรื่อง + ขอบบนหนา · เลือกประเภทมุมขวาบน */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden border-t-[6px]" style={{ borderTopColor: BRAND }}>
+            <div className="p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="ระบุหัวข้อแบบฟอร์มประเมิน"
+                    className="w-full text-2xl font-bold text-slate-900 border-b border-transparent hover:border-slate-200 focus:border-[#F15A24] outline-none py-1 transition" />
+                  <textarea value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="คำชี้แจง / รายละเอียดเพิ่มเติมเกี่ยวกับแบบประเมิน" rows={2}
+                    className="w-full text-sm text-slate-500 border-b border-transparent hover:border-slate-200 focus:border-[#F15A24] outline-none py-1 resize-none transition" />
                 </div>
-              ) : (
-                (courseLabel || PATTERN_LABEL[pattern]) && (
-                  <p className="text-xs text-slate-400 pt-3 border-t border-slate-100">
-                    {courseLabel ? `วิชา ${courseLabel}` : ""}{courseLabel && PATTERN_LABEL[pattern] ? " · " : ""}
-                    {PATTERN_LABEL[pattern] ? `แพทเทิร์น ${PATTERN_LABEL[pattern]}` : ""}
-                  </p>
-                )
+                {isTemplate && (
+                  <div className="shrink-0">
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 text-right">ประเภท</label>
+                    <select value={pattern} onChange={(e) => setPattern(e.target.value)}
+                      className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-[#F15A24]">
+                      <option value="">— เลือก —</option>
+                      {PATTERNS.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
+                    </select>
+                  </div>
+                )}
+              </div>
+              {!isTemplate && (courseLabel || PATTERN_LABEL[pattern]) && (
+                <p className="text-xs text-slate-400 pt-3 mt-3 border-t border-slate-100">
+                  {courseLabel ? `วิชา ${courseLabel}` : ""}{courseLabel && PATTERN_LABEL[pattern] ? " · " : ""}
+                  {PATTERN_LABEL[pattern] ? `แพทเทิร์น ${PATTERN_LABEL[pattern]}` : ""}
+                </p>
               )}
             </div>
           </div>
@@ -549,17 +564,18 @@ function SurveyBuilder({ survey, isTemplate, courseLabel, onBack, flash }) {
             i === activeIdx ? (
               // ── ACTIVE (แก้ไข) ──
               <div key={i} className="bg-white rounded-2xl border border-slate-200 border-l-4 border-l-[#F15A24] shadow-md p-4 space-y-3">
-                <div className="flex items-start gap-2">
-                  <span className="text-xs font-bold text-slate-300 mt-2.5 w-5 text-center shrink-0">{i + 1}</span>
+                <div className="flex items-center gap-2.5">
+                  <span className="text-xs font-bold text-slate-300 w-4 text-center shrink-0">{i + 1}</span>
+                  <span className="text-[#F15A24] shrink-0">{QICON[q.question_type]}</span>
                   <input value={q.question_text} onChange={(e) => updateQ(i, { question_text: e.target.value })} placeholder="พิมพ์คำถาม…"
-                    className="flex-1 text-sm font-medium text-slate-800 bg-slate-50 rounded-lg border-b-2 border-slate-200 focus:border-[#F15A24] outline-none px-3 py-2" />
+                    className="flex-1 min-w-0 text-sm font-medium text-slate-800 bg-slate-50 rounded-lg border-b-2 border-slate-200 focus:border-[#F15A24] outline-none px-3 py-2" />
                   <select value={q.question_type} onChange={(e) => changeType(i, e.target.value)}
-                    className="text-xs font-semibold text-slate-600 border border-slate-200 rounded-lg px-2 py-2 bg-white focus:border-[#F15A24] outline-none shrink-0">
+                    className="w-32 text-xs font-semibold text-slate-600 border border-slate-200 rounded-lg px-2 py-2 bg-white focus:border-[#F15A24] outline-none shrink-0">
                     {Q_TYPES.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
                   </select>
                 </div>
 
-                <div className="pl-7">
+                <div className="pl-11">
                   {isScale(q.question_type) && (
                     <div className="bg-slate-50 rounded-lg p-3 space-y-2.5">
                       <div className="flex items-center gap-2 text-xs text-slate-500">
@@ -643,13 +659,6 @@ function SurveyBuilder({ survey, isTemplate, courseLabel, onBack, flash }) {
             className="w-full bg-white rounded-2xl border-2 border-dashed border-slate-200 p-4 text-sm font-bold text-slate-500 hover:border-[#F15A24] hover:text-[#F15A24] hover:bg-orange-50/40 transition inline-flex items-center justify-center gap-1.5">
             {IC.plus} เพิ่มคำถาม
           </button>
-
-          {/* floating toolbar (สไตล์ Google Forms) */}
-          <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-white px-5 py-2.5 rounded-full shadow-xl border border-slate-200 flex items-center gap-4 z-40">
-            <button onClick={() => addQuestion("linear_scale")} className="text-[#F15A24] hover:text-[#c44215] text-xs font-bold inline-flex items-center gap-1.5">{IC.plus} เพิ่มคำถาม</button>
-            <div className="h-6 w-px bg-slate-200" />
-            <button onClick={onSave} disabled={saving} className="bg-[#F15A24] hover:bg-[#c44215] text-white px-4 py-1.5 rounded-full text-xs font-black inline-flex items-center gap-1.5 disabled:opacity-50">{IC.save} {saving ? "กำลังบันทึก…" : "บันทึก"}</button>
-          </div>
         </>
       ) : tab === "responses" ? (
         <ResponsesPanel survey={survey} questions={questions} flash={flash} />
