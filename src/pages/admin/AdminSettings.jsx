@@ -91,7 +91,7 @@ export default function AdminSettings() {
     if (!file) return
     setUploadingSchedule(true)
     try {
-      const url = await uploadCourseAsset(file, "schedule")
+      const url = await uploadCourseAsset(file, "schedule", event?.id)
       setForm((f) => ({ ...f, schedule_image_url: url }))
       toast("อัปโหลดรูปตารางแล้ว กดบันทึกเพื่อใช้งาน", "success")
     } catch (err) { toast("อัปโหลดไม่สำเร็จ: " + err.message, "error") }
@@ -107,7 +107,7 @@ export default function AdminSettings() {
     if (!file) return
     setUploadingBanner(true)
     try {
-      const url = await uploadCourseAsset(file, "banner")
+      const url = await uploadCourseAsset(file, "banner", event?.id)
       setForm((f) => ({ ...f, banner_image: url }))
       toast("อัปโหลดรูปแบนเนอร์แล้ว กดบันทึกเพื่อใช้งาน", "success")
     } catch (err) { toast("อัปโหลดไม่สำเร็จ: " + err.message, "error") }

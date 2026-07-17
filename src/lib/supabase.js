@@ -280,11 +280,12 @@ export async function savePortfolioUrl(registrationId, url) {
 }
 
 export async function uploadSlip(file, registrationId) {
-  const ext = file.name.split(".").pop()
+  const compressed = await compressImage(file)          // ← บีบก่อน (รูป→webp, PDF คืนไฟล์เดิม)
+  const ext = compressed.name.split(".").pop()
   const path = `${registrationId}.${ext}`
   const { error } = await supabase.storage
     .from("slips")
-    .upload(path, file, { upsert: true, cacheControl: "31536000" })   // ← cache 1 ปี
+    .upload(path, compressed, { upsert: true, cacheControl: "31536000" })   // ← cache 1 ปี
   if (error) throw error
   const { data } = supabase.storage.from("slips").getPublicUrl(path)
   return data.publicUrl
@@ -576,15 +577,21 @@ export async function fetchCoursesAdmin(eventId) {
 }
 
 // อัปโหลดรูป/ไฟล์ของวิชาขึ้น Storage (bucket: course-assets) → คืน public URL
-export async function uploadCourseAsset(file, folder) {
+// key (optional): ถ้าส่งมา → path ตายตัว `${folder}/${key}.${ext}` + upsert เขียนทับไฟล์เดิม
+// (กันไฟล์ขยะรูปเดี่ยว) พร้อมต่อ cache-buster กัน CDN cache รูปเก่า; ถ้าไม่ส่ง → path สุ่มเหมือนเดิม
+export async function uploadCourseAsset(file, folder, key) {
   const compressed = await compressImage(file)          // ← บีบก่อน
   const ext = compressed.name.split(".").pop()
-  const path = `${folder}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`
+  const deterministic = key != null && key !== ""
+  const path = deterministic
+    ? `${folder}/${key}.${ext}`
+    : `${folder}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`
   const { error } = await supabase.storage.from("course-assets")
-    .upload(path, compressed, { upsert: false, cacheControl: "31536000" })  // ← cache 1 ปี
+    .upload(path, compressed, { upsert: deterministic, cacheControl: "31536000" })  // ← cache 1 ปี
   if (error) throw error
   const { data } = supabase.storage.from("course-assets").getPublicUrl(path)
-  return data.publicUrl
+  // เขียนทับ path เดิม → ต้อง bust cache ไม่งั้นเห็นรูปเก่าได้นานถึง 1 ปี
+  return deterministic ? `${data.publicUrl}?v=${Date.now()}` : data.publicUrl
 }
 
 // คัดลอกคอร์ส (เลือกหลายคอร์ส) ไปยังงานปลายทาง — ไม่ก็อป seats_taken/ผู้สมัคร
@@ -983,8 +990,8 @@ export async function fetchCertificateRecipients(courseId) {
 }
 
 // อัปโหลดรูปพื้นหลังเกียรติบัตร → คืน public URL
-export async function uploadCertificateTemplate(file) {
-  return uploadCourseAsset(file, "certificates")
+export async function uploadCertificateTemplate(file, eventId) {
+  return uploadCourseAsset(file, "certificates", eventId)
 }
 
 // ═══════════════════════════════════════════════════════════════════

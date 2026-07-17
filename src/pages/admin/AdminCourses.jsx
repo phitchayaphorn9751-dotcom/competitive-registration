@@ -690,7 +690,7 @@ function CourseModal({ course, types, onSave, onClose }) {
     const file = e.target.files?.[0]
     if (!file) return
     setUploading(true)
-    try { set("line_qr_url", await uploadCourseAsset(file, "qr")) }
+    try { set("line_qr_url", await uploadCourseAsset(file, "qr", course.id || undefined)) }
     catch (err) { toast("อัปโหลด QR ไม่สำเร็จ: " + err.message, "error") }
     finally { setUploading(false); e.target.value = "" }
   }

@@ -56,7 +56,7 @@ export default function AdminCertificate() {
     if (!event?.id) return toast("ยังไม่ได้เลือกงาน", "error")
     setUploading(true)
     try {
-      const url = await uploadCertificateTemplate(file)
+      const url = await uploadCertificateTemplate(file, event.id)
       await updateEventSettings(event.id, { cert_template_url: url })
       setTemplateUrl(url)
       toast("ตั้งรูปพื้นหลังเรียบร้อย", "success")

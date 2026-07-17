@@ -10,12 +10,22 @@ import { useDialog } from "../../lib/dialog.jsx"
 import { Ico } from "../../lib/icons.jsx"
 
 const HEADER_MAP = {
-  "ชื่อ-สกุล": "full_name", "ชื่อ-นามสกุล": "full_name", "ชื่อ": "full_name", "full_name": "full_name", "name": "full_name",
-  "โรงเรียน": "school", "school": "school",
-  "ระดับชั้น": "grade_level", "ระดับ": "grade_level", "grade_level": "grade_level", "grade": "grade_level",
-  "เบอร์โทร": "phone", "เบอร์": "phone", "phone": "phone", "tel": "phone",
-  "อีเมล": "email", "email": "email", "e-mail": "email",
-  "เลขบัตรประชาชน": "national_id", "เลขบัตร": "national_id", "national_id": "national_id", "id_card": "national_id",
+  // ── ชื่อ: รองรับทั้งแบบรวมช่องเดียว และแบบแยก คำนำหน้า/ชื่อ/นามสกุล ──
+  "ชื่อ-สกุล": "full_name", "ชื่อ-นามสกุล": "full_name", "ชื่อ สกุล": "full_name",
+  "ชื่อ-สกุล ": "full_name", "full_name": "full_name", "name": "full_name", "fullname": "full_name",
+  "ชื่อ": "first_name", "ชื่อจริง": "first_name", "first_name": "first_name", "firstname": "first_name",
+  "นามสกุล": "last_name", "สกุล": "last_name", "last_name": "last_name", "lastname": "last_name", "surname": "last_name",
+  "คำนำหน้า": "title", "คำนำหน้าชื่อ": "title", "title": "title", "prefix": "title",
+  // ── ข้อมูลอื่น ──
+  "ชื่อเล่น": "nickname", "nickname": "nickname",
+  "อายุ": "age", "age": "age",
+  "โรงเรียน": "school", "school": "school", "สถานศึกษา": "school",
+  "ระดับชั้น": "grade_level", "ระดับ": "grade_level", "ชั้น": "grade_level", "grade_level": "grade_level", "grade": "grade_level",
+  "เบอร์โทร": "phone", "เบอร์": "phone", "เบอร์โทรศัพท์": "phone", "phone": "phone", "tel": "phone",
+  "อีเมล": "email", "email": "email", "e-mail": "email", "อีเมล์": "email",
+  "เลขบัตรประชาชน": "national_id", "เลขบัตร": "national_id", "เลขประจำตัวประชาชน": "national_id",
+  "national_id": "national_id", "id_card": "national_id",
+  "จังหวัด": "province", "province": "province",
   "คอร์ส": "course", "วิชา": "course", "เวิร์คช็อป": "course", "เวิร์คชอป": "course", "course": "course", "workshop": "course",
   "รอบ": "round", "session": "round", "round": "round", "เวลา": "round",
 }
@@ -36,14 +46,25 @@ function parseCsv(text) {
   const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n").filter((l) => l.trim() !== "")
   if (lines.length === 0) return { headers: [], fields: [], rows: [] }
   const headers = splitLine(lines[0])
-  const fields = headers.map((h) => HEADER_MAP[h.toLowerCase()] || HEADER_MAP[h] || null)
+  const fields = headers.map((h) => HEADER_MAP[normalizeHeader(h)] || null)
   const rows = lines.slice(1).map((line) => {
     const vals = splitLine(line)
     const raw = {}; headers.forEach((h, i) => { raw[h] = vals[i] || "" })
-    const mapped = {}; fields.forEach((f, i) => { if (f) mapped[f] = vals[i] || "" })
+    const mapped = {}; fields.forEach((f, i) => { if (f && !mapped[f]) mapped[f] = vals[i] || "" })
+    // ประกอบ full_name จากช่องแยก (คำนำหน้า + ชื่อ + นามสกุล) ถ้าไม่มีช่องรวม
+    if (!(mapped.full_name || "").trim()) {
+      const parts = [mapped.title, mapped.first_name, mapped.last_name]
+        .map((s) => (s || "").trim()).filter(Boolean)
+      if (parts.length) mapped.full_name = parts.join(" ")
+    }
     return { raw, mapped }
   }).filter((r) => (r.mapped.full_name || "").trim() !== "")
   return { headers, fields, rows }
+}
+
+// มีคอลัมน์ชื่อไหม — รับทั้ง "ชื่อ-สกุล" (ช่องรวม) หรือ "ชื่อ"+"นามสกุล" (ช่องแยก)
+function hasNameCol(fields) {
+  return fields.includes("full_name") || fields.includes("first_name")
 }
 
 const TITLE_PREFIXES = [
@@ -64,7 +85,10 @@ function splitTitle(fullName) {
 }
 
 function normalizeHeader(h) {
-  return String(h || "").trim().toLowerCase()
+  return String(h || "")
+    .replace(/^\uFEFF/, "")        // ตัด BOM (ไฟล์ Excel/Google Form)
+    .replace(/[\u200B-\u200D]/g, "") // ตัด zero-width
+    .trim().replace(/\s+/g, " ").toLowerCase()
 }
 
 // ── โรงเรียน autocomplete (ใช้ร่วมทุกฟอร์มกรอกเอง) ──
@@ -238,8 +262,8 @@ export default function AdminImport() {
     reader.onload = (ev) => {
       try {
         const parsed = parseCsv(ev.target.result)
-        if (!parsed.fields.includes("full_name")) {
-          toast("ไม่พบคอลัมน์ชื่อ — ต้องมีหัวคอลัมน์ 'ชื่อ-สกุล' หรือ 'full_name'", "error")
+        if (!hasNameCol(parsed.fields)) {
+          toast("ไม่พบคอลัมน์ชื่อ — ต้องมี 'ชื่อ-สกุล' หรือ 'ชื่อ' + 'นามสกุล'", "error")
           setRows([]); setHeaders([]); return
         }
         setHeaders(parsed.headers); setRows(parsed.rows)
@@ -305,8 +329,8 @@ export default function AdminImport() {
     reader.onload = (ev) => {
       try {
         const parsed = parseCsv(ev.target.result)
-        if (!parsed.fields.includes("full_name")) {
-          toast("ไม่พบคอลัมน์ชื่อ (ชื่อ-สกุล)", "error"); setAutoRows([]); setAutoHeaders([]); return
+        if (!hasNameCol(parsed.fields)) {
+          toast("ไม่พบคอลัมน์ชื่อ — ต้องมี 'ชื่อ-สกุล' หรือ 'ชื่อ' + 'นามสกุล'", "error"); setAutoRows([]); setAutoHeaders([]); return
         }
         if (!parsed.fields.includes("course")) {
           toast("ไม่พบคอลัมน์คอร์ส — โหมดอัตโนมัติต้องมีคอลัมน์ 'คอร์ส'", "error"); setAutoRows([]); setAutoHeaders([]); return
