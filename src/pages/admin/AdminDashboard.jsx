@@ -25,6 +25,9 @@ const STATUS_CFG = {
   held: { cls: "bg-orange-50 text-orange-700 border-orange-200", dot: "bg-orange-400", label: "กันที่นั่ง" },
 }
 const PAID_STATUSES = ["confirmed", "approved"]
+// การ์ด "ผู้สมัครทั้งหมด" — นับทุกใบสมัครที่กันที่นั่งแล้ว (ยืนยัน/รอพิจารณา/รอตรวจสลิป/รอชำระ/กันที่นั่ง)
+// ไม่รวม คิวสำรอง (ยังไม่ได้ที่นั่ง) · ไม่ผ่าน · หมดเวลา
+const SEAT_HELD_STATUSES = ["confirmed", "approved", "slip_uploaded", "submitted", "pending_payment", "held"]
 
 function StatusBadge({ status }) {
   const c = STATUS_CFG[status] || { cls: "bg-slate-100 text-slate-500 border-slate-200", dot: "bg-slate-400", label: status || "-" }
@@ -87,7 +90,7 @@ export default function AdminDashboard() {
 const [allCourses, setAllCourses] = useState([])  // ทุกวิชาในงาน (รวม 0 คน) — สำหรับ "จำนวนผู้สมัคร"
   const [showAllSchools, setShowAllSchools] = useState(false)  // ดูโรงเรียนทั้งหมด (ไม่จำกัด 10)
   const [exportOpen, setExportOpen] = useState(false)  // modal เลือกโหมด export
-  const [exportMode, setExportMode] = useState("combined")  // "combined" | "split"
+  const [exportSel, setExportSel] = useState("__combined")  // "__combined" | "__split" | ชื่อวิชา
 
   useEffect(() => {
     if (!event?.id) { setLoading(false); return }
@@ -400,8 +403,10 @@ const schoolRanking = useMemo(() => {
   )
 
   const timeLabels = { TODAY: "วันนี้", WEEK: "สัปดาห์นี้", MONTH: "เดือนนี้", ALL: "ทั้งหมด" }
+  // นับทุกใบสมัครที่กันที่นั่งแล้ว (คอนเฟิร์ม + รอพิจารณา/รอตรวจ/รอชำระ/กันที่นั่ง) — ไม่ unique
+  const seatHeldCount = filtered.filter((r) => SEAT_HELD_STATUSES.includes(r.status)).length
   const kpiCards = [
-    { title: "ผู้สมัครทั้งหมด", value: stats.totalUsers.toLocaleString(), unit: "คน", sub: todayUsers > 0 ? `+${todayUsers} วันนี้` : "ยังไม่มีวันนี้", color: "sky", icon: "users", onClick: () => drillDown("ผู้สมัครทั้งหมด", () => true) },
+    { title: "ผู้สมัครทั้งหมด", value: seatHeldCount.toLocaleString(), unit: "คน", sub: todayUsers > 0 ? `+${todayUsers} วันนี้` : "ยังไม่มีวันนี้", color: "sky", icon: "users", onClick: () => drillDown("ผู้สมัครทั้งหมด", (r) => SEAT_HELD_STATUSES.includes(r.status)) },
     { title: "รายได้รวม", value: stats.totalIncome.toLocaleString(), unit: "฿", sub: `เฉลี่ย ฿${stats.avgPerPaid.toLocaleString()}/คน`, color: "emerald", icon: "money", onClick: () => drillDown("ชำระแล้ว", isPaid) },
     { title: "Conversion", value: stats.totalUsers > 0 ? ((stats.uniquePaid / stats.totalUsers) * 100).toFixed(1) : 0, unit: "%", sub: `จ่ายจริง ${stats.uniquePaid.toLocaleString()} คน`, color: "violet", icon: "trend", onClick: () => drillDown("ชำระแล้ว", isPaid) },
     { title: "รอตรวจสลิป", value: stats.pendingSlips.toLocaleString(), unit: "รายการ", sub: stats.pendingSlips > 0 ? "ต้องรีบตรวจ" : "เคลียร์หมดแล้ว", color: "orange", icon: "clock", onClick: () => drillDown("รอตรวจสลิป", (r) => r.status === "slip_uploaded") },
@@ -941,37 +946,55 @@ const schoolRanking = useMemo(() => {
         </div>
       )}
 
-      {/* Export modal — เลือกโหมด รวม / แยก */}
+      {/* Export modal — ลิสต์เดียว: รวม / แยก / เลือกวิชาเดียว */}
       {exportOpen && (() => {
-        const courseCount = groupByCourse(filtered).length
-        const opts = [
-          { key: "combined", title: "รวมทุกวิชา (1 ไฟล์)", desc: "แยก section ตามวิชาในไฟล์เดียว" },
-          { key: "split", title: "แยกไฟล์ตามวิชา", desc: `ดาวน์โหลด ${courseCount} ไฟล์ (ไฟล์ละวิชา)` },
+        const courses = groupByCourse(filtered)
+        // ตัวเลือกพิเศษด้านบน + รายวิชาด้านล่าง
+        const specials = [
+          { key: "__combined", title: "รวมทุกวิชา (1 ไฟล์)", desc: "แยก section ตามวิชาในไฟล์เดียว", run: () => exportCombined(filtered, `Dashboard_${timeLabels[timeFilter]}`) },
+          { key: "__split", title: "แยกไฟล์ทุกวิชา", desc: `ดาวน์โหลด ${courses.length} ไฟล์ (ไฟล์ละวิชา)`, run: () => exportSplit(filtered) },
         ]
+        const courseOpts = courses.map((c) => ({
+          key: c.courseName, title: c.courseName, desc: `${c.regs.length} คน · 1 ไฟล์`,
+          run: () => exportCombined(c.regs, `วิชา_${c.courseName}`),
+        }))
+        const allOpts = [...specials, ...courseOpts]
+        const runExport = () => {
+          const sel = allOpts.find((o) => o.key === exportSel) || specials[0]
+          sel.run(); setExportOpen(false)
+        }
+        const Row = (o) => (
+          <button key={o.key} onClick={() => setExportSel(o.key)}
+            className={`w-full text-left rounded-xl border p-3 transition flex items-start gap-3 ${exportSel === o.key ? "border-[#F15A24] bg-orange-50" : "border-slate-200 hover:bg-slate-50"}`}>
+            <span className={`mt-0.5 w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${exportSel === o.key ? "border-[#F15A24]" : "border-slate-300"}`}>
+              {exportSel === o.key && <span className="w-2 h-2 rounded-full bg-[#F15A24]" />}
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-bold text-slate-800 truncate">{o.title}</span>
+              <span className="block text-xs text-slate-500 mt-0.5">{o.desc}</span>
+            </span>
+          </button>
+        )
         return (
           <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/60 backdrop-blur-sm" onClick={(e) => e.target === e.currentTarget && setExportOpen(false)}>
-            <div className="bg-white w-full sm:rounded-2xl sm:max-w-md flex flex-col shadow-2xl rounded-t-2xl overflow-hidden">
+            <div className="bg-white w-full sm:rounded-2xl sm:max-w-md flex flex-col max-h-[85dvh] sm:max-h-[80vh] shadow-2xl rounded-t-2xl overflow-hidden">
               <div className="bg-gradient-to-r from-[#F15A24] to-amber-500 px-5 py-4 flex justify-between items-center shrink-0">
                 <h3 className="text-base font-bold text-white flex items-center gap-2"><Ico.download className="w-4 h-4" /> Export ข้อมูล</h3>
                 <button onClick={() => setExportOpen(false)} className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xl font-bold flex items-center justify-center">×</button>
               </div>
-              <div className="p-5 space-y-3">
-                {opts.map((o) => (
-                  <button key={o.key} onClick={() => setExportMode(o.key)}
-                    className={`w-full text-left rounded-xl border p-4 transition flex items-start gap-3 ${exportMode === o.key ? "border-[#F15A24] bg-orange-50" : "border-slate-200 hover:bg-slate-50"}`}>
-                    <span className={`mt-0.5 w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${exportMode === o.key ? "border-[#F15A24]" : "border-slate-300"}`}>
-                      {exportMode === o.key && <span className="w-2 h-2 rounded-full bg-[#F15A24]" />}
-                    </span>
-                    <span>
-                      <span className="block text-sm font-bold text-slate-800">{o.title}</span>
-                      <span className="block text-xs text-slate-500 mt-0.5">{o.desc}</span>
-                    </span>
-                  </button>
-                ))}
+              <div className="p-4 space-y-2 overflow-y-auto flex-1">
+                {specials.map(Row)}
+                {courseOpts.length > 0 && (
+                  <div className="flex items-center gap-2 pt-2 pb-0.5">
+                    <span className="text-[11px] font-bold text-slate-400">เลือกเฉพาะวิชา</span>
+                    <span className="h-px bg-slate-100 flex-1" />
+                  </div>
+                )}
+                {courseOpts.map(Row)}
               </div>
               <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/80 flex justify-end gap-2 shrink-0">
                 <button onClick={() => setExportOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-xl text-sm font-bold transition">ยกเลิก</button>
-                <button onClick={() => { exportMode === "combined" ? exportCombined(filtered, `Dashboard_${timeLabels[timeFilter]}`) : exportSplit(filtered); setExportOpen(false) }}
+                <button onClick={runExport}
                   className="flex items-center gap-1.5 px-5 py-2 bg-[#F15A24] hover:bg-[#c44215] text-white rounded-xl text-sm font-bold transition"><Ico.download className="w-4 h-4" /> Export</button>
               </div>
             </div>
