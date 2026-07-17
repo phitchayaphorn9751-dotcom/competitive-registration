@@ -161,8 +161,10 @@ const [allCourses, setAllCourses] = useState([])  // ทุกวิชาใน
       const key = r.count_mode === "team" && r.reg_id ? `reg:${r.reg_id}` : `solo:${r.participant_id || r.reg_id}`
       regPrice.set(key, Math.max(regPrice.get(key) || 0, Number(r.price || 0)))
     })
-    const paidRegCount = regPrice.size
-    const totalIncome = [...regPrice.values()].reduce((s, v) => s + v, 0)  // Σ รายการสมัคร × ราคาวิชานั้น
+    // นับเฉพาะใบที่มีรายได้จริง (ราคา > 0 = มีจ่าย/แนบสลิป) — ใบฟรีไม่นับ
+    const paidVals = [...regPrice.values()].filter((v) => v > 0)
+    const paidRegCount = paidVals.length
+    const totalIncome = paidVals.reduce((s, v) => s + v, 0)  // Σ รายการสมัคร × ราคาวิชานั้น
     return {
       totalUsers: uniqueUsers.length,
       totalIncome,
