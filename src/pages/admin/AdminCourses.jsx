@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { useOutletContext } from "react-router-dom"
 import {
   fetchAllEvents, fetchCourseTypes, fetchCoursesAdmin, saveCourse, deleteCourse,
-  toggleCourseOpen, updateCapacity, emergencyCloseAll, fetchCourseParticipants,
+  toggleCourseOpen, setCourseClosedState, updateCapacity, emergencyCloseAll, fetchCourseParticipants,
   uploadCourseAsset, duplicateCourses,
 } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
@@ -52,7 +52,7 @@ export default function AdminCourses() {
     image_urls: [], detail_images: [], attachments: [], line_qr_url: "",
     type_id: types[0]?.id || "", count_mode: "person", team_size: 2,
     min_members: 1, max_members: 1,
-    capacity: 30, price: 0, is_open: true,
+    capacity: 30, price: 0, is_open: true, closed_state: null,
     seat_mode: "limited", require_portfolio: false,
     bank_account: "", bank_name: "", bank_holder: "",
     base_id: "", level: "", start_date: "", end_date: "", duration: "",
@@ -86,6 +86,10 @@ export default function AdminCourses() {
   }
   async function doToggle(c) {
     try { await toggleCourseOpen(c.id, !c.is_open); loadCourses(selEvent) }
+    catch (e) { toast("เปลี่ยนสถานะไม่สำเร็จ: " + e.message, "error") }
+  }
+  async function setClosed(c, state) {
+    try { await setCourseClosedState(c.id, state); loadCourses(selEvent) }
     catch (e) { toast("เปลี่ยนสถานะไม่สำเร็จ: " + e.message, "error") }
   }
   async function doCapacity(c, val) {
@@ -193,7 +197,7 @@ export default function AdminCourses() {
                   </div>
                   {/* การ์ด 2 คอลัมน์ */}
                   <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                    {items.map((course) => <CourseCardWide key={course.id} course={course} onEdit={openEdit} onDelete={doDelete} onToggle={doToggle} onView={setViewCourse} />)}
+                    {items.map((course) => <CourseCardWide key={course.id} course={course} onEdit={openEdit} onDelete={doDelete} onToggle={doToggle} onSetClosed={setClosed} onView={setViewCourse} />)}
                   </div>
                 </section>
               )
@@ -204,7 +208,7 @@ export default function AdminCourses() {
 
       {/* Mobile cards */}
       <div className="md:hidden space-y-3">
-        {filtered.map((course) => <CourseCardMobile key={course.id} course={course} onEdit={openEdit} onDelete={doDelete} onToggle={doToggle} onView={setViewCourse} />)}
+        {filtered.map((course) => <CourseCardMobile key={course.id} course={course} onEdit={openEdit} onDelete={doDelete} onToggle={doToggle} onSetClosed={setClosed} onView={setViewCourse} />)}
         {filtered.length === 0 && <div className="bg-white rounded-2xl p-12 text-center text-sm text-slate-400 shadow-sm border border-slate-100">ไม่พบรายวิชา</div>}
       </div>
 
@@ -320,7 +324,17 @@ function seatInfo(course) {
 
 // สีหมวดหมู่ใช้จาก lib กลาง (categoryColors.js) — admin ตั้งสีที่หน้า settings
 
-function CourseCardWide({ course, onEdit, onDelete, onToggle, onView }) {
+const CLOSED_OPTS = [["not_yet", "ยังไม่เปิดรับสมัคร"], ["closed", "ปิดรับสมัคร"]]
+function ClosedSelect({ value, onChange }) {
+  return (
+    <select value={value || "not_yet"} onClick={(e) => e.stopPropagation()} onChange={(e) => { e.stopPropagation(); onChange(e.target.value) }}
+      className="text-[10px] font-bold text-slate-500 border border-slate-200 rounded-lg px-1.5 py-1 bg-white focus:border-[#F15A24] outline-none cursor-pointer">
+      {CLOSED_OPTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+    </select>
+  )
+}
+
+function CourseCardWide({ course, onEdit, onDelete, onToggle, onSetClosed, onView }) {
   const { taken, cap, pct, isFull } = seatInfo(course)
   const instructors = (course.course_instructors || []).map((ci) => ci.instructors?.full_name).filter(Boolean)
   const typeLabel = course.course_types?.label
@@ -355,7 +369,9 @@ function CourseCardWide({ course, onEdit, onDelete, onToggle, onView }) {
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition duration-300 ${course.is_open ? "bg-emerald-500" : "bg-slate-300"}`}>
                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition duration-300 ${course.is_open ? "translate-x-6" : "translate-x-1"}`} />
               </button>
-              <span className={`text-[10px] font-bold ${course.is_open ? "text-emerald-600" : "text-slate-400"}`}>{course.is_open ? "เปิดรับ" : "ปิดรับ"}</span>
+              {course.is_open
+                ? <span className="text-[10px] font-bold text-emerald-600">เปิดรับ</span>
+                : <ClosedSelect value={course.closed_state} onChange={(v) => onSetClosed(course, v)} />}
             </div>
             <div className="text-right">
               {course.price > 0
@@ -428,7 +444,7 @@ function modeLabel(course) {
   return "เดี่ยว"
 }
 
-function CourseCardMobile({ course, onEdit, onDelete, onToggle, onView }) {
+function CourseCardMobile({ course, onEdit, onDelete, onToggle, onSetClosed, onView }) {
   const { taken, cap, pct, isFull } = seatInfo(course)
   const instructors = (course.course_instructors || []).map((ci) => ci.instructors?.full_name).filter(Boolean)
   const typeLabel = course.course_types?.label
@@ -462,7 +478,9 @@ function CourseCardMobile({ course, onEdit, onDelete, onToggle, onView }) {
           <button onClick={() => onToggle(course)} className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors ${course.is_open ? "bg-emerald-500" : "bg-slate-300"}`}>
             <span className={`inline-block w-4 h-4 bg-white rounded-full shadow transition-transform ${course.is_open ? "translate-x-6" : "translate-x-1"}`} />
           </button>
-          <span className={`text-[10px] font-bold ${course.is_open ? "text-emerald-600" : "text-slate-400"}`}>{course.is_open ? "เปิดรับ" : "ปิดรับ"}</span>
+          {course.is_open
+            ? <span className="text-[10px] font-bold text-emerald-600">เปิดรับ</span>
+            : <ClosedSelect value={course.closed_state} onChange={(v) => onSetClosed(course, v)} />}
         </div>
       </div>
 
@@ -1034,10 +1052,18 @@ function CourseModal({ course, types, onSave, onClose }) {
                 <div className="font-bold text-sm text-slate-800">สถานะรับสมัคร</div>
                 <div className="text-[11px] text-slate-400">เปิดให้ผู้ใช้เห็นและสมัครได้</div>
               </div>
-              <button type="button" onClick={() => set("is_open", !f.is_open)}
-                className={`relative inline-flex items-center h-7 rounded-full w-12 transition-colors ${f.is_open ? "bg-emerald-500" : "bg-slate-300"}`}>
-                <span className={`inline-block w-5 h-5 bg-white rounded-full shadow-md transition-transform ${f.is_open ? "translate-x-6" : "translate-x-1"}`} />
-              </button>
+              <div className="flex items-center gap-2">
+                {!f.is_open && (
+                  <select value={f.closed_state || "not_yet"} onChange={(e) => set("closed_state", e.target.value)}
+                    className="text-xs font-bold text-slate-600 border border-slate-200 rounded-lg px-2 py-1.5 bg-white focus:border-[#F15A24] outline-none">
+                    {CLOSED_OPTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  </select>
+                )}
+                <button type="button" onClick={() => set("is_open", !f.is_open)}
+                  className={`relative inline-flex items-center h-7 rounded-full w-12 transition-colors ${f.is_open ? "bg-emerald-500" : "bg-slate-300"}`}>
+                  <span className={`inline-block w-5 h-5 bg-white rounded-full shadow-md transition-transform ${f.is_open ? "translate-x-6" : "translate-x-1"}`} />
+                </button>
+              </div>
             </div>
           </div>
           <div className="px-5 pb-5 pt-2 grid grid-cols-2 gap-3 border-t border-slate-100 shrink-0">

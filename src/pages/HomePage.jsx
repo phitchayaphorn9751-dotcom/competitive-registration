@@ -4,6 +4,9 @@ import { fetchOpenEvent, fetchCourses, fetchSettings, fetchEventSettings } from 
 import { useLang, LangToggle } from "../lib/i18n.jsx"
 import { catColor } from "../lib/categoryColors.js"
 
+// ป้ายสถานะปิดรับ — 'closed' = ปิดรับสมัคร, อื่นๆ = ยังไม่เปิดรับสมัคร
+const closedLabel = (c) => (c?.closed_state === "closed" ? "ปิดรับสมัคร" : "ยังไม่เปิดรับสมัคร")
+
 // ───── ไอคอน SVG inline (สไตล์ lucide) — โทนเดียวกับหน้ารายการสมัครของฉัน ─────
 const Ico = {
   search:  (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>),
@@ -322,7 +325,7 @@ function CourseCard({ course, t, onDetail, onRegister }) {
         )}
         {isClosed ? (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
-            <span className="inline-flex items-center gap-1.5 bg-slate-700 text-white text-xs font-bold px-3 py-1 rounded-full"><Ico.lock className="w-3.5 h-3.5" /> ยังไม่เปิดรับสมัคร</span>
+            <span className="inline-flex items-center gap-1.5 bg-slate-700 text-white text-xs font-bold px-3 py-1 rounded-full"><Ico.lock className="w-3.5 h-3.5" /> {closedLabel(course)}</span>
           </div>
         ) : isFull && (
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-10">
@@ -393,7 +396,7 @@ function CourseCard({ course, t, onDetail, onRegister }) {
             </button>
             {isClosed ? (
               <button disabled className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-slate-400 bg-slate-100 border border-slate-200 cursor-not-allowed">
-                ยังไม่เปิดรับสมัคร
+                {closedLabel(course)}
               </button>
             ) : isExternal ? (
               <button onClick={onRegister}
@@ -701,7 +704,7 @@ function DetailModal({ course, t, onClose, onRegister }) {
           <button onClick={onClose} className="flex-1 sm:flex-none sm:px-8 py-3 rounded-xl font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition text-sm">ปิด</button>
           {isClosed ? (
             <button disabled className="flex-1 py-3 rounded-xl font-semibold text-slate-400 bg-slate-100 border border-slate-200 cursor-not-allowed text-sm flex items-center justify-center gap-2">
-              <Ico.lock className="w-4 h-4" /> ยังไม่เปิดรับสมัคร
+              <Ico.lock className="w-4 h-4" /> {closedLabel(course)}
             </button>
           ) : isExternal ? (
             <button onClick={onRegister}

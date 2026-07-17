@@ -6,8 +6,12 @@ import {
   createFormFromTemplate, fetchCoursesByType,
   fetchSurveyResponses, fetchResponseStats, uploadCourseAsset,
 } from "../../lib/supabase.js"
+import { useDialog } from "../../lib/dialog.jsx"
+import { Ico } from "../../lib/icons.jsx"
 
 const BRAND = "#F15A24"
+// URL หลักสำหรับลิงก์/QR สาธารณะ — ตั้ง VITE_SITE_URL ใน .env เพื่อกัน localhost หลุดในลิงก์แชร์
+const SITE_URL = import.meta.env.VITE_SITE_URL || (typeof window !== "undefined" ? window.location.origin : "")
 
 // 3 แพทเทิร์นแบบประเมิน (tag ให้แอดมินสร้าง/ทำสำเนาเป็นเทมเพลตเองได้)
 const PATTERNS = [
@@ -96,12 +100,12 @@ export default function AdminSurveys() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState("templates")   // templates | forms
   const [editing, setEditing] = useState(null)   // survey ที่กำลังแก้ (builder) | null = list
-  const [toast, setToast] = useState(null)
   const [modal, setModal] = useState(null)       // 'template' | 'form' | null
   const [busy, setBusy] = useState(false)
   const [respStats, setRespStats] = useState([])   // answers ของทุกฟอร์ม (คำนวณ stat cards)
 
-  function flash(msg, ok = true) { setToast({ msg, ok }); setTimeout(() => setToast(null), 2500) }
+  const { toast, confirm } = useDialog()   // pop up กลางจอ (เหมือนหน้าอื่น)
+  const flash = (msg, ok = true) => toast(msg, ok ? "success" : "error")
 
   useEffect(() => {
     if (!event?.id) { setLoading(false); return }
@@ -160,8 +164,9 @@ export default function AdminSurveys() {
     catch (e) { flash("ทำสำเนาไม่สำเร็จ: " + e.message, false) }
   }
   async function onDelete(s) {
-    if (!confirm(`ลบ "${s.title}"?\nคำถาม/คำตอบทั้งหมดจะหายไป`)) return
-    try { await deleteSurvey(s.id); await reload(); flash("ลบแล้ว") }
+    const ok = await confirm({ title: "ลบแบบประเมิน?", message: `ลบ "${s.title}"\nคำถาม/คำตอบทั้งหมดจะหายไป`, confirmText: "ลบ", tone: "danger" })
+    if (!ok) return
+    try { await deleteSurvey(s.id); await reload(); toast("ลบแล้ว") }
     catch (e) { flash("ลบไม่สำเร็จ: " + e.message, false) }
   }
   async function onToggleOpen(s) {
@@ -181,19 +186,23 @@ export default function AdminSurveys() {
   // ── โหมด list (2 แท็บ) ──
   return (
     <div className="space-y-4 pb-24 lg:pb-6 max-w-4xl mx-auto">
-      {toast && (
-        <div className={`fixed top-4 right-4 z-50 px-4 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg ${toast.ok ? "bg-emerald-500" : "bg-rose-500"}`}>{toast.msg}</div>
-      )}
       {modal === "template" && <TemplateModal busy={busy} onClose={() => setModal(null)} onCreate={createTemplate} />}
       {modal === "form" && <FormModal templates={templates} courses={courses} busy={busy} onClose={() => setModal(null)} onCreate={createForm} />}
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
-        <h1 className="text-lg font-extrabold text-slate-800">แบบประเมิน</h1>
-        <p className="text-xs text-slate-400 mt-0.5 mb-3">สร้างเทมเพลตคำถาม แล้วแตกเป็นแบบฟอร์มรายวิชา · แต่ละฟอร์มมีลิงก์/QR</p>
-        <div className="flex bg-slate-100 p-1 rounded-xl gap-0.5 w-fit">
-          <button onClick={() => setTab("templates")} className={tabCls(tab === "templates")}>เทมเพลต ({templates.length})</button>
-          <button onClick={() => setTab("forms")} className={tabCls(tab === "forms")}>แบบฟอร์ม ({forms.length})</button>
+      {/* หัวข้อหน้า — สไตล์เดียวกับหน้าอื่น (gradient) */}
+      <div className="flex items-center gap-2.5">
+        <div className="w-9 h-9 bg-gradient-to-br from-[#F15A24] to-amber-500 rounded-xl flex items-center justify-center shadow-sm shrink-0">
+          <Ico.clip className="w-5 h-5 text-white" />
         </div>
+        <div>
+          <h1 className="text-xl sm:text-2xl font-extrabold bg-gradient-to-r from-[#F15A24] to-amber-500 bg-clip-text text-transparent leading-tight">แบบประเมิน</h1>
+          <p className="text-slate-400 text-xs mt-0.5">สร้างเทมเพลตคำถาม แล้วแตกเป็นแบบฟอร์มรายวิชา · แต่ละฟอร์มมีลิงก์/QR</p>
+        </div>
+      </div>
+
+      <div className="flex bg-slate-100 p-1 rounded-xl gap-0.5 w-fit">
+        <button onClick={() => setTab("templates")} className={tabCls(tab === "templates")}>เทมเพลต ({templates.length})</button>
+        <button onClick={() => setTab("forms")} className={tabCls(tab === "forms")}>แบบฟอร์ม ({forms.length})</button>
       </div>
 
       {/* stat cards */}
@@ -513,7 +522,7 @@ function SurveyBuilder({ survey, isTemplate, courseLabel, onBack, flash }) {
     finally { setSaving(false) }
   }
 
-  const baseUrl = typeof window !== "undefined" ? window.location.origin : ""
+  const baseUrl = SITE_URL
 
   if (loading) return <div className="p-12 text-center text-slate-400">กำลังโหลด…</div>
 
