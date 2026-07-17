@@ -13,6 +13,7 @@ function normalize(raw) {
   return {
     title: meta.title || "แบบประเมิน",
     description: meta.description || "",
+    header_image: meta.header_image || meta.headerImage || null,
     is_open: meta.is_open !== false, // default เปิด ถ้าไม่ได้ระบุ
     questions: [...questions]
       .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
@@ -26,7 +27,6 @@ export default function SurveyFormPage() {
   const [loading, setLoading] = useState(true)
   const [loadErr, setLoadErr] = useState(null)
   const [answers, setAnswers] = useState({})   // { [questionId]: value }
-  const [name, setName] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
   const [err, setErr] = useState(null)
@@ -56,7 +56,7 @@ export default function SurveyFormPage() {
     }
     setSubmitting(true); setErr(null)
     try {
-      await submitSurveyResponse(surveyId, courseId || null, answers, name.trim())
+      await submitSurveyResponse(surveyId, courseId || null, answers, "")
       setDone(true)
     } catch (e) { setErr("ส่งไม่สำเร็จ: " + (e.message || "")) }
     finally { setSubmitting(false) }
@@ -84,14 +84,8 @@ export default function SurveyFormPage() {
             <h1 className="text-xl font-extrabold text-slate-800">{form.title}</h1>
             {form.description && <p className="text-sm text-slate-500 mt-1 whitespace-pre-line">{form.description}</p>}
           </div>
+          {form.header_image && <img src={form.header_image} alt="" className="w-full object-cover max-h-72" />}
         </div>
-
-        {/* ชื่อผู้ตอบ (ไม่บังคับ) */}
-        <Card>
-          <label className="text-sm font-bold text-slate-700 block mb-1.5">ชื่อผู้ตอบ <span className="text-slate-300 font-normal">(ไม่บังคับ)</span></label>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="ชื่อของคุณ"
-            className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:border-[#F15A24] outline-none transition" />
-        </Card>
 
         {/* คำถาม */}
         {form.questions.map((q, i) => (

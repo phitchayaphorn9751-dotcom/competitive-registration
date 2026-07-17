@@ -4,7 +4,7 @@ import {
   fetchSurveys, createSurvey, updateSurvey, deleteSurvey,
   fetchSurveyQuestions, saveSurveyQuestions, duplicateSurvey,
   createFormFromTemplate, fetchCoursesByType,
-  fetchSurveyResponses, fetchResponseStats,
+  fetchSurveyResponses, fetchResponseStats, uploadCourseAsset,
 } from "../../lib/supabase.js"
 
 const BRAND = "#F15A24"
@@ -432,11 +432,22 @@ function SurveyBuilder({ survey, isTemplate, courseLabel, onBack, flash }) {
   const [title, setTitle] = useState(survey.title || "")
   const [pattern, setPattern] = useState(survey.pattern || "")
   const [desc, setDesc] = useState(survey.description || "")
+  const [headerImage, setHeaderImage] = useState(survey.header_image || "")
+  const [uploadingImg, setUploadingImg] = useState(false)
   const [questions, setQuestions] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [tab, setTab] = useState("build")   // build | responses | share
   const [activeIdx, setActiveIdx] = useState(0)   // การ์ดคำถามที่กำลังแก้ (GG Form style)
+
+  async function handleHeaderUpload(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingImg(true)
+    try { setHeaderImage(await uploadCourseAsset(file, "survey", survey.id)) }
+    catch (err) { flash("อัปโหลดรูปไม่สำเร็จ: " + err.message, false) }
+    finally { setUploadingImg(false); e.target.value = "" }
+  }
 
   useEffect(() => {
     fetchSurveyQuestions(survey.id)
@@ -485,7 +496,7 @@ function SurveyBuilder({ survey, isTemplate, courseLabel, onBack, flash }) {
   function setScale(i, patch) { setQuestions((qs) => qs.map((q, j) => j === i ? { ...q, options: { ...defaultScale(), ...(q.options || {}), ...patch } } : q)) }
 
   async function saveMeta() {
-    await updateSurvey(survey.id, { title: title.trim() || "แบบประเมิน", pattern: pattern || null, description: desc })
+    await updateSurvey(survey.id, { title: title.trim() || "แบบประเมิน", pattern: pattern || null, description: desc, header_image: headerImage || null })
   }
   async function onSave() {
     // validate
@@ -556,6 +567,21 @@ function SurveyBuilder({ survey, isTemplate, courseLabel, onBack, flash }) {
                   {PATTERN_LABEL[pattern] ? `แพทเทิร์น ${PATTERN_LABEL[pattern]}` : ""}
                 </p>
               )}
+
+              {/* รูปหัวฟอร์ม (แสดงต่อจากชื่อในหน้าตอบ) */}
+              <div className="pt-3 mt-3 border-t border-slate-100">
+                {headerImage ? (
+                  <div className="relative">
+                    <img src={headerImage} alt="" className="w-full max-h-56 object-cover rounded-xl border border-slate-200" />
+                    <button onClick={() => setHeaderImage("")} className="absolute top-2 right-2 bg-white/90 hover:bg-white text-slate-500 hover:text-rose-500 rounded-lg p-1.5 shadow-sm">{IC.trash}</button>
+                  </div>
+                ) : (
+                  <label className={`flex items-center justify-center gap-2 border-2 border-dashed border-slate-200 rounded-xl py-4 text-xs font-bold text-slate-500 cursor-pointer hover:border-[#F15A24] hover:text-[#F15A24] hover:bg-orange-50/40 transition ${uploadingImg ? "opacity-60 pointer-events-none" : ""}`}>
+                    {IC.plus} {uploadingImg ? "กำลังอัปโหลด…" : "เพิ่มรูปหัวฟอร์ม (ไม่บังคับ)"}
+                    <input type="file" accept="image/*" onChange={handleHeaderUpload} className="hidden" />
+                  </label>
+                )}
+              </div>
             </div>
           </div>
 
