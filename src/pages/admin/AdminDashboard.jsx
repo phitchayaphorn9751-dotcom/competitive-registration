@@ -154,8 +154,15 @@ const [allCourses, setAllCourses] = useState([])  // ทุกวิชาใน
 
   const stats = useMemo(() => {
     const paidRows = filtered.filter(isPaid)
-    const totalIncome = paidRows.reduce((s, r) => s + Number(r.price || 0), 0)
     const uniquePaid = new Set(paidRows.map((r) => r.submitter_email)).size
+    // รวมเป็น "ใบสมัคร" — ทีม (reg_id เดียว) = 1 ใบ, เดี่ยว = ต่อคน; ราคาต่อใบ = ราคาวิชา (แถวหัวหน้า) นับครั้งเดียว
+    const regPrice = new Map()
+    paidRows.forEach((r) => {
+      const key = r.count_mode === "team" && r.reg_id ? `reg:${r.reg_id}` : `solo:${r.participant_id || r.reg_id}`
+      regPrice.set(key, Math.max(regPrice.get(key) || 0, Number(r.price || 0)))
+    })
+    const paidRegCount = regPrice.size
+    const totalIncome = [...regPrice.values()].reduce((s, v) => s + v, 0)  // Σ รายการสมัคร × ราคาวิชานั้น
     return {
       totalUsers: uniqueUsers.length,
       totalIncome,
@@ -164,7 +171,7 @@ const [allCourses, setAllCourses] = useState([])  // ทุกวิชาใน
       waitlist: filtered.filter((r) => r.status === "waitlist").length,
       uniquePaid,
       paidSeats: paidRows.length,
-      avgPerPaid: paidRows.length > 0 ? Math.round(totalIncome / paidRows.length) : 0,  // เฉลี่ยต่อใบสมัคร
+      paidRegCount,
     }
   }, [filtered, uniqueUsers])
 
@@ -407,7 +414,7 @@ const schoolRanking = useMemo(() => {
   const seatHeldCount = filtered.filter((r) => SEAT_HELD_STATUSES.includes(r.status)).length
   const kpiCards = [
     { title: "ผู้สมัครทั้งหมด", value: seatHeldCount.toLocaleString(), unit: "คน", sub: todayUsers > 0 ? `+${todayUsers} วันนี้` : "ยังไม่มีวันนี้", color: "sky", icon: "users", onClick: () => drillDown("ผู้สมัครทั้งหมด", (r) => SEAT_HELD_STATUSES.includes(r.status)) },
-    { title: "รายได้รวม", value: stats.totalIncome.toLocaleString(), unit: "฿", sub: `เฉลี่ย ฿${stats.avgPerPaid.toLocaleString()}/ใบ`, color: "emerald", icon: "money", onClick: () => drillDown("ชำระแล้ว", isPaid) },
+    { title: "รายได้รวม", value: stats.totalIncome.toLocaleString(), unit: "฿", sub: `${stats.paidRegCount.toLocaleString()} ใบ`, color: "emerald", icon: "money", onClick: () => drillDown("ชำระแล้ว", isPaid) },
     { title: "Conversion", value: stats.totalUsers > 0 ? ((stats.uniquePaid / stats.totalUsers) * 100).toFixed(1) : 0, unit: "%", sub: `จ่ายจริง ${stats.uniquePaid.toLocaleString()} คน`, color: "violet", icon: "trend", onClick: () => drillDown("ชำระแล้ว", isPaid) },
   ]
   const KPI_STYLE = {
