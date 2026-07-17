@@ -164,7 +164,7 @@ const [allCourses, setAllCourses] = useState([])  // ทุกวิชาใน
       waitlist: filtered.filter((r) => r.status === "waitlist").length,
       uniquePaid,
       paidSeats: paidRows.length,
-      avgPerPaid: uniquePaid > 0 ? Math.round(totalIncome / uniquePaid) : 0,
+      avgPerPaid: paidRows.length > 0 ? Math.round(totalIncome / paidRows.length) : 0,  // เฉลี่ยต่อใบสมัคร
     }
   }, [filtered, uniqueUsers])
 
@@ -407,9 +407,8 @@ const schoolRanking = useMemo(() => {
   const seatHeldCount = filtered.filter((r) => SEAT_HELD_STATUSES.includes(r.status)).length
   const kpiCards = [
     { title: "ผู้สมัครทั้งหมด", value: seatHeldCount.toLocaleString(), unit: "คน", sub: todayUsers > 0 ? `+${todayUsers} วันนี้` : "ยังไม่มีวันนี้", color: "sky", icon: "users", onClick: () => drillDown("ผู้สมัครทั้งหมด", (r) => SEAT_HELD_STATUSES.includes(r.status)) },
-    { title: "รายได้รวม", value: stats.totalIncome.toLocaleString(), unit: "฿", sub: `เฉลี่ย ฿${stats.avgPerPaid.toLocaleString()}/คน`, color: "emerald", icon: "money", onClick: () => drillDown("ชำระแล้ว", isPaid) },
+    { title: "รายได้รวม", value: stats.totalIncome.toLocaleString(), unit: "฿", sub: `เฉลี่ย ฿${stats.avgPerPaid.toLocaleString()}/ใบ`, color: "emerald", icon: "money", onClick: () => drillDown("ชำระแล้ว", isPaid) },
     { title: "Conversion", value: stats.totalUsers > 0 ? ((stats.uniquePaid / stats.totalUsers) * 100).toFixed(1) : 0, unit: "%", sub: `จ่ายจริง ${stats.uniquePaid.toLocaleString()} คน`, color: "violet", icon: "trend", onClick: () => drillDown("ชำระแล้ว", isPaid) },
-    { title: "รอตรวจสลิป", value: stats.pendingSlips.toLocaleString(), unit: "รายการ", sub: stats.pendingSlips > 0 ? "ต้องรีบตรวจ" : "เคลียร์หมดแล้ว", color: "orange", icon: "clock", onClick: () => drillDown("รอตรวจสลิป", (r) => r.status === "slip_uploaded") },
   ]
   const KPI_STYLE = {
     sky: { bg: "bg-sky-50", border: "border-sky-100", text: "text-sky-600", icon: "text-sky-500" },
@@ -481,7 +480,7 @@ const schoolRanking = useMemo(() => {
       </div>
 
       {/* KPI */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {kpiCards.map((k) => {
           const st = KPI_STYLE[k.color]
           const I = Ico[k.icon]
@@ -502,8 +501,7 @@ const schoolRanking = useMemo(() => {
       {/* ⭐ Action Center — ต้องรีบจัดการ */}
       <SectionCard
         title="ต้องรีบจัดการ" icon={Ico.clock}
-        className="bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-[#F15A24]/40"
-        headerClassName="border-orange-100"
+        className="bg-white border-slate-200"
         action={<span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${totalAction > 0 ? "text-[#F15A24] bg-white border-orange-200" : "text-emerald-600 bg-white border-emerald-100"}`}>{totalAction > 0 ? `${totalAction} รายการค้าง` : "เคลียร์หมดแล้ว"}</span>}
       >
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
