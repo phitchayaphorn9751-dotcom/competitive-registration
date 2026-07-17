@@ -1228,10 +1228,14 @@ export async function fetchSurveys(eventId) {
   }))
 }
 
-export async function createSurvey(eventId, { title, type_id, description, pattern }) {
+export async function createSurvey(eventId, { title, type_id, description, pattern, is_template, template_id, course_id }) {
   const { data, error } = await supabase
     .from("surveys")
-    .insert({ event_id: eventId, title, type_id: type_id || null, description: description || "", pattern: pattern || null })
+    .insert({
+      event_id: eventId, title, type_id: type_id || null, description: description || "",
+      pattern: pattern || null, is_template: !!is_template,
+      template_id: template_id || null, course_id: course_id || null,
+    })
     .select()
     .single()
   if (error) throw error
@@ -1243,11 +1247,22 @@ export async function duplicateSurvey(surveyId) {
   const { data: src, error: e1 } = await supabase.from("surveys").select("*").eq("id", surveyId).single()
   if (e1) throw e1
   const copy = await createSurvey(src.event_id, {
-    title: `${src.title} (สำเนา)`, type_id: src.type_id, description: src.description, pattern: src.pattern,
+    title: `${src.title} (สำเนา)`, type_id: src.type_id, description: src.description,
+    pattern: src.pattern, is_template: src.is_template, template_id: src.template_id, course_id: src.course_id,
   })
   const qs = await fetchSurveyQuestions(surveyId)
   if (qs.length) await saveSurveyQuestions(copy.id, qs)
   return copy
+}
+
+// สร้างแบบฟอร์มจากเทมเพลต — ก๊อปคำถามจากเทมเพลตมาเป็นฟอร์มใหม่ (สำเนาอิสระ)
+export async function createFormFromTemplate(templateId, { event_id, title, course_id, pattern }) {
+  const form = await createSurvey(event_id, {
+    title, pattern: pattern || null, is_template: false, template_id: templateId, course_id: course_id || null,
+  })
+  const qs = await fetchSurveyQuestions(templateId)
+  if (qs.length) await saveSurveyQuestions(form.id, qs)
+  return form
 }
 
 export async function updateSurvey(surveyId, fields) {
@@ -1322,6 +1337,28 @@ export async function getSurveyResults(surveyId, courseId = null) {
   })
   if (error) throw error
   return data
+}
+
+// ดึงคำตอบดิบของฟอร์ม (สำหรับหน้าวิเคราะห์ + CSV) — RLS แอดมินเปิดแล้ว
+export async function fetchSurveyResponses(surveyId) {
+  const { data, error } = await supabase
+    .from("survey_responses")
+    .select("*")
+    .eq("survey_id", surveyId)
+    .order("created_at", { ascending: true })
+  if (error) throw error
+  return data || []
+}
+
+// ดึง answers ของหลายฟอร์ม (สำหรับ stat card คะแนนเฉลี่ยรวม) — คิวรีเดียว
+export async function fetchResponseStats(formIds) {
+  if (!formIds?.length) return []
+  const { data, error } = await supabase
+    .from("survey_responses")
+    .select("answers")
+    .in("survey_id", formIds)
+  if (error) throw error
+  return data || []
 }
 // ── บีบอัดรูปก่อนอัป (ลด egress) ──
 async function compressImage(file, maxWidth = 1600, quality = 0.82) {

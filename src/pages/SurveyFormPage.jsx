@@ -119,9 +119,38 @@ export default function SurveyFormPage() {
               </div>
             )}
 
+            {q.question_type === "linear_scale" && (() => {
+              const cfg = (q.options && !Array.isArray(q.options)) ? q.options : {}
+              const min = Number(cfg.min ?? 1), max = Number(cfg.max ?? 5)
+              const nums = Array.from({ length: Math.max(1, max - min + 1) }, (_, i) => min + i)
+              return (
+                <div className="space-y-2">
+                  {(cfg.minLabel || cfg.maxLabel) && (
+                    <div className="flex justify-between text-[11px] text-slate-400 font-bold">
+                      <span>{cfg.minLabel || ""}</span><span>{cfg.maxLabel || ""}</span>
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    {nums.map((n) => (
+                      <button key={n} type="button" onClick={() => setA(q.id, n)}
+                        className={`w-11 h-11 rounded-xl border-2 text-sm font-bold transition ${Number(answers[q.id]) === n ? "border-[#F15A24] bg-orange-50 text-[#F15A24]" : "border-slate-200 text-slate-400 hover:border-slate-300"}`}>{n}</button>
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
+
+            {q.question_type === "dropdown" && (
+              <select value={answers[q.id] || ""} onChange={(e) => setA(q.id, e.target.value)}
+                className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-slate-50 focus:bg-white focus:border-[#F15A24] outline-none transition">
+                <option value="">— เลือก —</option>
+                {(Array.isArray(q.options) ? q.options : []).map((o, k) => <option key={k} value={o}>{o}</option>)}
+              </select>
+            )}
+
             {q.question_type === "radio" && (
               <div className="space-y-2">
-                {q.options.map((o, k) => (
+                {(Array.isArray(q.options) ? q.options : []).map((o, k) => (
                   <button key={k} type="button" onClick={() => setA(q.id, o)}
                     className={`w-full flex items-center gap-2.5 text-left px-3 py-2.5 rounded-xl border-2 transition ${answers[q.id] === o ? "border-[#F15A24] bg-orange-50" : "border-slate-200 hover:border-slate-300"}`}>
                     <span className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${answers[q.id] === o ? "border-[#F15A24]" : "border-slate-300"}`}>
