@@ -60,6 +60,8 @@ export default function CheckInPage() {
   const [dateKey, setDateKey] = useState("")
   const [scanInput, setScanInput] = useState("")
   const [last, setLast] = useState(null)
+  const [popupOpen, setPopupOpen] = useState(false)   // overlay แจ้งผลการสแกน
+  const popupTimer = useRef(null)
   const [logs, setLogs] = useState([])
   const [total, setTotal] = useState(0)
   const [cameraOpen, setCameraOpen] = useState(false)
@@ -116,13 +118,21 @@ export default function CheckInPage() {
     return () => { ch.unsubscribe() }
   }, [courseId, dateKey, loadLogs])
 
+  // แสดงผล + เด้ง popup · สำเร็จ = หายเอง 1.5 วิ, เคสอื่นค้างไว้จนแตะ/สแกนใหม่
+  function showResult(obj) {
+    if (popupTimer.current) { clearTimeout(popupTimer.current); popupTimer.current = null }
+    setLast(obj)
+    setPopupOpen(true)
+    if (obj.type === "success") popupTimer.current = setTimeout(() => setPopupOpen(false), 1500)
+  }
+
   async function process(token, method = "qr") {
     if (busyRef.current) return
     if (!courseId || !dateKey) { setCameraError("เลือกวิชาและวันก่อน"); return }
     // วิชามีหลายรอบ → ต้องเลือกรอบที่เปิดเช็คอินก่อน (บล็อกผิดรอบ)
     if (courseNeedsSession && !sessionId) {
       playSound("error")
-      setLast({ type: "error", msg: "เลือกรอบที่เปิดเช็คอินก่อน", sub: "วิชานี้มีหลายรอบ" })
+      showResult({ type: "error", msg: "เลือกรอบที่เปิดเช็คอินก่อน", sub: "วิชานี้มีหลายรอบ" })
       return
     }
     busyRef.current = true
@@ -133,7 +143,7 @@ export default function CheckInPage() {
         if (res?.reason === "WRONG_SESSION") {
           // เด็กอยู่คนละรอบกับที่แอดมินเปิด → บล็อก + บอกว่าเด็กอยู่รอบไหน
           const stuName = sessionLabelOf(res?.student_session)
-          setLast({
+          showResult({
             type: "error",
             msg: "ผิดรอบ! เช็คอินไม่ได้",
             sub: `${res.name || ""}${stuName ? ` — อยู่ ${stuName}` : ""}`,
@@ -144,19 +154,19 @@ export default function CheckInPage() {
             : res?.reason === "NOT_CONFIRMED" ? "ยังไม่ยืนยันการสมัคร"
             : res?.reason === "WRONG_COURSE" ? "ไม่ใช่ผู้สมัครวิชานี้"
             : "เช็คอินไม่สำเร็จ"
-          setLast({ type: "error", msg, sub: res?.name || "" })
+          showResult({ type: "error", msg, sub: res?.name || "" })
         }
       } else if (res.duplicate) {
         playSound("warning")
-        setLast({ type: "warning", msg: "เช็คอินไปแล้ว!", sub: `${res.name} · ${res.time || ""}`, session: res.session_label || sessionOf(res) })
+        showResult({ type: "warning", msg: "เช็คอินไปแล้ว!", sub: `${res.name} · ${res.time || ""}`, session: res.session_label || sessionOf(res) })
       } else {
         playSound("success")
-        setLast({ type: "success", msg: "เช็คอินสำเร็จ!", sub: `${res.name}${res.school ? " · " + res.school : ""}`, session: res.session_label || sessionOf(res) })
+        showResult({ type: "success", msg: "เช็คอินสำเร็จ!", sub: `${res.name}${res.school ? " · " + res.school : ""}`, session: res.session_label || sessionOf(res) })
         loadLogs()
       }
     } catch (e) {
       playSound("error")
-      setLast({ type: "error", msg: "เกิดข้อผิดพลาด", sub: e.message })
+      showResult({ type: "error", msg: "เกิดข้อผิดพลาด", sub: e.message })
     } finally {
       setTimeout(() => { busyRef.current = false }, 800)
     }
@@ -269,7 +279,29 @@ export default function CheckInPage() {
         @keyframes pulse2 { 0%,100%{opacity:1} 50%{opacity:.4} }
         @keyframes logIn { from{opacity:0;transform:translateX(-8px)} to{opacity:1;transform:translateX(0)} }
         @keyframes scanLine { 0%{top:0;opacity:1} 50%{top:calc(100% - 2px);opacity:.7} 100%{top:0;opacity:1} }
+        @keyframes popIn { from{opacity:0;transform:scale(.9)} to{opacity:1;transform:scale(1)} }
       `}</style>
+
+      {/* Popup แจ้งผลการสแกน — สำเร็จหายเอง, เคสผิดค้างไว้ · แตะเพื่อปิด */}
+      {popupOpen && last && (
+        <div onClick={() => setPopupOpen(false)}
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-sm">
+          <div style={{ animation: "popIn .15s ease-out" }}
+            className={`w-full max-w-sm rounded-3xl border-4 ${sc.bg} ${sc.border} shadow-2xl p-8 text-center`}>
+            <div className={`w-20 h-20 ${sc.iconBg} ${sc.iconColor} rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-inner`}>
+              <sc.Icon className="w-10 h-10" />
+            </div>
+            <div className={`text-2xl font-black ${sc.text} leading-tight mb-1`}>{last.msg}</div>
+            {last.sub && <div className="text-base text-slate-600 font-semibold mb-1">{last.sub}</div>}
+            {last.session && (
+              <div className="inline-flex items-center gap-1.5 bg-[#F15A24] text-white text-sm font-bold px-3 py-1 rounded-full mt-1">
+                <Ico.clock className="w-3.5 h-3.5" /> {last.session}
+              </div>
+            )}
+            {last.type !== "success" && <div className="mt-5 text-xs text-slate-400 font-semibold">แตะเพื่อปิด · สแกนคนถัดไปได้เลย</div>}
+          </div>
+        </div>
+      )}
 
       <div className="max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         <div className="flex items-center justify-between mb-5">
