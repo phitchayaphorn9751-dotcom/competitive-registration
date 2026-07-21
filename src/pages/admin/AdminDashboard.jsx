@@ -83,6 +83,7 @@ function mapDashCourse(c) {
   return {
     courseId: c.course_id, name: c.course_name, category: c.course_category || "อื่นๆ",
     capacity: Number(c.capacity || 0), seatMode: c.seat_mode || "", taken: Number(c.active_regs || 0), hasSessions,
+    closed: c.is_open === false,
     sessions: hasSessions ? sessions.map((s) => ({
       id: s.id, label: s.label || "รอบ", capacity: Number(s.capacity || 0),
       taken: sCounts[s.id] != null ? Number(sCounts[s.id]) : (s.taken != null ? Number(s.taken) : 0),
@@ -224,30 +225,21 @@ const [allCourses, setAllCourses] = useState([])  // ทุกวิชาใน
   // กรองตามหมวด (catFilter) ให้สอดคล้องกับตัวกรองด้านบน + เฉพาะวิชาที่เปิดรับ (is_open)
   const seatsByCategory = useMemo(() => {
     const courses = (allCourses || [])
-      .filter((c) => c.is_open)   // เฉพาะวิชาที่เปิดรับ
       .filter((c) => catFilter === "ALL" || (c.course_category || "อื่นๆ") === catFilter)
       .map(mapDashCourse)
 
-    // จัดกลุ่มตามหมวด
+    // จัดกลุ่มตามหมวด — วิชาเปิดขึ้นก่อน แล้วตามด้วยวิชาปิด (ในหมวดเดียวกัน)
     const catMap = {}
     courses.forEach((c) => {
       const k = c.category
       if (!catMap[k]) catMap[k] = []
       catMap[k].push(c)
     })
-    // เรียงวิชาในแต่ละหมวด (คนเยอะ→น้อย = มากบนสุด) + เรียงหมวดตามจำนวนวิชา
     return Object.entries(catMap).map(([category, list]) => ({
       category,
-      courses: list.sort((a, b) => b.taken - a.taken),
+      courses: list.sort((a, b) => (a.closed === b.closed ? b.taken - a.taken : a.closed ? 1 : -1)),
     })).sort((a, b) => b.courses.length - a.courses.length)
   }, [allCourses, catFilter])
-
-  // วิชาที่ปิดรับสมัคร (is_open=false) — แสดงแยกไว้ด้านล่าง
-  const closedCourses = useMemo(() => (allCourses || [])
-    .filter((c) => c.is_open === false)
-    .filter((c) => catFilter === "ALL" || (c.course_category || "อื่นๆ") === catFilter)
-    .map(mapDashCourse)
-    .sort((a, b) => b.taken - a.taken), [allCourses, catFilter])
 
   const categoryData = useMemo(() => {
     const c = {}
@@ -505,7 +497,7 @@ const schoolRanking = useMemo(() => {
       </div>
 
       {/* ⭐ จำนวนผู้สมัคร (แยกหมวด + แยกรอบ) + วิชาปิดรับด้านล่าง */}
-      {(seatsByCategory.length > 0 || closedCourses.length > 0) && (
+      {seatsByCategory.length > 0 && (
         <SectionCard title="จำนวนผู้สมัคร" icon={Ico.chart} action={<span className="text-xs text-slate-400">แยกตามหมวด</span>}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-5">
             {seatsByCategory.map((grp) => (
@@ -520,7 +512,10 @@ const schoolRanking = useMemo(() => {
                   {grp.courses.map((c) => (
                     <div key={c.courseId} onClick={() => openCourseDetail(c.courseId, c.name)}
                       className="px-2 py-2 rounded-xl hover:bg-orange-50/60 cursor-pointer transition">
-                      <div className="text-xs font-medium text-slate-700 truncate mb-1.5">{c.name}</div>
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="text-xs font-medium text-slate-700 truncate">{c.name}</span>
+                        {c.closed && <span className="text-[9px] font-bold text-slate-400 border border-slate-200 rounded px-1 py-px shrink-0">ปิดรับสมัคร</span>}
+                      </div>
                       {c.hasSessions
                         ? <div className="space-y-1.5 pl-1">{c.sessions.map((s) => renderSeatBar(s.taken, s.capacity, "", s.id, s.label))}</div>
                         : renderSeatBar(c.taken, c.capacity, c.seatMode, c.courseId, "")}
@@ -530,28 +525,6 @@ const schoolRanking = useMemo(() => {
               </div>
             ))}
           </div>
-
-          {/* วิชาที่ปิดรับสมัครแล้ว — แยกไว้ด้านล่าง (สีจาง) */}
-          {closedCourses.length > 0 && (
-            <div className="mt-6 pt-4 border-t border-slate-100">
-              <div className="flex items-center gap-2 mb-3">
-                <Ico.clock className="w-4 h-4 text-slate-400" />
-                <span className="text-xs font-bold text-slate-500">ปิดรับสมัครแล้ว</span>
-                <span className="text-[11px] text-slate-400">{closedCourses.length} รายการ</span>
-              </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-1 opacity-70">
-                {closedCourses.map((c) => (
-                  <div key={c.courseId} onClick={() => openCourseDetail(c.courseId, c.name)}
-                    className="px-2 py-2 rounded-xl hover:bg-slate-50 cursor-pointer transition">
-                    <div className="text-xs font-medium text-slate-500 truncate mb-1.5">{c.name}</div>
-                    {c.hasSessions
-                      ? <div className="space-y-1.5 pl-1">{c.sessions.map((s) => renderSeatBar(s.taken, s.capacity, "", s.id, s.label, true))}</div>
-                      : renderSeatBar(c.taken, c.capacity, c.seatMode, c.courseId, "", true)}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </SectionCard>
       )}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">

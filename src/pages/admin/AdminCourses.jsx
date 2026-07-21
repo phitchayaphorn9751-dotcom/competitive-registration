@@ -206,10 +206,29 @@ export default function AdminCourses() {
         )}
       </div>
 
-      {/* Mobile cards */}
-      <div className="md:hidden space-y-3">
-        {filtered.map((course) => <CourseCardMobile key={course.id} course={course} onEdit={openEdit} onDelete={doDelete} onToggle={doToggle} onSetClosed={setClosed} onView={setViewCourse} />)}
-        {filtered.length === 0 && <div className="bg-white rounded-2xl p-12 text-center text-sm text-slate-400 shadow-sm border border-slate-100">ไม่พบรายวิชา</div>}
+      {/* Mobile cards — แบ่ง section ตามหมวดเหมือน desktop */}
+      <div className="md:hidden">
+        {grouped.length === 0 ? (
+          <div className="bg-white rounded-2xl p-12 text-center text-sm text-slate-400 shadow-sm border border-slate-100">ไม่พบรายวิชา</div>
+        ) : (
+          <div className="space-y-6">
+            {grouped.map(({ label, items }) => {
+              const cc = catColor({ label })
+              return (
+                <section key={label}>
+                  <div className="flex items-center gap-2.5 mb-3">
+                    <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${cc.bg} ${cc.text}`}>{label}</span>
+                    <span className="text-xs font-bold text-slate-400">{items.length} วิชา</span>
+                    <div className="flex-1 h-px bg-slate-200" />
+                  </div>
+                  <div className="space-y-3">
+                    {items.map((course) => <CourseCardMobile key={course.id} course={course} onEdit={openEdit} onDelete={doDelete} onToggle={doToggle} onSetClosed={setClosed} onView={setViewCourse} />)}
+                  </div>
+                </section>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {showModal && editCourse && (
