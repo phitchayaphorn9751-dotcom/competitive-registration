@@ -73,6 +73,42 @@ function SectionCard({ title, icon: Icon, children, action, className = "", head
 
 const TOOLTIP_STYLE = { borderRadius: "12px", border: "none", boxShadow: "0 8px 24px rgba(0,0,0,.10)", fontSize: "12px" }
 
+// map คอร์สจาก RPC dashboard_courses → รูปแบบที่ใช้ในการ์ด "จำนวนผู้สมัคร"
+function mapDashCourse(c) {
+  let sessions = []
+  try { const raw = c.sessions; sessions = Array.isArray(raw) ? raw : (typeof raw === "string" ? JSON.parse(raw || "[]") : []) } catch { sessions = [] }
+  let sCounts = {}
+  try { const raw = c.session_counts; sCounts = (raw && typeof raw === "object" && !Array.isArray(raw)) ? raw : (typeof raw === "string" ? JSON.parse(raw || "{}") : {}) } catch { sCounts = {} }
+  const hasSessions = Array.isArray(sessions) && sessions.length > 0
+  return {
+    courseId: c.course_id, name: c.course_name, category: c.course_category || "อื่นๆ",
+    capacity: Number(c.capacity || 0), seatMode: c.seat_mode || "", taken: Number(c.active_regs || 0), hasSessions,
+    sessions: hasSessions ? sessions.map((s) => ({
+      id: s.id, label: s.label || "รอบ", capacity: Number(s.capacity || 0),
+      taken: sCounts[s.id] != null ? Number(sCounts[s.id]) : (s.taken != null ? Number(s.taken) : 0),
+    })) : [],
+  }
+}
+
+// แถบปรอทที่นั่ง 1 เส้น (dim = คอร์สปิดรับ ทำเป็นสีเทา)
+function renderSeatBar(taken, capacity, seatMode, keySuffix, label, dim = false) {
+  const unlimited = seatMode === "unlimited" || capacity <= 0
+  const pct = unlimited ? Math.min(85, Math.round(Math.log10(taken + 1) * 39)) : Math.min(100, Math.round((taken / capacity) * 100))
+  const isOver = !unlimited && taken >= capacity
+  const barColor = dim ? "bg-slate-300" : unlimited ? "bg-[#F15A24]" : isOver ? "bg-rose-500" : "bg-gradient-to-r from-[#F15A24] to-orange-300"
+  return (
+    <div key={keySuffix} className="flex items-center gap-3">
+      <div className="flex-1 min-w-0">
+        {label && <div className="text-[11px] text-slate-400 font-medium truncate mb-0.5">{label}</div>}
+        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden"><div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} /></div>
+      </div>
+      <span className={`text-xs font-bold shrink-0 ${dim ? "text-slate-400" : isOver ? "text-rose-500" : "text-slate-500"}`}>
+        {unlimited ? <span className="inline-flex items-center gap-1">{taken} <span className={dim ? "text-slate-400" : "text-[#F15A24]"}>· ∞</span></span> : `${taken}/${capacity}`}
+      </span>
+    </div>
+  )
+}
+
 export default function AdminDashboard() {
   const { event } = useOutletContext()
   const [rows, setRows] = useState([])
@@ -190,40 +226,7 @@ const [allCourses, setAllCourses] = useState([])  // ทุกวิชาใน
     const courses = (allCourses || [])
       .filter((c) => c.is_open)   // เฉพาะวิชาที่เปิดรับ
       .filter((c) => catFilter === "ALL" || (c.course_category || "อื่นๆ") === catFilter)
-      .map((c) => {
-        // parse sessions (jsonb)
-        let sessions = []
-        try {
-          const raw = c.sessions
-          sessions = Array.isArray(raw) ? raw : (typeof raw === "string" ? JSON.parse(raw || "[]") : [])
-        } catch { sessions = [] }
-        // parse session_counts { session_id: count }
-        let sCounts = {}
-        try {
-          const raw = c.session_counts
-          sCounts = (raw && typeof raw === "object" && !Array.isArray(raw)) ? raw : (typeof raw === "string" ? JSON.parse(raw || "{}") : {})
-        } catch { sCounts = {} }
-
-        const hasSessions = Array.isArray(sessions) && sessions.length > 0
-        const cap = Number(c.capacity || 0)
-        const taken = Number(c.active_regs || 0)
-        return {
-          courseId: c.course_id,
-          name: c.course_name,
-          category: c.course_category || "อื่นๆ",
-          capacity: cap,
-          seatMode: c.seat_mode || "",
-          taken,
-          hasSessions,
-          // แต่ละรอบ: label + capacity (จาก sessions jsonb) + taken (จาก session_counts ก่อน, fallback sessions.taken)
-          sessions: hasSessions ? sessions.map((s) => ({
-            id: s.id,
-            label: s.label || "รอบ",
-            capacity: Number(s.capacity || 0),
-            taken: sCounts[s.id] != null ? Number(sCounts[s.id]) : (s.taken != null ? Number(s.taken) : 0),
-          })) : [],
-        }
-      })
+      .map(mapDashCourse)
 
     // จัดกลุ่มตามหมวด
     const catMap = {}
@@ -238,6 +241,13 @@ const [allCourses, setAllCourses] = useState([])  // ทุกวิชาใน
       courses: list.sort((a, b) => b.taken - a.taken),
     })).sort((a, b) => b.courses.length - a.courses.length)
   }, [allCourses, catFilter])
+
+  // วิชาที่ปิดรับสมัคร (is_open=false) — แสดงแยกไว้ด้านล่าง
+  const closedCourses = useMemo(() => (allCourses || [])
+    .filter((c) => c.is_open === false)
+    .filter((c) => catFilter === "ALL" || (c.course_category || "อื่นๆ") === catFilter)
+    .map(mapDashCourse)
+    .sort((a, b) => b.taken - a.taken), [allCourses, catFilter])
 
   const categoryData = useMemo(() => {
     const c = {}
@@ -418,6 +428,7 @@ const schoolRanking = useMemo(() => {
     { title: "ผู้สมัครทั้งหมด", value: seatHeldCount.toLocaleString(), unit: "คน", sub: todayUsers > 0 ? `+${todayUsers} วันนี้` : "ยังไม่มีวันนี้", color: "sky", icon: "users", onClick: () => drillDown("ผู้สมัครทั้งหมด", (r) => SEAT_HELD_STATUSES.includes(r.status)) },
     { title: "รายได้รวม", value: stats.totalIncome.toLocaleString(), unit: "฿", sub: `${stats.paidRegCount.toLocaleString()} ใบ`, color: "emerald", icon: "money", onClick: () => drillDown("ชำระแล้ว", isPaid) },
     { title: "คิวสำรอง", value: stats.waitlist.toLocaleString(), unit: "รายการ", sub: stats.waitlist > 0 ? "รอที่นั่งว่าง" : "ไม่มีคิวสำรอง", color: "violet", icon: "clock", onClick: () => drillDown("คิวสำรอง", (r) => r.status === "waitlist") },
+    { title: "รอตรวจสลิป", value: stats.pendingSlips.toLocaleString(), unit: "รายการ", sub: stats.pendingSlips > 0 ? "ต้องรีบตรวจ" : "เคลียร์หมดแล้ว", color: "orange", icon: "receipt", onClick: () => drillDown("รอตรวจสลิป", (r) => r.status === "slip_uploaded") },
   ]
   const KPI_STYLE = {
     sky: { bg: "bg-sky-50", border: "border-sky-100", text: "text-sky-600", icon: "text-sky-500" },
@@ -475,7 +486,7 @@ const schoolRanking = useMemo(() => {
       </div>
 
       {/* KPI */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {kpiCards.map((k) => {
           const st = KPI_STYLE[k.color]
           const I = Ico[k.icon]
@@ -493,8 +504,8 @@ const schoolRanking = useMemo(() => {
         })}
       </div>
 
-      {/* ⭐ จำนวนผู้สมัคร (แยกหมวด + แยกรอบ) */}
-      {seatsByCategory.length > 0 && (
+      {/* ⭐ จำนวนผู้สมัคร (แยกหมวด + แยกรอบ) + วิชาปิดรับด้านล่าง */}
+      {(seatsByCategory.length > 0 || closedCourses.length > 0) && (
         <SectionCard title="จำนวนผู้สมัคร" icon={Ico.chart} action={<span className="text-xs text-slate-400">แยกตามหมวด</span>}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-5">
             {seatsByCategory.map((grp) => (
@@ -506,50 +517,41 @@ const schoolRanking = useMemo(() => {
                 </div>
                 {/* รายการวิชาในหมวด (มีรอบ = แตกปรอทแต่ละรอบข้างใน) */}
                 <div className="space-y-1">
-                  {grp.courses.map((c) => {
-                    // ── helper วาดแถบ 1 เส้น (ใช้ทั้งวิชาไม่มีรอบ และแต่ละรอบ) ──
-                    const renderBar = (taken, capacity, seatMode, keySuffix, label) => {
-                      const unlimited = seatMode === "unlimited" || capacity <= 0
-                      const pct = unlimited ? Math.min(85, Math.round(Math.log10(taken + 1) * 39)) : Math.min(100, Math.round((taken / capacity) * 100))
-                      const isOver = !unlimited && taken >= capacity   // เต็ม/เกิน = แดง
-                      const barColor = unlimited ? "bg-[#F15A24]" : isOver ? "bg-rose-500" : "bg-gradient-to-r from-[#F15A24] to-orange-300"
-                      return (
-                        <div key={keySuffix} className="flex items-center gap-3">
-                          <div className="flex-1 min-w-0">
-                            {label && <div className="text-[11px] text-slate-400 font-medium truncate mb-0.5">{label}</div>}
-                            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                              <div className={`h-full rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
-                            </div>
-                          </div>
-                          <span className={`text-xs font-bold shrink-0 ${isOver ? "text-rose-500" : "text-slate-500"}`}>
-                            {unlimited ? (
-                              <span className="inline-flex items-center gap-1">{taken} <span className="text-[#F15A24]">· ∞</span></span>
-                            ) : `${taken}/${capacity}`}
-                          </span>
-                        </div>
-                      )
-                    }
-                    return (
-                      <div key={c.courseId} onClick={() => openCourseDetail(c.courseId, c.name)}
-                        className="px-2 py-2 rounded-xl hover:bg-orange-50/60 cursor-pointer transition">
-                        {/* ชื่อวิชา (เดียว) */}
-                        <div className="text-xs font-medium text-slate-700 truncate mb-1.5">{c.name}</div>
-                        {c.hasSessions ? (
-                          /* มีรอบ — แตกปรอทแต่ละรอบ พร้อม label รอบ */
-                          <div className="space-y-1.5 pl-1">
-                            {c.sessions.map((s) => renderBar(s.taken, s.capacity, "", s.id, s.label))}
-                          </div>
-                        ) : (
-                          /* ไม่มีรอบ — ปรอทเดียว */
-                          renderBar(c.taken, c.capacity, c.seatMode, c.courseId, "")
-                        )}
-                      </div>
-                    )
-                  })}
+                  {grp.courses.map((c) => (
+                    <div key={c.courseId} onClick={() => openCourseDetail(c.courseId, c.name)}
+                      className="px-2 py-2 rounded-xl hover:bg-orange-50/60 cursor-pointer transition">
+                      <div className="text-xs font-medium text-slate-700 truncate mb-1.5">{c.name}</div>
+                      {c.hasSessions
+                        ? <div className="space-y-1.5 pl-1">{c.sessions.map((s) => renderSeatBar(s.taken, s.capacity, "", s.id, s.label))}</div>
+                        : renderSeatBar(c.taken, c.capacity, c.seatMode, c.courseId, "")}
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}
           </div>
+
+          {/* วิชาที่ปิดรับสมัครแล้ว — แยกไว้ด้านล่าง (สีจาง) */}
+          {closedCourses.length > 0 && (
+            <div className="mt-6 pt-4 border-t border-slate-100">
+              <div className="flex items-center gap-2 mb-3">
+                <Ico.clock className="w-4 h-4 text-slate-400" />
+                <span className="text-xs font-bold text-slate-500">ปิดรับสมัครแล้ว</span>
+                <span className="text-[11px] text-slate-400">{closedCourses.length} รายการ</span>
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-1 opacity-70">
+                {closedCourses.map((c) => (
+                  <div key={c.courseId} onClick={() => openCourseDetail(c.courseId, c.name)}
+                    className="px-2 py-2 rounded-xl hover:bg-slate-50 cursor-pointer transition">
+                    <div className="text-xs font-medium text-slate-500 truncate mb-1.5">{c.name}</div>
+                    {c.hasSessions
+                      ? <div className="space-y-1.5 pl-1">{c.sessions.map((s) => renderSeatBar(s.taken, s.capacity, "", s.id, s.label, true))}</div>
+                      : renderSeatBar(c.taken, c.capacity, c.seatMode, c.courseId, "", true)}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </SectionCard>
       )}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">

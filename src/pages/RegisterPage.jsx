@@ -348,19 +348,19 @@ export default function RegisterPage() {
   if (result) {
     if (result.isWaitlist) return <ResultScreen iconKey="list" color="slate"
       title="สมัครเรียบร้อย อยู่ในรายชื่อสำรอง"
-      msg={<SuccessMsg />}
+      msg={<SuccessMsg hasLine={!!course.line_qr_url} />}
       t={t} navigate={navigate} />
     if (result.requiresPayment) return <PaymentScreen course={course} regId={result.regId} t={t} navigate={navigate} />
     // ฟรี + แนบผลงาน → รอแอดมินอนุมัติ
     if (result.hasPortfolio || result.status === "submitted")
       return <ResultScreen iconKey="clock" color="orange"
         title="สมัครเรียบร้อย รอดำเนินการ"
-        msg={<SuccessMsg />}
+        msg={<SuccessMsg hasLine={!!course.line_qr_url} />}
         t={t} navigate={navigate} />
     // ฟรี + ไม่แนบผลงาน → ยืนยัน/กันที่นั่งเลย
     return <ResultScreen iconKey="check" color="emerald"
       title="สมัครเรียบร้อย รอดำเนินการ"
-      msg={<SuccessMsg />}
+      msg={<SuccessMsg hasLine={!!course.line_qr_url} />}
       t={t} navigate={navigate} />
   }
 
@@ -369,7 +369,7 @@ export default function RegisterPage() {
   if (isExternalCourse) {
     if (extDone) {
       return <ResultScreen iconKey="clock" color="orange" title="สมัครเรียบร้อย รอดำเนินการ"
-        msg={<SuccessMsg />}
+        msg={<SuccessMsg hasLine={!!course.line_qr_url} />}
         t={t} navigate={navigate} />
     }
     return (
@@ -752,7 +752,7 @@ export function PaymentScreen({ course, regId, t, navigate, deadline, isRejected
 
   if (done) return <ResultScreen iconKey="check" color="emerald"
     title="ส่งสลิปเรียบร้อย รอดำเนินการ"
-    msg={<SuccessMsg />}
+    msg={<SuccessMsg hasLine={!!course.line_qr_url} />}
     t={t} navigate={navigate} />
 
   return (
@@ -874,11 +874,15 @@ function ResultScreen({ iconKey, color, title, msg, t, navigate }) {
   )
 }
 
-// ข้อความสำเร็จมาตรฐาน — เน้นส่วน QR/Barcode ให้เด่น
-function SuccessMsg() {
+// ข้อความสำเร็จมาตรฐาน — พูดถึง QR ไลน์เฉพาะคอร์สที่มีกลุ่มไลน์ (line_qr_url)
+function SuccessMsg({ hasLine = false }) {
   return (
     <>
-      เมื่อดำเนินการสำเร็จ <span className="font-bold text-[#F15A24]">คุณจะได้รับ QR Code เข้ากลุ่มไลน์ และ Barcode ประจำการสมัครสำหรับเช็คอิน</span> · ติดตามสถานะได้ที่ 'ใบสมัครของฉัน'
+      เมื่อดำเนินการสำเร็จ <span className="font-bold text-[#F15A24]">
+        {hasLine
+          ? "คุณจะได้รับ QR Code เข้ากลุ่มไลน์ และ Barcode ประจำการสมัครสำหรับเช็คอิน"
+          : "คุณจะได้รับ Barcode ประจำการสมัครสำหรับเช็คอิน"}
+      </span> · ติดตามสถานะได้ที่ 'ใบสมัครของฉัน'
     </>
   )
 }
