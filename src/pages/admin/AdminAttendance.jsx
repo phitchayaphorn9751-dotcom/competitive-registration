@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react"
 import { useOutletContext } from "react-router-dom"
 import {
   fetchCoursesAdmin, attendanceRoster, attendanceMark, attendanceUnmark,
-  attendanceUpdate, attendanceSummary,
+  attendanceUpdate, attendanceSummary, fetchCourseParticipants,
 } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
 import { Ico } from "../../lib/icons.jsx"
@@ -30,6 +30,8 @@ export default function AdminAttendance() {
   const [search, setSearch] = useState("")
   const [busyId, setBusyId] = useState(null)
   const [historyOf, setHistoryOf] = useState(null)
+  const [pInfo, setPInfo] = useState({})            // participant_id → { code, sid, label } (รหัส + รอบ)
+  const [sessionFilter, setSessionFilter] = useState("All")   // กรองตามรอบ
 
   // โหลดวิชา
   useEffect(() => {
@@ -75,6 +77,34 @@ export default function AdminAttendance() {
     else loadOverall()
   }, [courseId, dateKey, viewMode, loadDaily, loadOverall])
 
+  // รอบของวิชา + map รหัส/รอบ ต่อผู้เข้าร่วม (ดึงจาก fetchCourseParticipants — ไม่ต้องแก้ RPC เช็คชื่อ)
+  const courseSessions = useMemo(() => {
+    const c = courses.find((x) => x.id === courseId)
+    let s = []
+    try { const raw = c?.sessions; s = Array.isArray(raw) ? raw : (typeof raw === "string" ? JSON.parse(raw || "[]") : []) } catch { s = [] }
+    return s
+  }, [courseId, courses])
+  const hasSessions = courseSessions.length > 0
+
+  useEffect(() => {
+    setSessionFilter("All")
+    if (!courseId) { setPInfo({}); return }
+    const lbl = (id) => courseSessions.find((s) => s.id === id)?.label || ""
+    fetchCourseParticipants(courseId).then((regs) => {
+      const m = {}
+      ;(regs || []).forEach((r) => (r.participants || []).forEach((p) => {
+        m[p.id] = { code: p.participant_code || "", sid: r.session_id || "", label: lbl(r.session_id) }
+      }))
+      setPInfo(m)
+    }).catch(() => setPInfo({}))
+  }, [courseId, courseSessions])
+
+  const withInfo = useCallback((r) => {
+    const i = pInfo[r.participant_id] || {}
+    return { ...r, code: i.code || "", sessionId: i.sid || "", sessionName: i.label || "" }
+  }, [pInfo])
+  const passSession = useCallback((r) => sessionFilter === "All" || (pInfo[r.participant_id]?.sid || "") === sessionFilter, [sessionFilter, pInfo])
+
   // ── actions (โหมดรายวัน) ──
   async function mark(p, present) {
     if (busyId === p.participant_id || p.present === present) return
@@ -115,34 +145,37 @@ export default function AdminAttendance() {
     }).sort((a, b) => a.full_name.localeCompare(b.full_name))
   }, [summary, totalSessions])
 
-  // ── filter ──
+  // ── filter (กรองตามรอบก่อน แล้วค่อยค้นหา/สถานะ) ──
+  const dailyBase = useMemo(() => roster.filter(passSession).map(withInfo), [roster, passSession, withInfo])
   const dailyStats = useMemo(() => {
-    const present = roster.filter((r) => r.present).length
-    return { total: roster.length, present, absent: roster.length - present }
-  }, [roster])
+    const present = dailyBase.filter((r) => r.present).length
+    return { total: dailyBase.length, present, absent: dailyBase.length - present }
+  }, [dailyBase])
 
-  const dailyFiltered = roster.filter((r) => {
+  const dailyFiltered = dailyBase.filter((r) => {
     const matchSearch = !search || (r.full_name || "").toLowerCase().includes(search.toLowerCase())
     const matchType = filterType === "All" || (filterType === "Present" ? r.present : !r.present)
     return matchSearch && matchType
   })
-  const overallFiltered = overallList.filter((s) => !search || (s.full_name || "").toLowerCase().includes(search.toLowerCase()))
+  const overallBase = useMemo(() => overallList.map(withInfo).filter(passSession), [overallList, withInfo, passSession])
+  const overallFiltered = overallBase.filter((s) => !search || (s.full_name || "").toLowerCase().includes(search.toLowerCase()))
 
   // ── export ──
   function exportCsv() {
     let headers, lines
+    const sessCol = hasSessions ? ["รอบ"] : []
     if (viewMode === "daily") {
-      headers = ["ชื่อ-สกุล", "โรงเรียน", "เบอร์", "วันที่", "สถานะ", "ประเมิน", "หมายเหตุ"]
+      headers = ["รหัส", "ชื่อ-สกุล", ...sessCol, "โรงเรียน", "เบอร์", "วันที่", "สถานะ", "ประเมิน", "หมายเหตุ"]
       lines = [headers.join(",")]
       dailyFiltered.forEach((r) => {
-        lines.push([r.full_name, r.school || "", r.phone || "", dateKey, r.present ? "มาเรียน" : "ขาด", r.present ? r.evaluation : "-", r.present ? r.note : "-"]
+        lines.push([r.code || "", r.full_name, ...(hasSessions ? [r.sessionName || ""] : []), r.school || "", r.phone || "", dateKey, r.present ? "มาเรียน" : "ขาด", r.present ? r.evaluation : "-", r.present ? r.note : "-"]
           .map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
       })
     } else {
-      headers = ["ชื่อ-สกุล", "โรงเรียน", "เบอร์", "มาเรียน", "ขาด", "ทั้งหมด", "เปอร์เซ็นต์", "ดีมาก", "ดี", "พอใช้", "ปรับปรุง", "ผล"]
+      headers = ["รหัส", "ชื่อ-สกุล", ...sessCol, "โรงเรียน", "เบอร์", "มาเรียน", "ขาด", "ทั้งหมด", "เปอร์เซ็นต์", "ดีมาก", "ดี", "พอใช้", "ปรับปรุง", "ผล"]
       lines = [headers.join(",")]
       overallFiltered.forEach((s) => {
-        lines.push([s.full_name, s.school || "", s.phone || "", s.presentCount, s.absentCount, s.totalSessions, s.percent + "%",
+        lines.push([s.code || "", s.full_name, ...(hasSessions ? [s.sessionName || ""] : []), s.school || "", s.phone || "", s.presentCount, s.absentCount, s.totalSessions, s.percent + "%",
           s.evalCounts["ดีมาก"], s.evalCounts["ดี"], s.evalCounts["พอใช้"], s.evalCounts["ปรับปรุง"], s.percent >= 80 ? "ผ่านเกณฑ์" : "ต่ำกว่าเกณฑ์"]
           .map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
       })
@@ -215,6 +248,19 @@ export default function AdminAttendance() {
             )}
           </div>
         )}
+
+        {/* รอบ (เฉพาะวิชาที่มีหลายรอบ) — แยกรอบให้เลือกดู/สรุป/export */}
+        {courseId && hasSessions && (
+          <div className="flex items-center gap-2 flex-wrap mt-3 pt-3 border-t border-slate-100">
+            <span className="text-[11px] font-bold text-slate-400 inline-flex items-center gap-1"><Ico.clock className="w-3.5 h-3.5 text-[#F15A24]" /> รอบ:</span>
+            <button onClick={() => setSessionFilter("All")}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${sessionFilter === "All" ? "bg-[#F15A24] text-white border-[#F15A24]" : "bg-white text-slate-500 border-slate-200 hover:border-orange-300"}`}>ทุกรอบ</button>
+            {courseSessions.map((s) => (
+              <button key={s.id} onClick={() => setSessionFilter(s.id)}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${sessionFilter === s.id ? "bg-[#F15A24] text-white border-[#F15A24]" : "bg-white text-slate-500 border-slate-200 hover:border-orange-300"}`}>{s.label || "รอบ"}</button>
+            ))}
+          </div>
+        )}
       </div>
 
       {loading && (
@@ -285,7 +331,7 @@ export default function AdminAttendance() {
                   : dailyFiltered.map((r, idx) => (
                     <tr key={r.participant_id} className={`transition ${busyId === r.participant_id ? "opacity-50" : r.present ? "bg-emerald-50/40 hover:bg-emerald-50/60" : "hover:bg-slate-50"}`}>
                       <td className="px-4 py-3 text-center text-slate-400 text-xs">{idx + 1}</td>
-                      <td className="px-4 py-3"><div className="font-bold text-slate-800 text-sm">{r.full_name}</div><div className="text-xs text-slate-400">{r.school || ""}{r.phone ? " · " + r.phone : ""}</div></td>
+                      <td className="px-4 py-3"><div className="font-bold text-slate-800 text-sm flex items-center gap-1.5">{r.full_name}{hasSessions && r.sessionName && <span className="text-[9px] font-bold text-[#F15A24] bg-orange-50 border border-orange-100 px-1.5 py-px rounded shrink-0">{r.sessionName}</span>}</div><div className="text-xs text-slate-400">{r.school || ""}{r.phone ? " · " + r.phone : ""}</div></td>
                       <td className="px-4 py-3 text-center">{r.present ? <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">{r.scanned_at ? new Date(r.scanned_at).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }) : "✓"}</span> : <span className="text-slate-300 text-xs">—</span>}</td>
                       <td className="px-4 py-3"><div className="flex justify-center gap-1.5">
                         <button onClick={() => mark(r, true)} disabled={busyId === r.participant_id} className={`px-3 py-1.5 rounded-lg font-bold text-xs border-2 transition ${r.present ? "bg-emerald-500 text-white border-emerald-500" : "bg-white text-slate-400 border-slate-200 hover:border-emerald-400 hover:text-emerald-600"}`}>มา</button>
@@ -338,7 +384,7 @@ export default function AdminAttendance() {
       {courseId && !loading && viewMode === "overall" && (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-            {[{ l: "ทั้งหมด", v: overallList.length, c: "sky", i: "users" }, { l: "ผ่านเกณฑ์ (≥80%)", v: overallList.filter((d) => d.percent >= 80).length, c: "emerald", i: "trophy" }, { l: "ต่ำกว่าเกณฑ์", v: overallList.filter((d) => d.percent < 80).length, c: "rose", i: "alert" }, { l: "จำนวนวันเรียน", v: totalSessions, c: "orange", i: "calendar" }].map((s) => {
+            {[{ l: "ทั้งหมด", v: overallBase.length, c: "sky", i: "users" }, { l: "ผ่านเกณฑ์ (≥80%)", v: overallBase.filter((d) => d.percent >= 80).length, c: "emerald", i: "trophy" }, { l: "ต่ำกว่าเกณฑ์", v: overallBase.filter((d) => d.percent < 80).length, c: "rose", i: "alert" }, { l: "จำนวนวันเรียน", v: totalSessions, c: "orange", i: "calendar" }].map((s) => {
               const I = Ico[s.i]
               const cmap = {
                 sky: { bg: "bg-sky-50 border-sky-100", num: "text-sky-700", lbl: "text-sky-500", ic: "text-sky-500" },
@@ -372,7 +418,7 @@ export default function AdminAttendance() {
                 {overallFiltered.length === 0 ? <tr><td colSpan={7} className="py-12 text-center text-slate-400 text-sm">ไม่พบข้อมูล</td></tr>
                   : overallFiltered.map((s) => (
                     <tr key={s.participant_id} className="hover:bg-slate-50 transition">
-                      <td className="px-4 py-3"><div className="font-bold text-slate-800 text-sm">{s.full_name}</div><div className="text-xs text-slate-400">{s.school || ""}{s.phone ? " · " + s.phone : ""}</div></td>
+                      <td className="px-4 py-3"><div className="font-bold text-slate-800 text-sm flex items-center gap-1.5">{s.full_name}{hasSessions && s.sessionName && <span className="text-[9px] font-bold text-[#F15A24] bg-orange-50 border border-orange-100 px-1.5 py-px rounded shrink-0">{s.sessionName}</span>}</div><div className="text-xs text-slate-400">{s.school || ""}{s.phone ? " · " + s.phone : ""}</div></td>
                       <td className="px-4 py-3 text-center"><span className="font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md text-sm">{s.presentCount}</span></td>
                       <td className="px-4 py-3 text-center"><span className="font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md text-sm">{s.absentCount}</span></td>
                       <td className="px-4 py-3 text-center"><div className="flex flex-col items-center gap-1"><span className={`font-bold text-sm ${s.percent >= 80 ? "text-emerald-700" : "text-rose-600"}`}>{s.percent}%</span><div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div className={`h-full rounded-full ${s.percent >= 80 ? "bg-emerald-400" : "bg-rose-400"}`} style={{ width: `${s.percent}%` }} /></div></div></td>

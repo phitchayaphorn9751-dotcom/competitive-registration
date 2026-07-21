@@ -1120,6 +1120,7 @@ function ParticipantsModal({ course, onClose }) {
     (r.participants || []).forEach((p) => {
       allRows.push({
         reg_id: r.id, theme_name: r.theme_name || "",
+        code: p.participant_code || "",
         name: p.full_name, school: p.school || "", grade: p.grade_level || "",
         phone: p.phone || "", email: r.submitter_email || "",
         advisor: r.advisors?.[0]?.full_name || "", status: r.status,
@@ -1154,6 +1155,7 @@ function ParticipantsModal({ course, onClose }) {
   // วิชาเดี่ยว: ตัดคอลัมน์ธีม/จำนวนคน → ชื่อวิชา | ชื่อคน | + ที่เหลือ
   function exportCsv() {
     const restCols = [
+      ["รหัส", (r) => r.code],
       ["โรงเรียน", (r) => r.school],
       ["ระดับชั้น", (r) => r.grade],
       ...(hasSessions ? [["รอบ", (r) => r.sessionName]] : []),

@@ -164,12 +164,12 @@ export default function AdminApplicants() {
   }
 
   function exportCsv() {
-    const headers = ["วิชา", "รอบ", "ชื่อ-สกุล", "โรงเรียน", "เบอร์โทร", "อีเมลผู้สมัคร", "สถานะ", "วันที่สมัคร"]
+    const headers = ["วิชา", "รอบ", "รหัส", "ชื่อ-สกุล", "โรงเรียน", "เบอร์โทร", "อีเมลผู้สมัคร", "สถานะ", "วันที่สมัคร"]
     const lines = [headers.join(",")]
     filtered.forEach((r) => {
       const sess = sessionText(r)
       ;(r.participants || [{}]).forEach((p) => {
-        const vals = [r.courses?.title || "", sess, p.full_name || "", p.school || "", p.phone || r.submitter_phone || "", r.submitter_email || "", r.status, fmtDate(r.created_at)]
+        const vals = [r.courses?.title || "", sess, p.participant_code || "", p.full_name || "", p.school || "", p.phone || r.submitter_phone || "", r.submitter_email || "", r.status, fmtDate(r.created_at)]
           .map((v) => `"${String(v).replace(/"/g, '""')}"`)
         lines.push(vals.join(","))
       })
