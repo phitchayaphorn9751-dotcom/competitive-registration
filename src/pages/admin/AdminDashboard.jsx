@@ -417,7 +417,7 @@ const schoolRanking = useMemo(() => {
   const kpiCards = [
     { title: "ผู้สมัครทั้งหมด", value: seatHeldCount.toLocaleString(), unit: "คน", sub: todayUsers > 0 ? `+${todayUsers} วันนี้` : "ยังไม่มีวันนี้", color: "sky", icon: "users", onClick: () => drillDown("ผู้สมัครทั้งหมด", (r) => SEAT_HELD_STATUSES.includes(r.status)) },
     { title: "รายได้รวม", value: stats.totalIncome.toLocaleString(), unit: "฿", sub: `${stats.paidRegCount.toLocaleString()} ใบ`, color: "emerald", icon: "money", onClick: () => drillDown("ชำระแล้ว", isPaid) },
-    { title: "Conversion", value: stats.totalUsers > 0 ? ((stats.uniquePaid / stats.totalUsers) * 100).toFixed(1) : 0, unit: "%", sub: `จ่ายจริง ${stats.uniquePaid.toLocaleString()} คน`, color: "violet", icon: "trend", onClick: () => drillDown("ชำระแล้ว", isPaid) },
+    { title: "คิวสำรอง", value: stats.waitlist.toLocaleString(), unit: "รายการ", sub: stats.waitlist > 0 ? "รอที่นั่งว่าง" : "ไม่มีคิวสำรอง", color: "violet", icon: "clock", onClick: () => drillDown("คิวสำรอง", (r) => r.status === "waitlist") },
   ]
   const KPI_STYLE = {
     sky: { bg: "bg-sky-50", border: "border-sky-100", text: "text-sky-600", icon: "text-sky-500" },
@@ -425,20 +425,6 @@ const schoolRanking = useMemo(() => {
     violet: { bg: "bg-violet-50", border: "border-violet-100", text: "text-violet-600", icon: "text-violet-500" },
     orange: { bg: "bg-orange-50", border: "border-orange-100", text: "text-[#F15A24]", icon: "text-[#F15A24]" },
   }
-
-  // การ์ด "ต้องรีบจัดการ" (Action Center)
-  const actionItems = [
-    { key: "slip", label: "รอตรวจสลิป", desc: "อัปโหลดสลิปแล้ว รอแอดมินยืนยัน", value: stats.pendingSlips, status: "slip_uploaded", filter: (r) => r.status === "slip_uploaded" },
-    { key: "pay", label: "รอชำระเงิน", desc: "จองที่นั่งแล้ว ยังไม่ได้จ่าย", value: stats.pendingPayment, status: "pending_payment", filter: (r) => r.status === "pending_payment" },
-    { key: "wait", label: "คิวสำรอง", desc: "รอที่นั่งว่างเพื่อเลื่อนขึ้น", value: stats.waitlist, status: "waitlist", filter: (r) => r.status === "waitlist" },
-  ]
-  const totalAction = actionItems.reduce((s, a) => s + a.value, 0)
-
-  const statusBadges = [
-    { label: "ไม่ผ่าน", value: filtered.filter((r) => r.status === "rejected").length, status: "rejected", filter: (r) => r.status === "rejected" },
-    { label: "กันที่นั่ง", value: filtered.filter((r) => r.status === "held").length, status: "held", filter: (r) => r.status === "held" },
-    { label: "รอพิจารณา", value: filtered.filter((r) => r.status === "submitted").length, status: "submitted", filter: (r) => r.status === "submitted" },
-  ].filter((b) => b.value > 0)
 
   return (
     <div className="space-y-4 pb-24 lg:pb-6">
@@ -506,43 +492,6 @@ const schoolRanking = useMemo(() => {
           )
         })}
       </div>
-
-      {/* ⭐ Action Center — ต้องรีบจัดการ */}
-      <SectionCard
-        title="ต้องรีบจัดการ" icon={Ico.clock}
-        className="bg-white border-slate-200"
-        action={<span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${totalAction > 0 ? "text-[#F15A24] bg-white border-orange-200" : "text-emerald-600 bg-white border-emerald-100"}`}>{totalAction > 0 ? `${totalAction} รายการค้าง` : "เคลียร์หมดแล้ว"}</span>}
-      >
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {actionItems.map((a) => {
-            const cfg = STATUS_CFG[a.status]
-            const active = a.value > 0
-            return (
-              <button key={a.key} onClick={() => drillDown(a.label, a.filter)}
-                className={`text-left rounded-xl border p-4 transition active:scale-[.98] ${active ? "bg-white border-slate-200 hover:shadow-md" : "bg-slate-50 border-slate-100 opacity-70"}`}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
-                    <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />{a.label}
-                  </span>
-                  <span className="text-2xl font-extrabold leading-none text-slate-700">{a.value}</span>
-                </div>
-                <p className="text-[11px] text-slate-500 leading-snug">{a.desc}</p>
-              </button>
-            )
-          })}
-        </div>
-        {statusBadges.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-slate-100">
-            <span className="text-[11px] font-semibold text-slate-400">สถานะอื่นๆ:</span>
-            {statusBadges.map((b) => (
-              <button key={b.label} onClick={() => drillDown(b.label, b.filter)}
-                className={`flex items-center gap-1.5 border px-3 py-1 rounded-full text-xs font-bold transition hover:shadow-sm active:scale-95 ${STATUS_CFG[b.status]?.cls || "bg-slate-100 text-slate-500 border-slate-200"}`}>
-                {b.label}<span className="bg-black/10 rounded-full px-1.5 py-0.5 text-[10px] font-black leading-none">{b.value}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </SectionCard>
 
       {/* ⭐ จำนวนผู้สมัคร (แยกหมวด + แยกรอบ) */}
       {seatsByCategory.length > 0 && (
