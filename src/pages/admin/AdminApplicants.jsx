@@ -133,12 +133,22 @@ export default function AdminApplicants() {
     return Object.entries(m).sort((a, b) => a[1].localeCompare(b[1]))
   }, [regs])
 
-  // รายการรอบ (สำหรับ filter) — ชื่อรอบที่ไม่ซ้ำจากใบสมัครที่มีรอบ
+  // รายการรอบ (สำหรับ filter) — อิงตามรอบที่กำหนดจริงในฐานข้อมูล (courses.sessions)
+  // และจำกัดตามวิชาที่เลือก → วิชาที่ไม่มีรอบจะไม่มีตัวเลือกรอบให้เลือก
   const sessionOptions = useMemo(() => {
     const set = new Set()
-    regs.forEach((r) => { const l = sessionLabel(r); if (l) set.add(l) })
+    regs.forEach((r) => {
+      if (courseFilter !== "all" && r.course_id !== courseFilter) return
+      const sessions = Array.isArray(r.courses?.sessions) ? r.courses.sessions : []
+      sessions.forEach((s) => { const l = (s.label || "").trim(); if (l) set.add(l) })
+    })
     return Array.from(set).sort((a, b) => a.localeCompare(b))
-  }, [regs])
+  }, [regs, courseFilter])
+
+  // ถ้าเปลี่ยนวิชาแล้วรอบที่เลือกไว้ไม่มีในวิชานั้น → รีเซ็ตกลับ "ทุกรอบ"
+  useEffect(() => {
+    if (sessionFilter !== "all" && !sessionOptions.includes(sessionFilter)) setSessionFilter("all")
+  }, [sessionOptions, sessionFilter])
 
   const filtered = useMemo(() => {
     return regs.filter((r) => {
