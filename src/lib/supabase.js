@@ -579,7 +579,7 @@ export async function fetchCoursesAdmin(eventId) {
 // อัปโหลดรูป/ไฟล์ของวิชาขึ้น Storage (bucket: course-assets) → คืน public URL
 // key (optional): ถ้าส่งมา → path ตายตัว `${folder}/${key}.${ext}` + upsert เขียนทับไฟล์เดิม
 // (กันไฟล์ขยะรูปเดี่ยว) พร้อมต่อ cache-buster กัน CDN cache รูปเก่า; ถ้าไม่ส่ง → path สุ่มเหมือนเดิม
-export async function uploadCourseAsset(file, folder, key) {
+export async function uploadCourseAsset(file, folder, key, { thumb = false } = {}) {
   const compressed = await compressImage(file)          // ← บีบก่อน
   const ext = compressed.name.split(".").pop()
   const deterministic = key != null && key !== ""
@@ -589,9 +589,21 @@ export async function uploadCourseAsset(file, folder, key) {
   const { error } = await supabase.storage.from("course-assets")
     .upload(path, compressed, { upsert: deterministic, cacheControl: "31536000" })  // ← cache 1 ปี
   if (error) throw error
+  // สร้าง thumbnail เล็ก (~480px) สำหรับการ์ดหน้าแรก → โหลดเร็ว. อัปที่ path เดิม + ".thumb.webp"
+  let hasThumb = false
+  if (thumb) {
+    try {
+      const small = await compressImage(file, 480, 0.7)
+      const { error: te } = await supabase.storage.from("course-assets")
+        .upload(`${path}.thumb.webp`, small, { upsert: true, cacheControl: "31536000" })
+      if (!te) hasThumb = true
+    } catch { /* thumb ไม่สำคัญ — ถ้าพลาดค่อยใช้รูปเต็มแทน */ }
+  }
   const { data } = supabase.storage.from("course-assets").getPublicUrl(path)
   // เขียนทับ path เดิม → ต้อง bust cache ไม่งั้นเห็นรูปเก่าได้นานถึง 1 ปี
-  return deterministic ? `${data.publicUrl}?v=${Date.now()}` : data.publicUrl
+  if (deterministic) return `${data.publicUrl}?v=${Date.now()}`
+  // แนบ ?th=1 บอกว่ามี thumbnail → การ์ดใช้รูปเล็ก. รูปเก่า (ไม่มี flag) ใช้รูปเต็มตามเดิม (ไม่ยิง 404)
+  return hasThumb ? `${data.publicUrl}?th=1` : data.publicUrl
 }
 
 // คัดลอกคอร์ส (เลือกหลายคอร์ส) ไปยังงานปลายทาง — ไม่ก็อป seats_taken/ผู้สมัคร

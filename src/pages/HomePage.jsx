@@ -42,11 +42,13 @@ export default function HomePage() {
 
   const [searchTerm, setSearchTerm] = useState(() => sessionStorage.getItem("home_searchTerm") || "")
   const [filterType, setFilterType] = useState(() => sessionStorage.getItem("home_filterType") || "All")
+  const [filterSession, setFilterSession] = useState(() => sessionStorage.getItem("home_filterSession") || "All")
   const [selected, setSelected] = useState(null)
 
-  // จำค่าค้นหา/หมวดหมู่ที่เลือกไว้ เมื่อกดเข้าไปหน้าสมัครแล้วกดกลับมาให้ค้างค่าเดิม
+  // จำค่าค้นหา/หมวดหมู่/รอบที่เลือกไว้ เมื่อกดเข้าไปหน้าสมัครแล้วกดกลับมาให้ค้างค่าเดิม
   useEffect(() => { sessionStorage.setItem("home_searchTerm", searchTerm) }, [searchTerm])
   useEffect(() => { sessionStorage.setItem("home_filterType", filterType) }, [filterType])
+  useEffect(() => { sessionStorage.setItem("home_filterSession", filterSession) }, [filterSession])
 
   useEffect(() => {
     async function load() {
@@ -77,11 +79,17 @@ export default function HomePage() {
 
   // ประเภทคอร์สสำหรับ filter (จาก course_types.label)
   const types = Array.from(new Set(courses.map((c) => c.course_types?.label).filter(Boolean)))
+  // รายชื่อรอบทั้งหมดที่ไม่ซ้ำ (จาก sessions[].label) สำหรับ dropdown เลือกรอบ
+  const sessionLabels = Array.from(new Set(
+    courses.flatMap((c) => (Array.isArray(c.sessions) ? c.sessions : []).map((s) => (s.label || "").trim()).filter(Boolean))
+  ))
 
   const filtered = courses.filter((c) => {
     const matchName = c.title?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchType = filterType === "All" || c.course_types?.label === filterType
-    return matchName && matchType
+    const matchSession = filterSession === "All" ||
+      (Array.isArray(c.sessions) && c.sessions.some((s) => (s.label || "").trim() === filterSession))
+    return matchName && matchType && matchSession
   })
 
   // จัดกลุ่มตามหมวดหมู่ (สำหรับแสดงแบบ section เมื่อดูทุกหมวด)
@@ -144,6 +152,13 @@ export default function HomePage() {
                     {types.map((tp) => <option key={tp} value={tp}>{tp}</option>)}
                   </select>
                 )}
+                {sessionLabels.length > 0 && (
+                  <select className="px-4 py-2.5 rounded-xl text-slate-800 text-sm outline-none focus:ring-2 focus:ring-[#F15A24]/40 bg-slate-50 focus:bg-white border border-slate-200 sm:w-44 transition"
+                    value={filterSession} onChange={(e) => setFilterSession(e.target.value)}>
+                    <option value="All">ทุกรอบ</option>
+                    {sessionLabels.map((sl) => <option key={sl} value={sl}>{sl}</option>)}
+                  </select>
+                )}
               </div>
             </div>
             <p className="text-center text-slate-400 text-sm mt-3">
@@ -187,6 +202,13 @@ export default function HomePage() {
                     {types.map((tp) => <option key={tp} value={tp}>{tp}</option>)}
                   </select>
                 )}
+                {sessionLabels.length > 0 && (
+                  <select className="px-4 py-2.5 rounded-xl text-slate-800 text-sm outline-none focus:ring-2 focus:ring-[#F15A24]/40 bg-white sm:w-44"
+                    value={filterSession} onChange={(e) => setFilterSession(e.target.value)}>
+                    <option value="All">ทุกรอบ</option>
+                    {sessionLabels.map((sl) => <option key={sl} value={sl}>{sl}</option>)}
+                  </select>
+                )}
               </div>
             </div>
 
@@ -204,7 +226,7 @@ export default function HomePage() {
           {scheduleUrl && (
             <button onClick={() => setShowSchedule(true)}
               className="block w-full rounded-2xl overflow-hidden border border-slate-200 shadow-sm hover:shadow-md transition group">
-              <img src={scheduleUrl} alt="ตารางกิจกรรม" className="w-full h-auto group-hover:scale-[1.01] transition-transform" />
+              <img src={scheduleUrl} alt="ตารางกิจกรรม" loading="lazy" decoding="async" className="w-full h-auto group-hover:scale-[1.01] transition-transform" />
             </button>
           )}
           {/* แบนเนอร์แจ้งเตือน */}
@@ -271,7 +293,7 @@ export default function HomePage() {
           <div className="relative max-w-5xl w-full max-h-[92vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
             <button onClick={() => setBannerView(false)}
               className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 text-slate-700 flex items-center justify-center shadow-lg hover:bg-white z-10 text-xl">×</button>
-            <img src={bannerImage} alt="แบนเนอร์" className="w-full h-auto rounded-2xl" />
+            <img src={bannerImage} alt="แบนเนอร์" loading="lazy" decoding="async" className="w-full h-auto rounded-2xl" />
           </div>
         </div>
       )}
@@ -282,7 +304,7 @@ export default function HomePage() {
           <div className="relative max-w-5xl w-full max-h-[92vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
             <button onClick={() => setShowSchedule(false)}
               className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/90 text-slate-700 flex items-center justify-center shadow-lg hover:bg-white z-10 text-xl">×</button>
-            <img src={scheduleUrl} alt="ตารางกิจกรรม" className="w-full h-auto rounded-2xl" />
+            <img src={scheduleUrl} alt="ตารางกิจกรรม" loading="lazy" decoding="async" className="w-full h-auto rounded-2xl" />
           </div>
         </div>
       )}
@@ -308,13 +330,19 @@ function CourseCard({ course, t, onDetail, onRegister }) {
   const isExternal = !!(course.external_url && course.external_url.trim())
   const isPaid = (course.price || 0) > 0
   const instructors = (course.course_instructors || []).map((ci) => ci.instructors?.full_name).filter(Boolean)
+  // การ์ด: ใช้รูป thumbnail เล็กถ้ามี flag ?th=1 (อัปหลังมีระบบ thumb) — รูปเก่าใช้รูปเต็มตามเดิม
+  const cardImg = course.image_url?.includes("th=1")
+    ? course.image_url.replace(/\?th=1$/, "") + ".thumb.webp"
+    : course.image_url
 
   return (
     <div className="relative bg-white rounded-2xl shadow-sm hover:shadow-md hover:border-orange-200 transition-all duration-300 border border-slate-100 flex flex-col overflow-hidden group">
       {/* Image */}
       <div className="h-48 sm:h-52 bg-slate-100 relative cursor-pointer overflow-hidden" onClick={onDetail}>
         {course.image_url ? (
-          <img src={course.image_url} alt={course.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+          <img src={cardImg} alt={course.title} loading="lazy" decoding="async"
+            onError={(e) => { if (cardImg !== course.image_url) { e.currentTarget.onerror = null; e.currentTarget.src = course.image_url } }}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
         ) : (
           <div className="h-full w-full flex items-center justify-center text-slate-300 bg-gradient-to-br from-orange-50 to-slate-100">
             <Ico.book className="w-12 h-12" />
@@ -546,7 +574,7 @@ function DetailModal({ course, t, onClose, onRegister }) {
           {/* รูปภาพ + carousel */}
           {images.length > 0 ? (
             <div className="relative h-56 sm:h-72 bg-slate-200">
-              <img src={images[imgIdx]} className="w-full h-full object-cover" alt={course.title} />
+              <img src={images[imgIdx]} loading="lazy" decoding="async" className="w-full h-full object-cover" alt={course.title} />
               {images.length > 1 && (
                 <>
                   <button onClick={() => setImgIdx((imgIdx - 1 + images.length) % images.length)}
@@ -650,7 +678,7 @@ function DetailModal({ course, t, onClose, onRegister }) {
             {Array.isArray(course.detail_images) && course.detail_images.length > 0 && (
               <div className="space-y-3">
                 {course.detail_images.map((src, i) => (
-                  <img key={i} src={src} alt={`${course.title} ${i + 1}`}
+                  <img key={i} src={src} alt={`${course.title} ${i + 1}`} loading="lazy" decoding="async"
                     className="w-full h-auto rounded-2xl border border-slate-100 shadow-sm" />
                 ))}
               </div>

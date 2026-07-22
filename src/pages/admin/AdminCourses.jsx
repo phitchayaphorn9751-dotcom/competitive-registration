@@ -718,7 +718,7 @@ function CourseModal({ course, types, onSave, onClose }) {
     setUploading(true)
     try {
       const urls = []
-      for (const file of files) urls.push(await uploadCourseAsset(file, "images"))
+      for (const file of files) urls.push(await uploadCourseAsset(file, "images", undefined, { thumb: true }))
       setF((prev) => ({ ...prev, image_urls: [...(prev.image_urls || []), ...urls] }))
     } catch (err) { toast("อัปโหลดรูปไม่สำเร็จ: " + err.message, "error") }
     finally { setUploading(false); e.target.value = "" }
