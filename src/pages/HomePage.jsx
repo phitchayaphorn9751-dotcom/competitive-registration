@@ -42,13 +42,11 @@ export default function HomePage() {
 
   const [searchTerm, setSearchTerm] = useState(() => sessionStorage.getItem("home_searchTerm") || "")
   const [filterType, setFilterType] = useState(() => sessionStorage.getItem("home_filterType") || "All")
-  const [filterSession, setFilterSession] = useState(() => sessionStorage.getItem("home_filterSession") || "All")
   const [selected, setSelected] = useState(null)
 
-  // จำค่าค้นหา/หมวดหมู่/รอบที่เลือกไว้ เมื่อกดเข้าไปหน้าสมัครแล้วกดกลับมาให้ค้างค่าเดิม
+  // จำค่าค้นหา/หมวดหมู่ที่เลือกไว้ เมื่อกดเข้าไปหน้าสมัครแล้วกดกลับมาให้ค้างค่าเดิม
   useEffect(() => { sessionStorage.setItem("home_searchTerm", searchTerm) }, [searchTerm])
   useEffect(() => { sessionStorage.setItem("home_filterType", filterType) }, [filterType])
-  useEffect(() => { sessionStorage.setItem("home_filterSession", filterSession) }, [filterSession])
 
   useEffect(() => {
     async function load() {
@@ -79,17 +77,11 @@ export default function HomePage() {
 
   // ประเภทคอร์สสำหรับ filter (จาก course_types.label)
   const types = Array.from(new Set(courses.map((c) => c.course_types?.label).filter(Boolean)))
-  // รายชื่อรอบทั้งหมดที่ไม่ซ้ำ (จาก sessions[].label) สำหรับ dropdown เลือกรอบ
-  const sessionLabels = Array.from(new Set(
-    courses.flatMap((c) => (Array.isArray(c.sessions) ? c.sessions : []).map((s) => (s.label || "").trim()).filter(Boolean))
-  ))
 
   const filtered = courses.filter((c) => {
     const matchName = c.title?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchType = filterType === "All" || c.course_types?.label === filterType
-    const matchSession = filterSession === "All" ||
-      (Array.isArray(c.sessions) && c.sessions.some((s) => (s.label || "").trim() === filterSession))
-    return matchName && matchType && matchSession
+    return matchName && matchType
   })
 
   // จัดกลุ่มตามหมวดหมู่ (สำหรับแสดงแบบ section เมื่อดูทุกหมวด)
@@ -152,13 +144,6 @@ export default function HomePage() {
                     {types.map((tp) => <option key={tp} value={tp}>{tp}</option>)}
                   </select>
                 )}
-                {sessionLabels.length > 0 && (
-                  <select className="px-4 py-2.5 rounded-xl text-slate-800 text-sm outline-none focus:ring-2 focus:ring-[#F15A24]/40 bg-slate-50 focus:bg-white border border-slate-200 sm:w-44 transition"
-                    value={filterSession} onChange={(e) => setFilterSession(e.target.value)}>
-                    <option value="All">ทุกรอบ</option>
-                    {sessionLabels.map((sl) => <option key={sl} value={sl}>{sl}</option>)}
-                  </select>
-                )}
               </div>
             </div>
             <p className="text-center text-slate-400 text-sm mt-3">
@@ -200,13 +185,6 @@ export default function HomePage() {
                     value={filterType} onChange={(e) => setFilterType(e.target.value)}>
                     <option value="All">ทุกหมวดหมู่</option>
                     {types.map((tp) => <option key={tp} value={tp}>{tp}</option>)}
-                  </select>
-                )}
-                {sessionLabels.length > 0 && (
-                  <select className="px-4 py-2.5 rounded-xl text-slate-800 text-sm outline-none focus:ring-2 focus:ring-[#F15A24]/40 bg-white sm:w-44"
-                    value={filterSession} onChange={(e) => setFilterSession(e.target.value)}>
-                    <option value="All">ทุกรอบ</option>
-                    {sessionLabels.map((sl) => <option key={sl} value={sl}>{sl}</option>)}
                   </select>
                 )}
               </div>

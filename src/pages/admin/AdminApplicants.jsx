@@ -41,6 +41,14 @@ function sessionText(r) {
   return label || time || ""
 }
 
+// ชื่อรอบล้วน (ใช้กับ dropdown กรองรอบ)
+function sessionLabel(r) {
+  if (!r.session_id) return ""
+  const sessions = r.courses?.sessions || []
+  const s = Array.isArray(sessions) ? sessions.find((x) => x.id === r.session_id) : null
+  return (s?.label || "").trim()
+}
+
 // pills: key + label + สี
 // สถานะรวม 4 แบบ (ไม่แยกมีค่าใช้จ่าย/ไม่มี)
 const FILTERS = [
@@ -82,6 +90,7 @@ export default function AdminApplicants() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState("all")
   const [courseFilter, setCourseFilter] = useState("all")
+  const [sessionFilter, setSessionFilter] = useState("all")
   const [search, setSearch] = useState("")
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(20)
@@ -124,10 +133,18 @@ export default function AdminApplicants() {
     return Object.entries(m).sort((a, b) => a[1].localeCompare(b[1]))
   }, [regs])
 
+  // รายการรอบ (สำหรับ filter) — ชื่อรอบที่ไม่ซ้ำจากใบสมัครที่มีรอบ
+  const sessionOptions = useMemo(() => {
+    const set = new Set()
+    regs.forEach((r) => { const l = sessionLabel(r); if (l) set.add(l) })
+    return Array.from(set).sort((a, b) => a.localeCompare(b))
+  }, [regs])
+
   const filtered = useMemo(() => {
     return regs.filter((r) => {
       if (filter !== "all" && unifyStatus(r) !== filter) return false
       if (courseFilter !== "all" && r.course_id !== courseFilter) return false
+      if (sessionFilter !== "all" && sessionLabel(r) !== sessionFilter) return false
       if (search) {
         const q = search.toLowerCase()
         const names = (r.participants || []).map((p) => (p.full_name || "").toLowerCase()).join(" ")
@@ -140,7 +157,7 @@ export default function AdminApplicants() {
       }
       return true
     })
-  }, [regs, filter, courseFilter, search])
+  }, [regs, filter, courseFilter, sessionFilter, search])
 
   const totalPages = Math.ceil(filtered.length / perPage)
   const firstIdx = (page - 1) * perPage
@@ -219,7 +236,7 @@ export default function AdminApplicants() {
 
       {/* Search + course filter — สไตล์ search box หน้ารายการสมัครของฉัน */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 mb-4">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className={`grid grid-cols-1 gap-3 ${sessionOptions.length > 0 ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
           <div className="sm:col-span-2 relative">
             <Ico.search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }}
@@ -231,6 +248,13 @@ export default function AdminApplicants() {
             <option value="all">ทุกวิชา</option>
             {courseOptions.map(([id, title]) => <option key={id} value={id}>{title}</option>)}
           </select>
+          {sessionOptions.length > 0 && (
+            <select value={sessionFilter} onChange={(e) => { setSessionFilter(e.target.value); setPage(1) }}
+              className="w-full px-3 py-2.5 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-[#F15A24]/40 focus:border-[#F15A24] text-sm text-slate-700 bg-slate-50 focus:bg-white transition">
+              <option value="all">ทุกรอบ</option>
+              {sessionOptions.map((sl) => <option key={sl} value={sl}>{sl}</option>)}
+            </select>
+          )}
         </div>
       </div>
 
