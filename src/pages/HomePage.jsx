@@ -40,9 +40,13 @@ export default function HomePage() {
   const [bannerImage, setBannerImage] = useState("")
   const [bannerView, setBannerView] = useState(false) // เปิดดูรูป banner เต็ม
 
-  const [searchTerm, setSearchTerm] = useState("")
-  const [filterType, setFilterType] = useState("All")
+  const [searchTerm, setSearchTerm] = useState(() => sessionStorage.getItem("home_searchTerm") || "")
+  const [filterType, setFilterType] = useState(() => sessionStorage.getItem("home_filterType") || "All")
   const [selected, setSelected] = useState(null)
+
+  // จำค่าค้นหา/หมวดหมู่ที่เลือกไว้ เมื่อกดเข้าไปหน้าสมัครแล้วกดกลับมาให้ค้างค่าเดิม
+  useEffect(() => { sessionStorage.setItem("home_searchTerm", searchTerm) }, [searchTerm])
+  useEffect(() => { sessionStorage.setItem("home_filterType", filterType) }, [filterType])
 
   useEffect(() => {
     async function load() {

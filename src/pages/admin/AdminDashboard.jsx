@@ -124,6 +124,7 @@ export default function AdminDashboard() {
   const [expandedTeams, setExpandedTeams] = useState({})  // {groupKey: true} — ทีมที่กางดูสมาชิก
   const [selectedUser, setSelectedUser] = useState(null)
   const [courseDetail, setCourseDetail] = useState(null)
+  const [regListOpen, setRegListOpen] = useState(false)  // เปิดรายชื่อผู้สมัครในวิชา (กดจากจำนวนผู้สมัคร)
 const [allCourses, setAllCourses] = useState([])  // ทุกวิชาในงาน (รวม 0 คน) — สำหรับ "จำนวนผู้สมัคร"
   const [showAllSchools, setShowAllSchools] = useState(false)  // ดูโรงเรียนทั้งหมด (ไม่จำกัด 10)
   const [exportOpen, setExportOpen] = useState(false)  // modal เลือกโหมด export
@@ -297,6 +298,7 @@ const schoolRanking = useMemo(() => {
     const gradeMap = {}
     regs.forEach((r) => { const g = r.grade_level || "ไม่ระบุ"; gradeMap[g] = (gradeMap[g] || 0) + 1 })
     const grades = Object.entries(gradeMap).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count)
+    setRegListOpen(false)
     setCourseDetail({ courseName, regs, schools, grades, revenue: regs.reduce((s, r) => s + Number(r.price || 0), 0) })
   }
 
@@ -823,7 +825,7 @@ const schoolRanking = useMemo(() => {
               <button onClick={() => setCourseDetail(null)} className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xl font-bold flex items-center justify-center shrink-0">×</button>
             </div>
             <div className="grid grid-cols-3 divide-x divide-slate-100 border-b border-slate-100 shrink-0">
-              <div className="px-4 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">ผู้สมัคร</p><p className="text-lg font-extrabold text-emerald-600">{courseDetail.regs.length} <span className="text-xs font-normal">คน</span></p></div>
+              <button onClick={() => setRegListOpen(true)} className="px-4 py-3 text-center hover:bg-emerald-50 transition group focus:outline-none" title="ดูรายชื่อผู้สมัคร"><p className="text-[10px] text-slate-400 mb-0.5 group-hover:text-emerald-500 flex items-center justify-center gap-0.5">ผู้สมัคร <Ico.arrowRight className="w-3 h-3" /></p><p className="text-lg font-extrabold text-emerald-600 underline decoration-dotted decoration-emerald-300 underline-offset-4">{courseDetail.regs.length} <span className="text-xs font-normal">คน</span></p></button>
               <div className="px-4 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">รายได้รวม</p><p className="text-lg font-extrabold text-[#F15A24]">฿{courseDetail.revenue.toLocaleString()}</p></div>
               <div className="px-4 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">โรงเรียน</p><p className="text-lg font-extrabold text-violet-600">{courseDetail.schools.length} <span className="text-xs font-normal">แห่ง</span></p></div>
             </div>
@@ -876,6 +878,69 @@ const schoolRanking = useMemo(() => {
           </div>
         </div>
       )}
+
+      {/* Applicant name list modal — เปิดจากการกด "จำนวนผู้สมัคร" ในสรุปวิชา */}
+      {courseDetail && regListOpen && (() => {
+        // จัดกลุ่มตามธีม (ถ้าไม่มีธีมเลย → ลิสต์เดียว ไม่มีคอลัมน์ธีม)
+        const groupMap = {}
+        courseDetail.regs.forEach((r) => {
+          const key = (r.theme_name || "").trim()
+          if (!groupMap[key]) groupMap[key] = []
+          groupMap[key].push(r)
+        })
+        const hasThemes = Object.keys(groupMap).some((k) => k !== "")
+        const themeGroups = Object.entries(groupMap)
+          .map(([name, members]) => ({ name, members }))
+          .sort((a, b) => b.members.length - a.members.length)
+        const themeCount = themeGroups.filter((g) => g.name !== "").length
+        const Member = ({ r, idx }) => (
+          <div className="flex items-center gap-3 px-3 py-2 border-b border-slate-100 last:border-0">
+            <span className="text-[10px] font-black text-slate-400 w-5 shrink-0 text-right">{idx}</span>
+            <span className="text-xs font-semibold text-slate-700 flex-1 min-w-0 truncate">{r.full_name || "ไม่ระบุ"}</span>
+            <span className="text-[10px] font-bold text-[#F15A24] bg-orange-50 border border-orange-100 rounded-full px-2 py-0.5 shrink-0">{r.grade_level || "ไม่ระบุ"}</span>
+            <span className="text-[11px] text-slate-500 w-[42%] min-w-0 truncate text-right shrink-0">{r.school || "ไม่ระบุ"}</span>
+          </div>
+        )
+        return (
+          <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/60 backdrop-blur-sm" onClick={(e) => e.target === e.currentTarget && setRegListOpen(false)}>
+            <div className="bg-white w-full sm:rounded-2xl sm:max-w-2xl flex flex-col max-h-[92dvh] shadow-2xl rounded-t-2xl overflow-hidden">
+              <div className="bg-gradient-to-r from-[#F15A24] to-amber-500 px-5 py-4 flex justify-between items-start shrink-0">
+                <div>
+                  <p className="text-orange-200 text-[10px] uppercase tracking-widest mb-0.5">รายชื่อผู้สมัคร</p>
+                  <h3 className="text-base font-bold text-white leading-snug">{courseDetail.courseName}</h3>
+                </div>
+                <button onClick={() => setRegListOpen(false)} className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xl font-bold flex items-center justify-center shrink-0">×</button>
+              </div>
+              <div className={`grid ${hasThemes ? "grid-cols-2" : "grid-cols-1"} divide-x divide-slate-100 border-b border-slate-100 shrink-0`}>
+                <div className="px-4 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">ผู้สมัคร</p><p className="text-lg font-extrabold text-emerald-600">{courseDetail.regs.length} <span className="text-xs font-normal">คน</span></p></div>
+                {hasThemes && <div className="px-4 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">ธีม</p><p className="text-lg font-extrabold text-violet-600">{themeCount} <span className="text-xs font-normal">ธีม</span></p></div>}
+              </div>
+              <div className="overflow-y-auto flex-1 p-5 space-y-4">
+                {courseDetail.regs.length === 0 && <p className="text-center text-slate-300 text-sm py-6">ยังไม่มีผู้สมัครที่ยืนยันแล้ว</p>}
+                {hasThemes ? (
+                  themeGroups.map((g, gi) => (
+                    <div key={gi} className="rounded-xl border border-slate-100 overflow-hidden">
+                      <div className="bg-slate-50 px-3 py-2 flex items-center gap-2 border-b border-slate-100">
+                        <Ico.users className="w-3.5 h-3.5 text-[#F15A24] shrink-0" />
+                        <span className="text-xs font-bold text-slate-700 flex-1 min-w-0 truncate">{g.name || "(ไม่มีชื่อธีม)"}</span>
+                        <span className="text-[11px] font-bold text-slate-500 shrink-0">{g.members.length} คน</span>
+                      </div>
+                      <div>{g.members.map((r, i) => <Member key={r.id || i} r={r} idx={i + 1} />)}</div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-xl border border-slate-100 overflow-hidden">
+                    {courseDetail.regs.map((r, i) => <Member key={r.id || i} r={r} idx={i + 1} />)}
+                  </div>
+                )}
+              </div>
+              <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/80 flex justify-end items-center shrink-0">
+                <button onClick={() => setRegListOpen(false)} className="px-5 py-2 bg-[#F15A24] hover:bg-[#c44215] text-white rounded-xl text-sm font-bold transition">ปิด</button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Export modal — ลิสต์เดียว: รวม / แยก / เลือกวิชาเดียว */}
       {exportOpen && (() => {
