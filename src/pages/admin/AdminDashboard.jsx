@@ -305,21 +305,23 @@ const schoolRanking = useMemo(() => {
     const teamSet = new Set(); allRegs.forEach((r) => { if (r.reg_id) teamSet.add(r.reg_id) })
     const themeCount = teamSet.size
     const countBy = (list) => ({
-      total: list.length,
+      total: list.filter((r) => r.status !== "cancelled").length,   // จำนวนผู้สมัคร — ไม่นับคนยกเลิก
       approved: list.filter((r) => PAID_STATUSES.includes(r.status)).length,
       pending: list.filter((r) => ["slip_uploaded", "submitted", "pending_payment", "held"].includes(r.status)).length,
       waitlist: list.filter((r) => r.status === "waitlist").length,
     })
-    const { approved: approvedCount, pending: pendingCount, waitlist: waitlistCount } = countBy(allRegs)
-    // รอบของวิชา (จาก course_sessions ที่ RPC ส่งมา) — วิชาที่มีรอบ → แยก section + สถิติรายรอบ
+    const { total: activeCount, approved: approvedCount, pending: pendingCount, waitlist: waitlistCount } = countBy(allRegs)
+    // รอบของวิชา (จาก course_sessions ที่ RPC ส่งมา) — วิชาที่มีรอบเท่านั้น → แยก section + สถิติรายรอบ
     const parseSessions = (raw) => { try { return Array.isArray(raw) ? raw : (typeof raw === "string" ? JSON.parse(raw || "[]") : []) } catch { return [] } }
     const courseSessions = allRegs.map((r) => parseSessions(r.course_sessions)).find((a) => a.length) || []
     const sessLbl = (s) => (s.label || s.time || "รอบ").trim()
     const sessionStats = courseSessions.map((s) => ({ id: s.id, label: sessLbl(s), ...countBy(allRegs.filter((r) => r.session_id === s.id)) }))
-    const noSessList = allRegs.filter((r) => !courseSessions.some((s) => s.id === r.session_id))
-    if (noSessList.length) sessionStats.push({ id: "__none", label: "ไม่ระบุรอบ", ...countBy(noSessList) })
+    if (courseSessions.length) {
+      const noSessList = allRegs.filter((r) => !courseSessions.some((s) => s.id === r.session_id))
+      if (noSessList.length) sessionStats.push({ id: "__none", label: "ไม่ระบุรอบ", ...countBy(noSessList) })
+    }
     setDetailSession("all")
-    setCourseDetail({ courseName, regs, allRegs, schools, grades, revenue: regs.reduce((s, r) => s + Number(r.price || 0), 0), isTeam, themeCount, approvedCount, pendingCount, waitlistCount, courseSessions, sessionStats })
+    setCourseDetail({ courseName, regs, allRegs, schools, grades, revenue: regs.reduce((s, r) => s + Number(r.price || 0), 0), isTeam, themeCount, activeCount, approvedCount, pendingCount, waitlistCount, courseSessions, sessionStats })
   }
 
   // ประวัติการสมัครทุกวิชาของ user (จาก email)
@@ -875,7 +877,7 @@ const schoolRanking = useMemo(() => {
             ) : (
               <div className={`grid ${courseDetail.isTeam ? "grid-cols-3 sm:grid-cols-5" : "grid-cols-2 sm:grid-cols-4"} divide-x divide-slate-100 border-b border-slate-100 shrink-0`}>
                 {courseDetail.isTeam && <div className="px-3 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">ธีม</p><p className="text-base font-extrabold text-violet-600">{courseDetail.themeCount}</p></div>}
-                <div className="px-3 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">ผู้สมัคร</p><p className="text-base font-extrabold text-slate-700">{courseDetail.allRegs.length}</p></div>
+                <div className="px-3 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">ผู้สมัคร</p><p className="text-base font-extrabold text-slate-700">{courseDetail.activeCount}</p></div>
                 <div className="px-3 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">อนุมัติแล้ว</p><p className="text-base font-extrabold text-emerald-600">{courseDetail.approvedCount}</p></div>
                 <div className="px-3 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">รอพิจารณา</p><p className="text-base font-extrabold text-sky-600">{courseDetail.pendingCount}</p></div>
                 <div className="px-3 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">คิวสำรอง</p><p className="text-base font-extrabold text-slate-400">{courseDetail.waitlistCount}</p></div>
@@ -934,7 +936,7 @@ const schoolRanking = useMemo(() => {
                 }
                 const header = (
                   <div className="flex items-center justify-between gap-2 mb-2">
-                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 min-w-0 truncate"><Ico.users className="w-3.5 h-3.5 text-[#F15A24] shrink-0" /> รายชื่อผู้สมัคร ({courseDetail.allRegs.length})</p>
+                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 min-w-0 truncate"><Ico.users className="w-3.5 h-3.5 text-[#F15A24] shrink-0" /> รายชื่อผู้สมัคร ({courseDetail.activeCount})</p>
                     {hasSessions && (
                       <select value={detailSession} onChange={(e) => setDetailSession(e.target.value)}
                         className="px-2.5 py-1.5 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-[#F15A24]/40 text-xs text-slate-700 bg-white shrink-0 w-32">
