@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, Fragment } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useOutletContext } from "react-router-dom"
 import { fetchDashboardRegistrations, fetchDashboardCourses } from "../../lib/supabase.js"
 import { Ico } from "../../lib/icons.jsx"
@@ -698,81 +698,66 @@ const schoolRanking = useMemo(() => {
               </select>
             </div>
             <div className="overflow-y-auto flex-1">
-              {/* Desktop table */}
-              <table className="w-full text-xs hidden sm:table">
-                <thead className="bg-slate-50 text-slate-400 text-[10px] uppercase sticky top-0 border-b border-slate-100">
-                  <tr><th className="px-4 py-3 text-center w-10">#</th><th className="px-4 py-3">ธีม</th><th className="px-4 py-3">ชื่อ-สกุล</th><th className="px-4 py-3">ระดับชั้น</th><th className="px-4 py-3">วิชา</th><th className="px-4 py-3">จังหวัด</th><th className="px-4 py-3">สถานะ</th><th className="px-4 py-3 text-right">เบอร์</th></tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {drillSections.map((sec) => (
-                    <Fragment key={sec.key}>
-                      <tr className="bg-orange-50/70">
-                        <td colSpan="8" className="px-4 py-2 text-[11px] font-bold text-[#F15A24]">
-                          {sec.title} <span className="text-slate-400 font-normal">· {sec.groups.length} ทีม/คน</span>
-                        </td>
-                      </tr>
-                      {sec.groups.map((g, gi) => {
-                        const head = g.head
-                        const isExpanded = expandedTeams[g.key]
-                        // ── ทีม (หลายคน) → 1 แถวยุบ คลิกกาง ──
-                        if (g.isTeam && g.members.length > 1) {
-                          return (
-                            <Fragment key={g.key}>
-                              <tr onClick={() => setExpandedTeams((p) => ({ ...p, [g.key]: !p[g.key] }))} className="hover:bg-orange-50/50 transition cursor-pointer bg-orange-50/20">
-                                <td className="px-4 py-3 text-center text-slate-400 font-bold">{gi + 1}</td>
-                                <td className="px-4 py-3">
-                                  <div className="flex items-center gap-2">
-                                    <span className={`transition-transform ${isExpanded ? "rotate-90" : ""} text-[#F15A24] font-bold`}>›</span>
-                                    <div>
-                                      <div className="font-bold text-slate-800 flex items-center gap-1.5">
-                                        <Ico.users className="w-3.5 h-3.5 text-[#F15A24]" /> {g.theme || "(ไม่มีชื่อธีม)"}
-                                      </div>
-                                      <div className="text-[10px] text-slate-400">ทีม {g.members.length} คน</div>
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="px-4 py-3 font-medium text-slate-700">{head.full_name} <span className="text-[10px] text-slate-400">(หัวหน้า)</span></td>
-                                <td className="px-4 py-3"><span className="bg-sky-50 text-sky-700 border border-sky-100 px-2 py-0.5 rounded-md font-bold text-[10px]">{head.grade_level}</span></td>
-                                <td className="px-4 py-3 text-slate-600 max-w-[140px]"><span className="line-clamp-1">{head.course_name}</span></td>
-                                <td className="px-4 py-3 text-slate-500">{head.province}</td>
-                                <td className="px-4 py-3"><StatusBadge status={head.status} /></td>
-                                <td className="px-4 py-3 text-right font-mono text-slate-600">{head.phone}</td>
-                              </tr>
-                              {isExpanded && g.members.map((r, mi) => (
-                                <tr key={g.key + "-" + mi} onClick={() => openUser(r)} className="hover:bg-orange-50/40 transition cursor-pointer bg-slate-50/40">
-                                  <td className="px-4 py-2.5 text-center text-slate-300 text-[10px]">{mi + 1}</td>
-                                  <td className="px-4 py-2.5"></td>
-                                  <td className="px-4 py-2.5 pl-10 font-medium text-slate-700">{r.full_name} {r.nickname && <span className="text-slate-400 font-normal">({r.nickname})</span>}</td>
-                                  <td className="px-4 py-2.5 text-slate-500">{r.grade_level}</td>
-                                  <td className="px-4 py-2.5 text-slate-400 text-[10px]">สมาชิกทีม</td>
-                                  <td className="px-4 py-2.5 text-slate-500">{r.province}</td>
-                                  <td className="px-4 py-2.5"></td>
-                                  <td className="px-4 py-2.5 text-right font-mono text-slate-500">{r.phone}</td>
-                                </tr>
-                              ))}
-                            </Fragment>
-                          )
-                        }
-                        // ── เดี่ยว (1 คน) → แถวปกติ ──
-                        const r = head
-                        return (
-                          <tr key={g.key} onClick={() => openUser(r)} className="hover:bg-orange-50/50 transition cursor-pointer">
-                            <td className="px-4 py-3 text-center text-slate-300 font-bold">{gi + 1}</td>
-                            <td className="px-4 py-3 text-slate-300">—</td>
-                            <td className="px-4 py-3 font-medium text-slate-800">{r.full_name} {r.nickname && <span className="text-slate-400 font-normal">({r.nickname})</span>}</td>
-                            <td className="px-4 py-3"><span className="bg-sky-50 text-sky-700 border border-sky-100 px-2 py-0.5 rounded-md font-bold text-[10px]">{r.grade_level}</span></td>
-                            <td className="px-4 py-3 text-slate-600 max-w-[140px]"><span className="line-clamp-1">{r.course_name}</span></td>
-                            <td className="px-4 py-3 text-slate-500">{r.province}</td>
-                            <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
-                            <td className="px-4 py-3 text-right font-mono text-slate-600">{r.phone}</td>
-                          </tr>
-                        )
-                      })}
-                    </Fragment>
-                  ))}
-                  {drillGroups.length === 0 && <tr><td colSpan="8" className="py-16 text-center text-sm text-slate-300">ไม่พบข้อมูล</td></tr>}
-                </tbody>
-              </table>
+              {/* Desktop — ตารางแยกต่อ section (คอลัมน์ธีมมีเฉพาะ section ที่มีธีม) */}
+              <div className="hidden sm:block p-4 space-y-4">
+                {drillSections.map((sec) => {
+                  const hasThemes = sec.groups.some((g) => (g.theme || "").trim() !== "")
+                  return (
+                    <div key={sec.key}>
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#F15A24] bg-orange-50 border border-orange-100 rounded-lg px-2.5 py-1">{sec.title}</span>
+                        <span className="text-[11px] font-bold text-slate-400">{sec.groups.length} {hasThemes ? "ทีม" : "คน"}</span>
+                      </div>
+                      <div className="border border-slate-100 rounded-xl overflow-hidden">
+                        <table className="w-full text-xs border-collapse">
+                          <thead>
+                            <tr className="bg-slate-50 text-slate-400 text-[10px] uppercase tracking-wider">
+                              <th className="px-3 py-2 text-center w-10">#</th>
+                              {hasThemes && <th className="px-3 py-2 text-left">ชื่อธีม</th>}
+                              <th className="px-3 py-2 text-left">ชื่อ-สกุล</th>
+                              <th className="px-3 py-2 text-left">ระดับชั้น</th>
+                              <th className="px-3 py-2 text-left">วิชา</th>
+                              <th className="px-3 py-2 text-left">จังหวัด</th>
+                              <th className="px-3 py-2 text-left">สถานะ</th>
+                              <th className="px-3 py-2 text-right">เบอร์</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {hasThemes
+                              ? sec.groups.flatMap((g, gi) => g.members.map((r, mi) => (
+                                  <tr key={`${g.key}-${mi}`} onClick={() => openUser(r)} className="border-t border-slate-100 hover:bg-orange-50/40 transition cursor-pointer align-top">
+                                    {mi === 0 && <td rowSpan={g.members.length} className="px-3 py-2 text-center font-black text-[#F15A24] border-r border-slate-100">{gi + 1}</td>}
+                                    {mi === 0 && <td rowSpan={g.members.length} className="px-3 py-2 font-semibold text-slate-700 border-r border-slate-100 w-40 break-words">{g.theme || "(ไม่มีชื่อธีม)"}</td>}
+                                    <td className="px-3 py-2 font-medium text-slate-800 whitespace-nowrap">{r.full_name} {r.nickname && <span className="text-slate-400 font-normal">({r.nickname})</span>}</td>
+                                    <td className="px-3 py-2"><span className="bg-sky-50 text-sky-700 border border-sky-100 px-2 py-0.5 rounded-md font-bold text-[10px] whitespace-nowrap">{r.grade_level}</span></td>
+                                    <td className="px-3 py-2 text-slate-600 max-w-[140px]"><span className="line-clamp-1">{r.course_name}</span></td>
+                                    <td className="px-3 py-2 text-slate-500">{r.province}</td>
+                                    <td className="px-3 py-2"><StatusBadge status={r.status} /></td>
+                                    <td className="px-3 py-2 text-right font-mono text-slate-600">{r.phone}</td>
+                                  </tr>
+                                )))
+                              : sec.groups.map((g, gi) => {
+                                  const r = g.head
+                                  return (
+                                    <tr key={g.key} onClick={() => openUser(r)} className="border-t border-slate-100 hover:bg-orange-50/40 transition cursor-pointer">
+                                      <td className="px-3 py-2 text-center text-slate-300 font-bold">{gi + 1}</td>
+                                      <td className="px-3 py-2 font-medium text-slate-800 whitespace-nowrap">{r.full_name} {r.nickname && <span className="text-slate-400 font-normal">({r.nickname})</span>}</td>
+                                      <td className="px-3 py-2"><span className="bg-sky-50 text-sky-700 border border-sky-100 px-2 py-0.5 rounded-md font-bold text-[10px] whitespace-nowrap">{r.grade_level}</span></td>
+                                      <td className="px-3 py-2 text-slate-600 max-w-[140px]"><span className="line-clamp-1">{r.course_name}</span></td>
+                                      <td className="px-3 py-2 text-slate-500">{r.province}</td>
+                                      <td className="px-3 py-2"><StatusBadge status={r.status} /></td>
+                                      <td className="px-3 py-2 text-right font-mono text-slate-600">{r.phone}</td>
+                                    </tr>
+                                  )
+                                })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )
+                })}
+                {drillGroups.length === 0 && <p className="py-16 text-center text-sm text-slate-300">ไม่พบข้อมูล</p>}
+              </div>
               {/* Mobile cards */}
               <div className="sm:hidden divide-y divide-slate-100">
                 {drillGroups.map((g, gi) => {
