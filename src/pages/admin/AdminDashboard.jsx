@@ -823,7 +823,7 @@ const schoolRanking = useMemo(() => {
       {/* Course Detail Modal */}
       {courseDetail && (
         <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/60 backdrop-blur-sm" onClick={(e) => e.target === e.currentTarget && setCourseDetail(null)}>
-          <div className="bg-white w-full sm:rounded-2xl sm:max-w-4xl flex flex-col max-h-[92dvh] shadow-2xl rounded-t-2xl overflow-hidden">
+          <div className="bg-white w-full sm:rounded-2xl sm:max-w-5xl flex flex-col max-h-[92dvh] shadow-2xl rounded-t-2xl overflow-hidden">
             <div className="bg-gradient-to-r from-[#F15A24] to-amber-500 px-5 py-4 flex justify-between items-start gap-3 shrink-0">
               <div className="min-w-0">
                 <p className="text-orange-200 text-[10px] uppercase tracking-widest mb-0.5">สรุปวิชา</p>
@@ -856,7 +856,7 @@ const schoolRanking = useMemo(() => {
                 const hasThemes = Object.keys(groupMap).some((k) => k !== "")
                 const themeGroups = Object.entries(groupMap).map(([name, members]) => ({ name, members })).sort((a, b) => b.members.length - a.members.length)
                 return (
-                  <div className="overflow-x-auto border border-slate-100 rounded-xl">
+                  <div className="border border-slate-100 rounded-xl overflow-hidden">
                     <table className="w-full text-xs border-collapse">
                       <thead>
                         <tr className="bg-slate-50 text-slate-400 text-[10px] uppercase tracking-wider">
@@ -872,16 +872,16 @@ const schoolRanking = useMemo(() => {
                           ? themeGroups.flatMap((g, gi) => g.members.map((r, mi) => (
                               <tr key={r.id || `${gi}-${mi}`} className="border-t border-slate-100 align-top">
                                 {mi === 0 && <td rowSpan={g.members.length} className="px-2 py-2 text-center font-black text-[#F15A24] border-r border-slate-100">{gi + 1}</td>}
-                                {mi === 0 && <td rowSpan={g.members.length} className="px-2 py-2 font-semibold text-slate-700 border-r border-slate-100 whitespace-nowrap">{g.name || "(ไม่มีชื่อธีม)"}</td>}
+                                {mi === 0 && <td rowSpan={g.members.length} className="px-2 py-2 font-semibold text-slate-700 border-r border-slate-100 align-top w-36 break-words">{g.name || "(ไม่มีชื่อธีม)"}</td>}
                                 <td className="px-2 py-2 text-slate-700 whitespace-nowrap">{r.full_name || "ไม่ระบุ"}</td>
-                                <td className="px-2 py-2 text-slate-500 whitespace-nowrap">{r.school || "ไม่ระบุ"}</td>
+                                <td className="px-2 py-2 text-slate-500 break-words">{r.school || "ไม่ระบุ"}</td>
                                 <td className="px-2 py-2"><StatusBadge status={r.status} /></td>
                               </tr>
                             )))
                           : courseDetail.allRegs.map((r, i) => (
                               <tr key={r.id || i} className="border-t border-slate-100">
                                 <td className="px-2 py-2 text-slate-700 whitespace-nowrap">{r.full_name || "ไม่ระบุ"}</td>
-                                <td className="px-2 py-2 text-slate-500 whitespace-nowrap">{r.school || "ไม่ระบุ"}</td>
+                                <td className="px-2 py-2 text-slate-500 break-words">{r.school || "ไม่ระบุ"}</td>
                                 <td className="px-2 py-2"><StatusBadge status={r.status} /></td>
                               </tr>
                             ))}
