@@ -823,13 +823,16 @@ const schoolRanking = useMemo(() => {
       {/* Course Detail Modal */}
       {courseDetail && (
         <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/60 backdrop-blur-sm" onClick={(e) => e.target === e.currentTarget && setCourseDetail(null)}>
-          <div className="bg-white w-full sm:rounded-2xl sm:max-w-2xl flex flex-col max-h-[92dvh] shadow-2xl rounded-t-2xl overflow-hidden">
-            <div className="bg-gradient-to-r from-[#F15A24] to-amber-500 px-5 py-4 flex justify-between items-start shrink-0">
-              <div>
+          <div className="bg-white w-full sm:rounded-2xl sm:max-w-4xl flex flex-col max-h-[92dvh] shadow-2xl rounded-t-2xl overflow-hidden">
+            <div className="bg-gradient-to-r from-[#F15A24] to-amber-500 px-5 py-4 flex justify-between items-start gap-3 shrink-0">
+              <div className="min-w-0">
                 <p className="text-orange-200 text-[10px] uppercase tracking-widest mb-0.5">สรุปวิชา</p>
                 <h3 className="text-base font-bold text-white leading-snug">{courseDetail.courseName}</h3>
               </div>
-              <button onClick={() => setCourseDetail(null)} className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xl font-bold flex items-center justify-center shrink-0">×</button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button onClick={() => exportCombined(courseDetail.regs, `วิชา_${courseDetail.courseName}`)} className="flex items-center gap-1.5 px-3 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg text-sm font-bold transition"><Ico.download className="w-4 h-4" /> Export</button>
+                <button onClick={() => setCourseDetail(null)} className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xl font-bold flex items-center justify-center">×</button>
+              </div>
             </div>
             <div className={`grid ${courseDetail.isTeam ? "grid-cols-3 sm:grid-cols-5" : "grid-cols-2 sm:grid-cols-4"} divide-x divide-slate-100 border-b border-slate-100 shrink-0`}>
               {courseDetail.isTeam && <div className="px-3 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">ธีม</p><p className="text-base font-extrabold text-violet-600">{courseDetail.themeCount}</p></div>}
@@ -869,16 +872,16 @@ const schoolRanking = useMemo(() => {
                           ? themeGroups.flatMap((g, gi) => g.members.map((r, mi) => (
                               <tr key={r.id || `${gi}-${mi}`} className="border-t border-slate-100 align-top">
                                 {mi === 0 && <td rowSpan={g.members.length} className="px-2 py-2 text-center font-black text-[#F15A24] border-r border-slate-100">{gi + 1}</td>}
-                                {mi === 0 && <td rowSpan={g.members.length} className="px-2 py-2 font-semibold text-slate-700 border-r border-slate-100 min-w-[6rem]">{g.name || "(ไม่มีชื่อธีม)"}</td>}
-                                <td className="px-2 py-2 text-slate-700">{r.full_name || "ไม่ระบุ"}</td>
-                                <td className="px-2 py-2 text-slate-500">{r.school || "ไม่ระบุ"}</td>
+                                {mi === 0 && <td rowSpan={g.members.length} className="px-2 py-2 font-semibold text-slate-700 border-r border-slate-100 whitespace-nowrap">{g.name || "(ไม่มีชื่อธีม)"}</td>}
+                                <td className="px-2 py-2 text-slate-700 whitespace-nowrap">{r.full_name || "ไม่ระบุ"}</td>
+                                <td className="px-2 py-2 text-slate-500 whitespace-nowrap">{r.school || "ไม่ระบุ"}</td>
                                 <td className="px-2 py-2"><StatusBadge status={r.status} /></td>
                               </tr>
                             )))
                           : courseDetail.allRegs.map((r, i) => (
                               <tr key={r.id || i} className="border-t border-slate-100">
-                                <td className="px-2 py-2 text-slate-700">{r.full_name || "ไม่ระบุ"}</td>
-                                <td className="px-2 py-2 text-slate-500">{r.school || "ไม่ระบุ"}</td>
+                                <td className="px-2 py-2 text-slate-700 whitespace-nowrap">{r.full_name || "ไม่ระบุ"}</td>
+                                <td className="px-2 py-2 text-slate-500 whitespace-nowrap">{r.school || "ไม่ระบุ"}</td>
                                 <td className="px-2 py-2"><StatusBadge status={r.status} /></td>
                               </tr>
                             ))}
@@ -888,8 +891,7 @@ const schoolRanking = useMemo(() => {
                 )
               })()}
             </div>
-            <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/80 flex justify-between items-center shrink-0">
-              <button onClick={() => exportCombined(courseDetail.regs, `วิชา_${courseDetail.courseName}`)} className="flex items-center gap-1.5 px-4 py-2 bg-orange-50 hover:bg-orange-100 border border-orange-200 text-[#F15A24] rounded-xl text-sm font-bold transition"><Ico.download className="w-4 h-4" /> Export</button>
+            <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/80 flex justify-end items-center shrink-0">
               <button onClick={() => setCourseDetail(null)} className="px-5 py-2 bg-[#F15A24] hover:bg-[#c44215] text-white rounded-xl text-sm font-bold transition">ปิด</button>
             </div>
           </div>
