@@ -854,7 +854,12 @@ const schoolRanking = useMemo(() => {
                   groupMap[key].push(r)
                 })
                 const hasThemes = Object.keys(groupMap).some((k) => k !== "")
-                const themeGroups = Object.entries(groupMap).map(([name, members]) => ({ name, members })).sort((a, b) => b.members.length - a.members.length)
+                // เรียงตามสถานะก่อน (อนุมัติแล้ว→รอพิจารณา→คิวสำรอง→อื่นๆ) ภายในสถานะเดียวกันคงลำดับการสมัครเดิม (sort เสถียร)
+                const statusRank = (s) =>
+                  (s === "confirmed" || s === "approved") ? 0
+                  : (s === "slip_uploaded" || s === "submitted" || s === "pending_payment" || s === "held") ? 1
+                  : (s === "waitlist") ? 2 : 3
+                const themeGroups = Object.entries(groupMap).map(([name, members]) => ({ name, members })).sort((a, b) => statusRank(a.members[0]?.status) - statusRank(b.members[0]?.status))
                 return (
                   <div className="border border-slate-100 rounded-xl overflow-hidden">
                     <table className="w-full text-xs border-collapse">
