@@ -124,7 +124,6 @@ export default function AdminDashboard() {
   const [expandedTeams, setExpandedTeams] = useState({})  // {groupKey: true} — ทีมที่กางดูสมาชิก
   const [selectedUser, setSelectedUser] = useState(null)
   const [courseDetail, setCourseDetail] = useState(null)
-  const [regListOpen, setRegListOpen] = useState(false)  // เปิดรายชื่อผู้สมัครในวิชา (กดจากจำนวนผู้สมัคร)
 const [allCourses, setAllCourses] = useState([])  // ทุกวิชาในงาน (รวม 0 คน) — สำหรับ "จำนวนผู้สมัคร"
   const [showAllSchools, setShowAllSchools] = useState(false)  // ดูโรงเรียนทั้งหมด (ไม่จำกัด 10)
   const [exportOpen, setExportOpen] = useState(false)  // modal เลือกโหมด export
@@ -298,8 +297,16 @@ const schoolRanking = useMemo(() => {
     const gradeMap = {}
     regs.forEach((r) => { const g = r.grade_level || "ไม่ระบุ"; gradeMap[g] = (gradeMap[g] || 0) + 1 })
     const grades = Object.entries(gradeMap).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count)
-    setRegListOpen(false)
-    setCourseDetail({ courseName, regs, schools, grades, revenue: regs.reduce((s, r) => s + Number(r.price || 0), 0) })
+    // รายชื่อผู้สมัครทุกสถานะของวิชานี้ (สำหรับตารางรายชื่อใน popup)
+    const allRegs = filtered.filter((r) => r.course_id === courseId)
+    // สถิติสถานะ (สำหรับกรอบด้านบน popup)
+    const isTeam = allRegs.some((r) => r.count_mode === "team")
+    const teamSet = new Set(); allRegs.forEach((r) => { if (r.reg_id) teamSet.add(r.reg_id) })
+    const themeCount = teamSet.size
+    const approvedCount = allRegs.filter((r) => PAID_STATUSES.includes(r.status)).length
+    const pendingCount = allRegs.filter((r) => ["slip_uploaded", "submitted", "pending_payment", "held"].includes(r.status)).length
+    const waitlistCount = allRegs.filter((r) => r.status === "waitlist").length
+    setCourseDetail({ courseName, regs, allRegs, schools, grades, revenue: regs.reduce((s, r) => s + Number(r.price || 0), 0), isTeam, themeCount, approvedCount, pendingCount, waitlistCount })
   }
 
   // ประวัติการสมัครทุกวิชาของ user (จาก email)
@@ -824,52 +831,62 @@ const schoolRanking = useMemo(() => {
               </div>
               <button onClick={() => setCourseDetail(null)} className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xl font-bold flex items-center justify-center shrink-0">×</button>
             </div>
-            <div className="grid grid-cols-3 divide-x divide-slate-100 border-b border-slate-100 shrink-0">
-              <button onClick={() => setRegListOpen(true)} className="px-4 py-3 text-center hover:bg-emerald-50 transition group focus:outline-none" title="ดูรายชื่อผู้สมัคร"><p className="text-[10px] text-slate-400 mb-0.5 group-hover:text-emerald-500 flex items-center justify-center gap-0.5">ผู้สมัคร <Ico.arrowRight className="w-3 h-3" /></p><p className="text-lg font-extrabold text-emerald-600 underline decoration-dotted decoration-emerald-300 underline-offset-4">{courseDetail.regs.length} <span className="text-xs font-normal">คน</span></p></button>
-              <div className="px-4 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">รายได้รวม</p><p className="text-lg font-extrabold text-[#F15A24]">฿{courseDetail.revenue.toLocaleString()}</p></div>
-              <div className="px-4 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">โรงเรียน</p><p className="text-lg font-extrabold text-violet-600">{courseDetail.schools.length} <span className="text-xs font-normal">แห่ง</span></p></div>
+            <div className={`grid ${courseDetail.isTeam ? "grid-cols-3 sm:grid-cols-5" : "grid-cols-2 sm:grid-cols-4"} divide-x divide-slate-100 border-b border-slate-100 shrink-0`}>
+              {courseDetail.isTeam && <div className="px-3 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">ธีม</p><p className="text-base font-extrabold text-violet-600">{courseDetail.themeCount}</p></div>}
+              <div className="px-3 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">ผู้สมัคร</p><p className="text-base font-extrabold text-slate-700">{courseDetail.allRegs.length}</p></div>
+              <div className="px-3 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">อนุมัติแล้ว</p><p className="text-base font-extrabold text-emerald-600">{courseDetail.approvedCount}</p></div>
+              <div className="px-3 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">รอพิจารณา</p><p className="text-base font-extrabold text-sky-600">{courseDetail.pendingCount}</p></div>
+              <div className="px-3 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">คิวสำรอง</p><p className="text-base font-extrabold text-slate-400">{courseDetail.waitlistCount}</p></div>
             </div>
-            <div className="overflow-y-auto flex-1 p-5 space-y-5">
-              {/* ระดับชั้น */}
-              <div>
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5"><Ico.cap className="w-3.5 h-3.5 text-[#F15A24]" /> สัดส่วนระดับชั้น</p>
-                <div className="flex flex-wrap gap-2">
-                  {courseDetail.grades.map((g, i) => (
-                    <span key={i} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-orange-100 bg-orange-50 text-xs font-bold text-[#F15A24]">
-                      {g.name} <span className="bg-[#F15A24] text-white rounded-full px-1.5 py-0.5 text-[10px]">{g.count}</span>
-                    </span>
-                  ))}
-                </div>
-              </div>
-              {/* โรงเรียน */}
-              <div>
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5"><Ico.school className="w-3.5 h-3.5 text-[#F15A24]" /> โรงเรียนที่สมัคร ({courseDetail.schools.length})</p>
-                <div className="space-y-2">
-                  {courseDetail.schools.map((s, i) => {
-                    const pct = Math.round((s.count / (courseDetail.schools[0]?.count || 1)) * 100)
-                    return (
-                      <div key={i} className="bg-slate-50 rounded-xl p-3 border border-transparent">
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <span className="text-[10px] font-black text-white bg-[#F15A24] w-5 h-5 rounded-full flex items-center justify-center shrink-0">{i + 1}</span>
-                          <span className="text-xs font-semibold text-slate-700 flex-1 min-w-0 truncate">{s.name}</span>
-                          <span className="text-sm font-extrabold text-slate-700 shrink-0">{s.count} <span className="text-[10px] font-normal text-slate-400">คน</span></span>
-                        </div>
-                        <div className="ml-7">
-                          <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden mb-1.5"><div className="h-full rounded-full bg-gradient-to-r from-[#F15A24] to-orange-300" style={{ width: `${pct}%` }} /></div>
-                          {s.grades?.length > 0 && (
-                            <div className="flex flex-wrap gap-1">
-                              {s.grades.map((g, gi) => (
-                                <span key={gi} className="inline-flex items-center gap-1 bg-white border border-orange-100 text-[#F15A24] text-[10px] font-bold px-2 py-0.5 rounded-full">{g.name} <span className="text-orange-300">×{g.count}</span></span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                  {courseDetail.schools.length === 0 && <p className="text-center text-slate-300 text-sm py-6">ยังไม่มีผู้สมัครที่ยืนยันแล้ว</p>}
-                </div>
-              </div>
+            <div className="overflow-y-auto flex-1 p-5">
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5"><Ico.users className="w-3.5 h-3.5 text-[#F15A24]" /> รายชื่อผู้สมัคร ({courseDetail.allRegs.length})</p>
+              {courseDetail.allRegs.length === 0 ? (
+                <p className="text-center text-slate-300 text-sm py-6">ยังไม่มีผู้สมัคร</p>
+              ) : (() => {
+                // จัดกลุ่มตามธีม (ถ้าไม่มีธีม → ไม่มีคอลัมน์ธีม)
+                const groupMap = {}
+                courseDetail.allRegs.forEach((r) => {
+                  const key = (r.theme_name || "").trim()
+                  if (!groupMap[key]) groupMap[key] = []
+                  groupMap[key].push(r)
+                })
+                const hasThemes = Object.keys(groupMap).some((k) => k !== "")
+                const themeGroups = Object.entries(groupMap).map(([name, members]) => ({ name, members })).sort((a, b) => b.members.length - a.members.length)
+                return (
+                  <div className="overflow-x-auto border border-slate-100 rounded-xl">
+                    <table className="w-full text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 text-slate-400 text-[10px] uppercase tracking-wider">
+                          {hasThemes && <th className="text-center font-bold px-2 py-2 w-10">ธีม</th>}
+                          {hasThemes && <th className="text-left font-bold px-2 py-2">ชื่อธีม</th>}
+                          <th className="text-left font-bold px-2 py-2">สมาชิก</th>
+                          <th className="text-left font-bold px-2 py-2">โรงเรียน</th>
+                          <th className="text-left font-bold px-2 py-2">สถานะ</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {hasThemes
+                          ? themeGroups.flatMap((g, gi) => g.members.map((r, mi) => (
+                              <tr key={r.id || `${gi}-${mi}`} className="border-t border-slate-100 align-top">
+                                {mi === 0 && <td rowSpan={g.members.length} className="px-2 py-2 text-center font-black text-[#F15A24] border-r border-slate-100">{gi + 1}</td>}
+                                {mi === 0 && <td rowSpan={g.members.length} className="px-2 py-2 font-semibold text-slate-700 border-r border-slate-100 min-w-[6rem]">{g.name || "(ไม่มีชื่อธีม)"}</td>}
+                                <td className="px-2 py-2 text-slate-700">{r.full_name || "ไม่ระบุ"}</td>
+                                <td className="px-2 py-2 text-slate-500">{r.school || "ไม่ระบุ"}</td>
+                                <td className="px-2 py-2"><StatusBadge status={r.status} /></td>
+                              </tr>
+                            )))
+                          : courseDetail.allRegs.map((r, i) => (
+                              <tr key={r.id || i} className="border-t border-slate-100">
+                                <td className="px-2 py-2 text-slate-700">{r.full_name || "ไม่ระบุ"}</td>
+                                <td className="px-2 py-2 text-slate-500">{r.school || "ไม่ระบุ"}</td>
+                                <td className="px-2 py-2"><StatusBadge status={r.status} /></td>
+                              </tr>
+                            ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              })()}
             </div>
             <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/80 flex justify-between items-center shrink-0">
               <button onClick={() => exportCombined(courseDetail.regs, `วิชา_${courseDetail.courseName}`)} className="flex items-center gap-1.5 px-4 py-2 bg-orange-50 hover:bg-orange-100 border border-orange-200 text-[#F15A24] rounded-xl text-sm font-bold transition"><Ico.download className="w-4 h-4" /> Export</button>
@@ -878,69 +895,6 @@ const schoolRanking = useMemo(() => {
           </div>
         </div>
       )}
-
-      {/* Applicant name list modal — เปิดจากการกด "จำนวนผู้สมัคร" ในสรุปวิชา */}
-      {courseDetail && regListOpen && (() => {
-        // จัดกลุ่มตามธีม (ถ้าไม่มีธีมเลย → ลิสต์เดียว ไม่มีคอลัมน์ธีม)
-        const groupMap = {}
-        courseDetail.regs.forEach((r) => {
-          const key = (r.theme_name || "").trim()
-          if (!groupMap[key]) groupMap[key] = []
-          groupMap[key].push(r)
-        })
-        const hasThemes = Object.keys(groupMap).some((k) => k !== "")
-        const themeGroups = Object.entries(groupMap)
-          .map(([name, members]) => ({ name, members }))
-          .sort((a, b) => b.members.length - a.members.length)
-        const themeCount = themeGroups.filter((g) => g.name !== "").length
-        const Member = ({ r, idx }) => (
-          <div className="flex items-center gap-3 px-3 py-2 border-b border-slate-100 last:border-0">
-            <span className="text-[10px] font-black text-slate-400 w-5 shrink-0 text-right">{idx}</span>
-            <span className="text-xs font-semibold text-slate-700 flex-1 min-w-0 truncate">{r.full_name || "ไม่ระบุ"}</span>
-            <span className="text-[10px] font-bold text-[#F15A24] bg-orange-50 border border-orange-100 rounded-full px-2 py-0.5 shrink-0">{r.grade_level || "ไม่ระบุ"}</span>
-            <span className="text-[11px] text-slate-500 w-[42%] min-w-0 truncate text-right shrink-0">{r.school || "ไม่ระบุ"}</span>
-          </div>
-        )
-        return (
-          <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/60 backdrop-blur-sm" onClick={(e) => e.target === e.currentTarget && setRegListOpen(false)}>
-            <div className="bg-white w-full sm:rounded-2xl sm:max-w-2xl flex flex-col max-h-[92dvh] shadow-2xl rounded-t-2xl overflow-hidden">
-              <div className="bg-gradient-to-r from-[#F15A24] to-amber-500 px-5 py-4 flex justify-between items-start shrink-0">
-                <div>
-                  <p className="text-orange-200 text-[10px] uppercase tracking-widest mb-0.5">รายชื่อผู้สมัคร</p>
-                  <h3 className="text-base font-bold text-white leading-snug">{courseDetail.courseName}</h3>
-                </div>
-                <button onClick={() => setRegListOpen(false)} className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xl font-bold flex items-center justify-center shrink-0">×</button>
-              </div>
-              <div className={`grid ${hasThemes ? "grid-cols-2" : "grid-cols-1"} divide-x divide-slate-100 border-b border-slate-100 shrink-0`}>
-                <div className="px-4 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">ผู้สมัคร</p><p className="text-lg font-extrabold text-emerald-600">{courseDetail.regs.length} <span className="text-xs font-normal">คน</span></p></div>
-                {hasThemes && <div className="px-4 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">ธีม</p><p className="text-lg font-extrabold text-violet-600">{themeCount} <span className="text-xs font-normal">ธีม</span></p></div>}
-              </div>
-              <div className="overflow-y-auto flex-1 p-5 space-y-4">
-                {courseDetail.regs.length === 0 && <p className="text-center text-slate-300 text-sm py-6">ยังไม่มีผู้สมัครที่ยืนยันแล้ว</p>}
-                {hasThemes ? (
-                  themeGroups.map((g, gi) => (
-                    <div key={gi} className="rounded-xl border border-slate-100 overflow-hidden">
-                      <div className="bg-slate-50 px-3 py-2 flex items-center gap-2 border-b border-slate-100">
-                        <Ico.users className="w-3.5 h-3.5 text-[#F15A24] shrink-0" />
-                        <span className="text-xs font-bold text-slate-700 flex-1 min-w-0 truncate">{g.name || "(ไม่มีชื่อธีม)"}</span>
-                        <span className="text-[11px] font-bold text-slate-500 shrink-0">{g.members.length} คน</span>
-                      </div>
-                      <div>{g.members.map((r, i) => <Member key={r.id || i} r={r} idx={i + 1} />)}</div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="rounded-xl border border-slate-100 overflow-hidden">
-                    {courseDetail.regs.map((r, i) => <Member key={r.id || i} r={r} idx={i + 1} />)}
-                  </div>
-                )}
-              </div>
-              <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/80 flex justify-end items-center shrink-0">
-                <button onClick={() => setRegListOpen(false)} className="px-5 py-2 bg-[#F15A24] hover:bg-[#c44215] text-white rounded-xl text-sm font-bold transition">ปิด</button>
-              </div>
-            </div>
-          </div>
-        )
-      })()}
 
       {/* Export modal — ลิสต์เดียว: รวม / แยก / เลือกวิชาเดียว */}
       {exportOpen && (() => {
