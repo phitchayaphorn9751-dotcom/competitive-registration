@@ -5,6 +5,7 @@ import { LangToggle } from "../../lib/i18n.jsx"
 
 // ───── ไอคอน SVG inline (สไตล์ lucide) สำหรับ bottom bar มือถือ ─────
 const BIco = {
+  menu:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M4 6h16M4 12h16M4 18h16"/></svg>),
   grid:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>),
   users:   (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>),
   book:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>),
@@ -135,7 +136,7 @@ export default function AdminLayout() {
       {/* Content */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="sticky top-0 z-20 bg-white/80 backdrop-blur border-b border-slate-100 px-4 sm:px-6 py-3 flex items-center gap-3">
-          <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-2xl text-slate-600 leading-none">☰</button>
+          <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-slate-600"><BIco.menu className="w-6 h-6" /></button>
           <div className="flex items-center gap-2 text-sm">
             <span className="flex items-center gap-1.5 font-bold text-slate-600"><BIco.shield className="w-4 h-4 text-[#F15A24]" /> Admin</span>
             <span className="text-slate-300">/</span>
@@ -148,7 +149,7 @@ export default function AdminLayout() {
                   className="appearance-none text-xs sm:text-sm font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-9 py-2 outline-none cursor-pointer max-w-[180px] sm:max-w-[220px] truncate hover:bg-slate-100 transition">
                   {events.map((ev) => (
                     <option key={ev.id} value={ev.id} className="text-slate-700">
-                      {ev.name} {ev.year}{ev.status === "open" ? " 🟢" : ev.status === "closed" ? " 🔒" : " 📝"}
+                      {ev.name} {ev.year}
                     </option>
                   ))}
                 </select>

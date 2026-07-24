@@ -516,7 +516,7 @@ export default function RegisterPage() {
                         <span className="w-5 h-5 rounded-full bg-[#F15A24] text-white flex items-center justify-center"><Ico.check className="w-3 h-3" /></span>
                       ) : null}
                     </div>
-                    {s.time && <div className="text-xs text-slate-500 mb-1.5">🕐 {s.time}</div>}
+                    {s.time && <div className="text-xs text-slate-500 mb-1.5 flex items-center gap-1"><Ico.clock className="w-3 h-3" /> {s.time}</div>}
                     <div className={`text-xs font-medium ${full ? "text-rose-500" : "text-emerald-600"}`}>
                       {full ? "เต็มแล้ว" : `เหลือ ${left}/${cap} ที่`}
                     </div>
@@ -595,7 +595,7 @@ export default function RegisterPage() {
                     </div>
                     <input className={inputCls} placeholder="เบอร์โทร *" value={m.phone} onChange={(e) => updateMember(i, "phone", e.target.value.replace(/[^0-9]/g, "").slice(0, 10))} />
                   </div>
-                  <p className="text-[11px] text-slate-400 mt-1.5">💡 ใส่ Gmail ของน้องเพื่อให้น้อง login เข้ามาดูงานนี้และ QR เช็คอินของตัวเองได้</p>
+                  <p className="text-[11px] text-slate-400 mt-1.5 flex items-start gap-1"><Ico.info className="w-3.5 h-3.5 shrink-0 mt-px" /> ใส่ Gmail ของน้องเพื่อให้น้อง login เข้ามาดูงานนี้และ QR เช็คอินของตัวเองได้</p>
                   <p className="text-[11px] text-[#F15A24] mt-1 flex items-center gap-1"><Ico.warn className="w-3 h-3 shrink-0" /> ต้องกรอกเลขบัตร 13 หลักของเพื่อนให้ครบ </p>
                 </div>
               ))}
@@ -739,7 +739,7 @@ export function PaymentScreen({ course, regId, t, navigate, deadline, isRejected
         setErr("⏳ การส่งใช้เวลานานผิดปกติ — ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง")
       } else if (e.message?.includes("INVALID_STATE")) {
         setExpired(true)
-        setErr("⚠️ ใบสมัครนี้ไม่อยู่ในสถานะที่ชำระเงินได้ (อาจเป็นคิวสำรอง หรือหมดเวลาแล้ว) — กรุณาตรวจสอบที่ 'ใบสมัครของฉัน' หรือสมัครใหม่")
+        setErr("ใบสมัครนี้ไม่อยู่ในสถานะที่ชำระเงินได้ (อาจเป็นคิวสำรอง หรือหมดเวลาแล้ว) — กรุณาตรวจสอบที่ 'ใบสมัครของฉัน' หรือสมัครใหม่")
       } else if (e.message?.includes("expired")) {
         setExpired(true)
         setErr("⏰ ใบสมัครนี้หมดเวลาชำระเงินแล้ว ที่นั่งถูกปล่อยให้คิวถัดไป กรุณาสมัครใหม่อีกครั้ง")

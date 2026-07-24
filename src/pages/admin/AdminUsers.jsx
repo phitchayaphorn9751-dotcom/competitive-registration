@@ -1,6 +1,7 @@
 import { useEffect, useState, forwardRef, useImperativeHandle } from "react"
 import { listAdmins, addAdmin, removeAdmin } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
+import { Ico } from "../../lib/icons.jsx"
 
 const AdminUsers = forwardRef(function AdminUsers({ embedded = false }, ref) {
   const { confirm, toast } = useDialog()
@@ -22,7 +23,7 @@ const AdminUsers = forwardRef(function AdminUsers({ embedded = false }, ref) {
     if (!newEmail.trim()) return toast("กรอกอีเมลก่อน", "error")
     setAdding(true)
     // ทุกคนสิทธิ์เท่ากัน → ส่ง "super" เพื่อให้แอดมินทุกคนจัดการแอดมินได้
-    try { await addAdmin(newEmail.trim(), "super"); toast("✅ เพิ่มแอดมินแล้ว", "success"); setNewEmail(""); setModal(false); load() }
+    try { await addAdmin(newEmail.trim(), "super"); toast("เพิ่มแอดมินแล้ว", "success"); setNewEmail(""); setModal(false); load() }
     catch (e) {
       const m = e.message?.includes("USER_NOT_FOUND_IN_AUTH") ? "ไม่พบผู้ใช้นี้ — ต้องสมัครบัญชี/เข้าสู่ระบบด้วย Google ก่อน"
         : e.message?.includes("NOT_SUPER_ADMIN") ? "ไม่มีสิทธิ์เพิ่มแอดมิน" : e.message
@@ -47,7 +48,7 @@ const AdminUsers = forwardRef(function AdminUsers({ embedded = false }, ref) {
             <p className="text-sm text-gray-400 pl-3 mt-0.5">ผู้ดูแลระบบ · ทุกคนมีสิทธิ์เท่ากัน</p>
           </div>
           <button onClick={() => { setNewEmail(""); setModal(true) }}
-            className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-emerald-700 shadow-sm transition text-sm">➕ เพิ่มแอดมิน</button>
+            className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-emerald-700 shadow-sm transition text-sm"><Ico.plus className="w-4 h-4" /> เพิ่มแอดมิน</button>
         </div>
       )}
 
@@ -86,7 +87,7 @@ const AdminUsers = forwardRef(function AdminUsers({ embedded = false }, ref) {
                 <label className="text-xs font-bold text-gray-500 block mb-1.5">อีเมล Google ของแอดมิน</label>
                 <input className={inputCls} value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="staff@gmail.com" autoFocus
                   onKeyDown={(e) => e.key === "Enter" && doAdd()} />
-                <p className="text-[11px] text-gray-400 mt-1.5">💡 ผู้ใช้ต้องเคยเข้าสู่ระบบด้วย Google ในเว็บนี้ก่อน</p>
+                <p className="text-[11px] text-gray-400 mt-1.5 flex items-start gap-1"><Ico.bulb className="w-3.5 h-3.5 shrink-0 mt-px" /> ผู้ใช้ต้องเคยเข้าสู่ระบบด้วย Google ในเว็บนี้ก่อน</p>
               </div>
             </div>
             <div className="px-5 pb-5 grid grid-cols-2 gap-3">

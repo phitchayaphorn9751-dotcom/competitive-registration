@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { useParams } from "react-router-dom"
 import { getSurveyForm, submitSurveyResponse } from "../lib/supabase.js"
+import { Ico } from "../lib/icons.jsx"
 
 const BRAND = "#F15A24"
 
@@ -64,12 +65,12 @@ export default function SurveyFormPage() {
 
   // ── สถานะหน้า ──
   if (loading) return <Center>กำลังโหลด…</Center>
-  if (loadErr) return <Center>⚠️ {loadErr}</Center>
+  if (loadErr) return <Center><span className="inline-flex items-center gap-2"><Ico.alert className="w-5 h-5" /> {loadErr}</span></Center>
   if (!form) return <Center>ไม่พบแบบประเมินนี้</Center>
-  if (!form.is_open && !done) return <Center>แบบประเมินนี้ปิดรับแล้ว 🙏</Center>
+  if (!form.is_open && !done) return <Center>แบบประเมินนี้ปิดรับแล้ว</Center>
   if (done) return (
     <Center>
-      <div className="text-5xl mb-3">✅</div>
+      <div className="mb-3 flex justify-center"><Ico.check className="w-12 h-12 text-emerald-500" /></div>
       <div className="text-lg font-extrabold text-slate-800 mb-1">ส่งแบบประเมินเรียบร้อย</div>
       <div className="text-sm text-slate-500">ขอบคุณสำหรับความคิดเห็นของคุณ</div>
     </Center>
@@ -99,7 +100,7 @@ export default function SurveyFormPage() {
               <div className="flex gap-1.5 text-3xl">
                 {[1, 2, 3, 4, 5].map((n) => (
                   <button key={n} type="button" onClick={() => setA(q.id, n)}
-                    className={`transition ${Number(answers[q.id]) >= n ? "text-amber-400" : "text-slate-200 hover:text-amber-200"}`}>★</button>
+                    className={`transition ${Number(answers[q.id]) >= n ? "text-amber-400" : "text-slate-200 hover:text-amber-200"}`}><Ico.star className="w-7 h-7" fill="currentColor" /></button>
                 ))}
               </div>
             )}
@@ -164,7 +165,7 @@ export default function SurveyFormPage() {
                     <button key={k} type="button" onClick={() => toggleCheck(q.id, o)}
                       className={`w-full flex items-center gap-2.5 text-left px-3 py-2.5 rounded-xl border-2 transition ${on ? "border-[#F15A24] bg-orange-50" : "border-slate-200 hover:border-slate-300"}`}>
                       <span className={`w-4 h-4 rounded border-2 shrink-0 flex items-center justify-center ${on ? "border-[#F15A24] bg-[#F15A24]" : "border-slate-300"}`}>
-                        {on && <span className="text-white text-[10px] font-black leading-none">✓</span>}
+                        {on && <Ico.check className="w-3 h-3 text-white" />}
                       </span>
                       <span className="text-sm text-slate-700">{o}</span>
                     </button>

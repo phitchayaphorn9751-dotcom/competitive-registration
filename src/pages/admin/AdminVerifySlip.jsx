@@ -2,18 +2,19 @@ import { useEffect, useState } from "react"
 import { useParams, useNavigate, useOutletContext } from "react-router-dom"
 import { fetchRegistration, confirmRegistration, releaseSeat, cancelRegistration, rejectRegistration, rejectPortfolio, promoteWaitlist, fetchCoursesAdmin, adminReassign, adminUpdatePaymentAmount, deleteRegistration, saveRegistrationTheme, adminUpdateParticipant, adminUpdateAdvisor, uploadSlip, attachSlip, adminSetNote } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
+import { Ico } from "../../lib/icons.jsx"
 
 const STATUS = {
-  pending_payment: { cls: "bg-yellow-100 text-yellow-700 border-yellow-200", label: "⚠️ รอชำระเงิน" },
-  slip_uploaded:   { cls: "bg-blue-100 text-blue-700 border-blue-200", label: "⏳ รอตรวจสอบ" },
-  submitted:       { cls: "bg-blue-100 text-blue-700 border-blue-200", label: "⏳ รอพิจารณา" },
-  confirmed:       { cls: "bg-green-100 text-green-700 border-green-200", label: "✅ ยืนยันแล้ว" },
-  approved:        { cls: "bg-green-100 text-green-700 border-green-200", label: "✅ อนุมัติแล้ว" },
-  waitlist:        { cls: "bg-purple-100 text-purple-700 border-purple-200", label: "📋 คิวสำรอง" },
-  slip_rejected:   { cls: "bg-red-100 text-red-700 border-red-200", label: "❌ สลิปไม่ผ่าน" },
-  rejected:        { cls: "bg-red-100 text-red-700 border-red-200", label: "❌ ไม่ผ่าน" },
-  expired:         { cls: "bg-rose-50 text-rose-500 border-rose-200", label: "⏰ หมดเวลา" },
-  held:            { cls: "bg-orange-100 text-orange-700 border-orange-200", label: "🕓 กันที่นั่ง" },
+  pending_payment: { cls: "bg-yellow-100 text-yellow-700 border-yellow-200", label: "รอชำระเงิน", ic: Ico.alert },
+  slip_uploaded:   { cls: "bg-blue-100 text-blue-700 border-blue-200", label: "รอตรวจสอบ", ic: Ico.clock },
+  submitted:       { cls: "bg-blue-100 text-blue-700 border-blue-200", label: "รอพิจารณา", ic: Ico.clock },
+  confirmed:       { cls: "bg-green-100 text-green-700 border-green-200", label: "ยืนยันแล้ว", ic: Ico.check },
+  approved:        { cls: "bg-green-100 text-green-700 border-green-200", label: "อนุมัติแล้ว", ic: Ico.check },
+  waitlist:        { cls: "bg-purple-100 text-purple-700 border-purple-200", label: "คิวสำรอง", ic: Ico.clip },
+  slip_rejected:   { cls: "bg-red-100 text-red-700 border-red-200", label: "สลิปไม่ผ่าน", ic: Ico.x },
+  rejected:        { cls: "bg-red-100 text-red-700 border-red-200", label: "ไม่ผ่าน", ic: Ico.x },
+  expired:         { cls: "bg-rose-50 text-rose-500 border-rose-200", label: "หมดเวลา", ic: Ico.clock },
+  held:            { cls: "bg-orange-100 text-orange-700 border-orange-200", label: "กันที่นั่ง", ic: Ico.ticket },
 }
 
 export default function AdminVerifySlip() {
@@ -49,7 +50,7 @@ export default function AdminVerifySlip() {
     try { await confirmRegistration(registrationId, session?.user?.id); toast("อนุมัติเรียบร้อย!", "success"); onBack() }
     catch (e) {
       const msg = e.message?.includes("COURSE_FULL")
-        ? "❌ คอร์สเต็มแล้ว — อนุมัติเพิ่มไม่ได้ (ผู้สมัครที่เหลือเป็นคิวสำรอง)"
+        ? "คอร์สเต็มแล้ว — อนุมัติเพิ่มไม่ได้ (ผู้สมัครที่เหลือเป็นคิวสำรอง)"
         : "ผิดพลาด: " + e.message
       toast(msg, "error")
     } finally { setBusy(false) }
@@ -67,7 +68,7 @@ export default function AdminVerifySlip() {
     setBusy(true)
     try { await promoteWaitlist(registrationId); toast("ให้สิทธิ์เรียบร้อย — ผู้สมัครชำระเงินได้แล้ว", "success"); onBack() }
     catch (e) {
-      const msg = e.message?.includes("COURSE_FULL") ? "❌ คอร์สเต็มแล้ว — คืนที่นั่งก่อนจึงให้สิทธิ์ได้" : "ผิดพลาด: " + e.message
+      const msg = e.message?.includes("COURSE_FULL") ? "คอร์สเต็มแล้ว — คืนที่นั่งก่อนจึงให้สิทธิ์ได้" : "ผิดพลาด: " + e.message
       toast(msg, "error")
     } finally { setBusy(false) }
   }
@@ -89,7 +90,7 @@ export default function AdminVerifySlip() {
 
   async function doDelete() {
     const ok = await confirm({
-      title: "🗑 ลบรายการสมัครนี้?",
+      title: "ลบรายการสมัครนี้?",
       message: "ลบใบสมัคร + ผู้เข้าร่วม + สลิป ออกจากระบบถาวร กู้คืนไม่ได้\n(ระบบจะคืนที่นั่งให้คอร์สอัตโนมัติ)",
       confirmText: "ลบถาวร", tone: "danger",
     })
@@ -183,7 +184,7 @@ export default function AdminVerifySlip() {
           <h1 className="text-xl sm:text-2xl font-bold text-gray-800">ตรวจสอบการสมัคร</h1>
           <p className="text-xs text-gray-400 mt-0.5">{data.courses?.title}</p>
         </div>
-        <span className={`self-start inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold border ${st.cls}`}>{st.label}{data.status === "waitlist" && data.waitlist_pos ? ` #${data.waitlist_pos}` : ""}</span>
+        <span className={`self-start inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-bold border ${st.cls}`}>{st.ic && <st.ic className="w-4 h-4 shrink-0" />}{st.label}{data.status === "waitlist" && data.waitlist_pos ? ` #${data.waitlist_pos}` : ""}</span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -192,22 +193,22 @@ export default function AdminVerifySlip() {
           {/* สลิปการชำระเงิน */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="bg-gray-50 border-b border-gray-100 px-4 py-3">
-              <span className="text-sm font-bold text-gray-600">🧾 สลิปการชำระเงิน</span>
+              <span className="text-sm font-bold text-gray-600 inline-flex items-center gap-1.5"><Ico.receipt className="w-4 h-4 text-[#F15A24]" /> สลิปการชำระเงิน</span>
             </div>
             <div className="p-4">
               {!isPaid ? (
                 <div className="h-32 rounded-xl bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-300 gap-1.5">
-                  <span className="text-3xl">🆓</span>
+                  <Ico.gift className="w-8 h-8" />
                   <span className="text-sm font-bold">คอร์สนี้ไม่ต้องชำระเงิน</span>
                 </div>
               ) : payment?.slip_url ? (
                 <a href={payment.slip_url} target="_blank" rel="noreferrer" className="block group">
                   <img src={payment.slip_url} alt="slip" className="w-full object-contain max-h-[420px] rounded-xl border border-gray-100 bg-gray-50 group-hover:opacity-90 transition" />
-                  <p className="text-center text-xs text-[#F15A24] mt-2 font-bold">🔍 คลิกเพื่อเปิดเต็มจอ · ยอด ฿{payment.amount?.toLocaleString()}</p>
+                  <p className="text-center text-xs text-[#F15A24] mt-2 font-bold inline-flex items-center justify-center gap-1.5 w-full"><Ico.search className="w-3.5 h-3.5" /> คลิกเพื่อเปิดเต็มจอ · ยอด ฿{payment.amount?.toLocaleString()}</p>
                 </a>
               ) : (
                 <div className="h-32 rounded-xl bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-300 gap-1.5">
-                  <span className="text-3xl">🧾</span><span className="text-sm">ผู้สมัครยังไม่แนบสลิป</span>
+                  <Ico.receipt className="w-8 h-8" /><span className="text-sm">ผู้สมัครยังไม่แนบสลิป</span>
                 </div>
               )}
 
@@ -218,7 +219,7 @@ export default function AdminVerifySlip() {
                   {uploadingSlip ? (
                     <><div className="w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" /> กำลังอัปโหลด…</>
                   ) : (
-                    <>📤 {payment?.slip_url ? "เปลี่ยนสลิป (อัปแทนผู้สมัคร)" : "อัปโหลดสลิปแทนผู้สมัคร"}</>
+                    <><Ico.upload className="w-4 h-4" /> {payment?.slip_url ? "เปลี่ยนสลิป (อัปแทนผู้สมัคร)" : "อัปโหลดสลิปแทนผู้สมัคร"}</>
                   )}
                 </label>
               )}
@@ -227,12 +228,12 @@ export default function AdminVerifySlip() {
           {/* ลิงก์ผลงาน */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="bg-gray-50 border-b border-gray-100 px-4 py-3">
-              <span className="text-sm font-bold text-gray-600">📎 ผลงานที่แนบ</span>
+              <span className="text-sm font-bold text-gray-600 inline-flex items-center gap-1.5"><Ico.paperclip className="w-4 h-4 text-[#F15A24]" /> ผลงานที่แนบ</span>
             </div>
             <div className="p-4">
               {!data.courses?.require_portfolio ? (
                 <div className="h-32 rounded-xl bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-300 gap-1.5">
-                  <span className="text-3xl">📭</span>
+                  <Ico.inbox className="w-8 h-8" />
                   <span className="text-sm font-bold">คอร์สนี้ไม่ต้องแนบผลงาน</span>
                 </div>
               ) : data.portfolio_url ? (
@@ -257,7 +258,7 @@ export default function AdminVerifySlip() {
                 </div>
               ) : (
                 <div className="h-32 rounded-xl bg-gray-50 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-300 gap-1.5">
-                  <span className="text-3xl">📎</span>
+                  <Ico.paperclip className="w-8 h-8" />
                   <span className="text-sm">ผู้สมัครยังไม่แนบผลงาน</span>
                 </div>
               )}
@@ -270,9 +271,9 @@ export default function AdminVerifySlip() {
           {/* Applicant info */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="bg-gradient-to-r from-[#fff5f0] to-[#fff9f6] border-b border-orange-100 px-4 py-3 flex justify-between items-center">
-              <span className="text-sm font-bold text-[#F15A24]">👤 ข้อมูลผู้สมัคร</span>
+              <span className="text-sm font-bold text-[#F15A24] inline-flex items-center gap-1.5"><Ico.user className="w-4 h-4" /> ข้อมูลผู้สมัคร</span>
               {!["cancelled"].includes(data.status) && (
-                <button onClick={() => setEditOpen(true)} className="text-xs font-bold text-gray-500 hover:text-[#F15A24] border border-gray-200 rounded-lg px-2.5 py-1 transition">✏️ แก้ไข</button>
+                <button onClick={() => setEditOpen(true)} className="text-xs font-bold text-gray-500 hover:text-[#F15A24] border border-gray-200 rounded-lg px-2.5 py-1 transition inline-flex items-center gap-1.5"><Ico.pencil className="w-3.5 h-3.5" /> แก้ไข</button>
               )}
             </div>
             <div className="p-4 space-y-0">
@@ -294,7 +295,7 @@ export default function AdminVerifySlip() {
           {/* Participants */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="bg-gray-50 border-b border-gray-100 px-4 py-3 flex justify-between items-center">
-              <span className="text-sm font-bold text-gray-600">👥 ผู้เข้าร่วม ({participants.length})</span>
+              <span className="text-sm font-bold text-gray-600 inline-flex items-center gap-1.5"><Ico.users className="w-4 h-4 text-[#F15A24]" /> ผู้เข้าร่วม ({participants.length})</span>
               {(data.status === "confirmed" || data.status === "approved") && (
                 <span className="text-xs text-green-600 font-bold">เช็คอิน {checkedIn}/{participants.length}</span>
               )}
@@ -302,14 +303,14 @@ export default function AdminVerifySlip() {
             <div className="p-4 space-y-2">
               {data.theme_name && (
                 <div className="bg-purple-50 rounded-lg px-3 py-2 border border-purple-100">
-                  <span className="text-xs text-purple-600 font-bold">🎯 ชื่อทีม/ธีม: </span>
+                  <span className="text-xs text-purple-600 font-bold inline-flex items-center gap-1"><Ico.target className="w-3.5 h-3.5" /> ชื่อทีม/ธีม: </span>
                   <span className="text-sm text-gray-700 font-bold">{data.theme_name}</span>
                 </div>
               )}
               {participants.map((p) => (
                 <div key={p.id} className="bg-gray-50 rounded-lg px-3 py-2">
                   <div className="flex justify-between items-center gap-2">
-                    <span className="text-sm font-medium text-gray-800 min-w-0">{(p.checkins?.length || 0) > 0 && <span className="text-green-600 font-bold">✓ </span>}{p.full_name}</span>
+                    <span className="text-sm font-medium text-gray-800 min-w-0">{(p.checkins?.length || 0) > 0 && <Ico.check className="w-3.5 h-3.5 text-green-600 inline-block mr-1 align-[-2px]" />}{p.full_name}</span>
                     <div className="flex items-center gap-2 shrink-0">
                       {p.participant_code && (
                         <span className="font-mono text-[11px] font-bold text-[#F15A24] bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-md">{p.participant_code}</span>
@@ -322,7 +323,7 @@ export default function AdminVerifySlip() {
               ))}
               {advisors.length > 0 && (
                 <div className="bg-blue-50 rounded-lg px-3 py-2 border border-blue-100">
-                  <span className="text-xs text-blue-600 font-bold">🧑‍🏫 ครูที่ปรึกษา: </span>
+                  <span className="text-xs text-blue-600 font-bold inline-flex items-center gap-1"><Ico.cap className="w-3.5 h-3.5" /> ครูที่ปรึกษา: </span>
                   <span className="text-sm text-gray-700">{advisors.map((a) => `${a.full_name}${a.phone ? ` (${a.phone})` : ""}`).join(", ")}</span>
                 </div>
               )}
@@ -332,7 +333,7 @@ export default function AdminVerifySlip() {
           {/* Reject reason (if any) */}
           {data.reject_reason && (
             <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
-              <p className="text-xs font-bold text-red-600 mb-1.5">❌ เหตุผลที่ไม่อนุมัติ</p>
+              <p className="text-xs font-bold text-red-600 mb-1.5 flex items-center gap-1.5"><Ico.x className="w-3.5 h-3.5" /> เหตุผลที่ไม่อนุมัติ</p>
               <p className="text-sm text-red-700">{data.reject_reason}</p>
             </div>
           )}
@@ -346,21 +347,21 @@ export default function AdminVerifySlip() {
             <div className="grid grid-cols-3 gap-2">
               <button onClick={release} disabled={busy || !canRelease}
                 className="flex flex-col items-center gap-1.5 py-3 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200 disabled:opacity-40 transition text-xs">
-                <span className="text-lg">🗑️</span> ยกเลิก / คืนที่นั่ง
+                <Ico.trash className="w-5 h-5" /> ยกเลิก / คืนที่นั่ง
               </button>
               <button onClick={() => isFreePortfolioLike ? rejectPortfolioAction() : setRejectModal(true)} disabled={busy || !canReject}
                 className="flex flex-col items-center gap-1.5 py-3 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 disabled:opacity-40 transition text-xs border border-red-100">
-                <span className="text-lg">❌</span> ไม่ผ่าน
+                <Ico.x className="w-5 h-5" /> ไม่ผ่าน
               </button>
               {canPromote ? (
                 <button onClick={promoteAction} disabled={busy}
                   className="flex flex-col items-center gap-1.5 py-3 bg-amber-500 text-white rounded-xl font-bold hover:bg-amber-600 disabled:opacity-40 shadow-sm transition text-xs">
-                  <span className="text-lg">🎟️</span> ให้สิทธิ์
+                  <Ico.ticket className="w-5 h-5" /> ให้สิทธิ์
                 </button>
               ) : (
                 <button onClick={approve} disabled={busy || !canApprove}
                   className="flex flex-col items-center gap-1.5 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 disabled:opacity-40 disabled:bg-gray-400 shadow-sm transition text-xs">
-                  <span className="text-lg">✅</span> อนุมัติ
+                  <Ico.check className="w-5 h-5" /> อนุมัติ
                 </button>
               )}
             </div>
@@ -373,7 +374,7 @@ export default function AdminVerifySlip() {
             <div className="mt-3 pt-3 border-t border-gray-100">
               <button onClick={doDelete} disabled={busy}
                 className="w-full flex items-center justify-center gap-2 py-2.5 text-red-600 rounded-xl font-bold hover:bg-red-50 disabled:opacity-40 transition text-xs border border-red-200">
-                🗑 ลบรายการสมัครนี้ถาวร
+                <Ico.trash className="w-4 h-4" /> ลบรายการสมัครนี้ถาวร
               </button>
               <p className="text-[10px] text-gray-400 text-center mt-1.5">ลบใบสมัคร + ผู้เข้าร่วม + สลิป ออกจากระบบถาวร (คืนที่นั่งให้)</p>
             </div>
@@ -398,7 +399,7 @@ export default function AdminVerifySlip() {
         <div className="bg-white w-full sm:rounded-2xl sm:max-w-md shadow-2xl overflow-hidden rounded-t-2xl" onClick={(e) => e.stopPropagation()}>
           <div className="h-1.5 bg-red-500" />
           <div className="p-5 sm:p-6">
-            <h3 className="font-bold text-gray-800 text-lg mb-1">{isPaid ? "❌ ตีกลับสลิป" : "❌ ไม่อนุมัติผลงาน"}</h3>
+            <h3 className="font-bold text-gray-800 text-lg mb-1 flex items-center gap-2"><Ico.x className="w-5 h-5 text-red-500" />{isPaid ? "ตีกลับสลิป" : "ไม่อนุมัติผลงาน"}</h3>
             <p className="text-sm text-gray-500 mb-4">{isPaid ? "ระบุเหตุผล ผู้สมัครจะเห็นและส่งสลิปใหม่ได้" : "ระบุเหตุผล ผู้สมัครจะเห็นเหตุผลที่ไม่ผ่าน"}</p>
             <textarea rows="3" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)}
               placeholder={isPaid ? "เช่น สลิปไม่ชัด / ยอดเงินไม่ตรง / ไม่พบรายการโอน" : "เช่น ผลงานไม่ตรงโจทย์ / ลิงก์เปิดไม่ได้ / ผิดเงื่อนไข"}
@@ -511,7 +512,7 @@ function EditRegistrationModal({ data, eventId, isPaid, onClose, onSaved, toast 
       }
       // ⚠️ ย้ายข้ามวิชา + มีรหัส/บาร์โค้ดออกไปแล้ว → เตือนว่ารหัสชุดเดิมใช้ไม่ได้
       if (changedCourse && hasIssuedCodes) {
-        toast("⚠️ ย้ายข้ามวิชาแล้ว — รหัส/บาร์โค้ดเดิมถูกออกใหม่ ผู้เข้าร่วมต้องใช้ QR/รหัสชุดใหม่ในการเช็คอิน", "warning")
+        toast("ย้ายข้ามวิชาแล้ว — รหัส/บาร์โค้ดเดิมถูกออกใหม่ ผู้เข้าร่วมต้องใช้ QR/รหัสชุดใหม่ในการเช็คอิน", "warning")
       } else {
         toast("บันทึกการแก้ไขแล้ว", "success")
       }
@@ -527,7 +528,7 @@ function EditRegistrationModal({ data, eventId, isPaid, onClose, onSaved, toast 
       <div className="bg-white w-full sm:max-w-lg sm:rounded-2xl shadow-2xl overflow-hidden rounded-t-2xl flex flex-col max-h-[92dvh]" onClick={(e) => e.stopPropagation()}>
         <div className="h-1.5 bg-[#F15A24] shrink-0" />
         <div className="p-5 sm:p-6 space-y-4 overflow-y-auto">
-          <h3 className="font-bold text-gray-800 text-lg">✏️ แก้ไขใบสมัคร</h3>
+          <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2"><Ico.pencil className="w-5 h-5 text-[#F15A24]" /> แก้ไขใบสมัคร</h3>
 
           {/* จำนวนที่นั่งที่ใบนี้กิน */}
           <div className="bg-orange-50 border border-orange-100 rounded-xl px-3 py-2 text-xs text-gray-600">
@@ -537,7 +538,7 @@ function EditRegistrationModal({ data, eventId, isPaid, onClose, onSaved, toast 
           {/* เตือนล่วงหน้า: ถ้ากำลังจะย้ายข้ามวิชา และมีรหัส/บาร์โค้ดออกไปแล้ว */}
           {changedCourse && hasIssuedCodes && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 flex items-start gap-2">
-              <span className="text-base shrink-0">⚠️</span>
+              <Ico.alert className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
               <p className="text-xs text-amber-700 leading-relaxed">
                 <b>ย้ายข้ามวิชา:</b> รหัส/บาร์โค้ดเดิมของผู้เข้าร่วมจะถูกออกใหม่ทั้งหมด — ผู้เข้าร่วมต้องใช้ QR/รหัสชุดใหม่ในการเช็คอิน (รหัสเดิมที่แจกไปแล้วจะใช้ไม่ได้)
               </p>
@@ -594,7 +595,7 @@ function EditRegistrationModal({ data, eventId, isPaid, onClose, onSaved, toast 
                           <span className="text-sm font-bold text-gray-800">{s.label || "รอบ"}</span>
                           {isCurrent && <span className="text-[10px] font-bold text-[#F15A24] bg-orange-100 px-1.5 py-0.5 rounded">ปัจจุบัน</span>}
                         </div>
-                        {s.time && <div className="text-[11px] text-gray-400">🕐 {s.time}</div>}
+                        {s.time && <div className="text-[11px] text-gray-400 flex items-center gap-1"><Ico.clock className="w-3 h-3" /> {s.time}</div>}
                       </div>
                       <span className={`text-xs font-bold shrink-0 ${full ? "text-rose-500" : "text-emerald-600"}`}>
                         {full ? "เต็ม" : `เหลือ ${remain}`}
@@ -603,7 +604,7 @@ function EditRegistrationModal({ data, eventId, isPaid, onClose, onSaved, toast 
                   )
                 })}
               </div>
-              {changedCourse && <p className="text-[11px] text-amber-600 mt-1.5">⚠️ ย้ายมาวิชาใหม่ — เลือกรอบก่อนบันทึก</p>}
+              {changedCourse && <p className="text-[11px] text-amber-600 mt-1.5 flex items-center gap-1"><Ico.alert className="w-3.5 h-3.5" /> ย้ายมาวิชาใหม่ — เลือกรอบก่อนบันทึก</p>}
             </div>
           )}
 
@@ -624,7 +625,7 @@ function EditRegistrationModal({ data, eventId, isPaid, onClose, onSaved, toast 
           {/* ── แก้ข้อมูลผู้เข้าร่วม ── */}
           {members.length > 0 && (
             <div className="pt-2 border-t border-gray-100">
-              <label className="text-xs font-bold text-gray-500 block mb-2">👥 ข้อมูลผู้เข้าร่วม</label>
+              <label className="text-xs font-bold text-gray-500 mb-2 flex items-center gap-1.5"><Ico.users className="w-3.5 h-3.5" /> ข้อมูลผู้เข้าร่วม</label>
               <div className="space-y-3">
                 {members.map((m, i) => (
                   <div key={m.id || i} className="bg-gray-50 rounded-xl p-3 border border-gray-100 space-y-2">
@@ -655,7 +656,7 @@ function EditRegistrationModal({ data, eventId, isPaid, onClose, onSaved, toast 
           {/* ── แก้ข้อมูลครูที่ปรึกษา ── */}
           {advs.length > 0 && (
             <div className="pt-2 border-t border-gray-100">
-              <label className="text-xs font-bold text-gray-500 block mb-2">🧑‍🏫 ครูที่ปรึกษา</label>
+              <label className="text-xs font-bold text-gray-500 mb-2 flex items-center gap-1.5"><Ico.cap className="w-3.5 h-3.5" /> ครูที่ปรึกษา</label>
               <div className="space-y-3">
                 {advs.map((a, i) => (
                   <div key={a.id || i} className="bg-blue-50 rounded-xl p-3 border border-blue-100 space-y-2">
@@ -703,11 +704,11 @@ function AdminNoteCard({ regId, note, onSaved, toast }) {
   return (
     <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
       <div className="flex items-center justify-between mb-2">
-        <p className="text-xs font-bold text-amber-700">📝 โน้ต/หมายเหตุ <span className="font-normal text-amber-500">(ผู้สมัครเห็นด้วย)</span></p>
+        <p className="text-xs font-bold text-amber-700 flex items-center gap-1.5"><Ico.note className="w-3.5 h-3.5" /> โน้ต/หมายเหตุ <span className="font-normal text-amber-500">(ผู้สมัครเห็นด้วย)</span></p>
         {!editing && (
           <button onClick={() => { setValue(note || ""); setEditing(true) }}
-            className="text-[10px] font-bold text-amber-600 hover:text-amber-800 bg-amber-100 hover:bg-amber-200 px-2 py-1 rounded-lg transition">
-            ✏️ แก้ไข
+            className="text-[10px] font-bold text-amber-600 hover:text-amber-800 bg-amber-100 hover:bg-amber-200 px-2 py-1 rounded-lg transition inline-flex items-center gap-1">
+            <Ico.pencil className="w-3 h-3" /> แก้ไข
           </button>
         )}
       </div>
@@ -719,7 +720,7 @@ function AdminNoteCard({ regId, note, onSaved, toast }) {
           <div className="flex gap-2">
             <button onClick={() => setEditing(false)} className="flex-1 py-2 bg-gray-200 text-gray-600 rounded-xl font-bold text-xs hover:bg-gray-300 transition">ยกเลิก</button>
             <button onClick={handleSave} disabled={saving} className="flex-1 py-2 bg-amber-600 text-white rounded-xl font-bold text-xs hover:bg-amber-700 disabled:opacity-50 transition">
-              {saving ? "กำลังบันทึก…" : "💾 บันทึก"}
+              {saving ? "กำลังบันทึก…" : <span className="inline-flex items-center gap-1.5"><Ico.save className="w-3.5 h-3.5" /> บันทึก</span>}
             </button>
           </div>
         </div>

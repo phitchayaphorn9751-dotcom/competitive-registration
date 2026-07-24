@@ -722,7 +722,7 @@ export default function AdminImport() {
               <button onClick={addManual} className="mt-3 w-full inline-flex items-center justify-center gap-2 bg-slate-700 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-slate-800 transition text-sm">
                 <Ico.plus className="w-4 h-4" /> เพิ่มคนนี้เข้ารายการ
               </button>
-              <p className="text-[11px] text-slate-400 mt-2">💡 กด Enter ในช่องชื่อเพื่อเพิ่มเร็ว · เบอร์ 10 หลัก / เลขบัตร 13 หลัก (ถ้ากรอก) · ใส่อีเมลตรง Gmail = login เห็นเอง</p>
+              <p className="text-[11px] text-slate-400 mt-2 flex items-start gap-1"><Ico.bulb className="w-3.5 h-3.5 shrink-0 mt-px" /> กด Enter ในช่องชื่อเพื่อเพิ่มเร็ว · เบอร์ 10 หลัก / เลขบัตร 13 หลัก (ถ้ากรอก) · ใส่อีเมลตรง Gmail = login เห็นเอง</p>
             </div>
 
             {manualList.length > 0 && (
@@ -866,7 +866,7 @@ export default function AdminImport() {
             {autoPreview && autoPreview.errors.length > 0 && (
               <div className="mt-3 border border-rose-100 rounded-xl overflow-hidden">
                 <div className="px-3 py-1.5 bg-rose-50/50 border-b border-rose-100">
-                  <span className="text-xs font-bold text-rose-600">⚠️ {autoPreview.errors.length} แถว import ไม่ได้</span>
+                  <span className="text-xs font-bold text-rose-600 inline-flex items-center gap-1"><Ico.alert className="w-3.5 h-3.5" />{autoPreview.errors.length} แถว import ไม่ได้</span>
                 </div>
                 <div className="max-h-28 overflow-y-auto p-2">
                   {autoPreview.errors.map((e, i) => (
@@ -921,7 +921,7 @@ export default function AdminImport() {
                 {autoResults.errors.length > 0 && (
                   <div className="border border-rose-100 rounded-xl overflow-hidden">
                     <div className="px-4 py-2.5 border-b border-rose-100 bg-rose-50/40">
-                      <span className="text-xs font-bold text-rose-600">⚠️ ผิดพลาด {autoResults.errors.length} คน — ต้องแก้ไฟล์แล้ว import ใหม่</span>
+                      <span className="text-xs font-bold text-rose-600 inline-flex items-center gap-1"><Ico.alert className="w-3.5 h-3.5" />ผิดพลาด {autoResults.errors.length} คน — ต้องแก้ไฟล์แล้ว import ใหม่</span>
                     </div>
                     <div className="max-h-48 overflow-y-auto p-2">
                       {autoResults.errors.map((e, i) => (
@@ -1384,7 +1384,7 @@ function UserImportSection({ allSchools }) {
             <button onClick={addUManual} className="mt-3 w-full inline-flex items-center justify-center gap-2 bg-violet-500 text-white px-4 py-2.5 rounded-xl font-bold hover:bg-violet-600 transition text-sm">
               <Ico.plus className="w-4 h-4" /> เพิ่มคนนี้เข้ารายการ
             </button>
-            <p className="text-[11px] text-slate-400 mt-2">💡 กด Enter ในช่องอีเมลเพื่อเพิ่มเร็ว · อีเมลจำเป็น · เบอร์ 10 หลัก / เลขบัตร 13 หลัก (ถ้ากรอก)</p>
+            <p className="text-[11px] text-slate-400 mt-2 flex items-start gap-1"><Ico.bulb className="w-3.5 h-3.5 shrink-0 mt-px" /> กด Enter ในช่องอีเมลเพื่อเพิ่มเร็ว · อีเมลจำเป็น · เบอร์ 10 หลัก / เลขบัตร 13 หลัก (ถ้ากรอก)</p>
           </div>
 
           {uManual.length > 0 && (

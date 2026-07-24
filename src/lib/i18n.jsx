@@ -52,7 +52,7 @@ const T = {
   "login.hasAccount": { th: "มีบัญชีอยู่แล้ว?", en: "Already have an account?" },
   "login.heroSub": { th: "มาร่วมค้นพบประสบการณ์การเรียนรู้แบบใหม่ กับโครงการค่ายฤดูร้อนที่ออกแบบมาสำหรับคุณ", en: "Discover a new learning experience with a summer camp designed for you" },
   // reset modal
-  "login.resetTitle": { th: "🔑 รีเซ็ตรหัสผ่าน", en: "🔑 Reset Password" },
+  "login.resetTitle": { th: "รีเซ็ตรหัสผ่าน", en: "Reset Password" },
   "login.resetSub": { th: "ลิงก์สำหรับตั้งรหัสใหม่จะถูกส่งไปยังอีเมลของคุณ", en: "A password reset link will be sent to your email" },
   "login.resetEmailLabel": { th: "อีเมลที่ใช้สมัคร", en: "Registered email" },
   "login.resetSend": { th: "ส่งลิงก์", en: "Send link" },
@@ -72,8 +72,8 @@ const T = {
   "signup.confirmPwPlaceholder": { th: "กรอกรหัสผ่านอีกครั้ง", en: "Re-enter password" },
   "signup.pwPlaceholder": { th: "อย่างน้อย 6 ตัวอักษร", en: "At least 6 characters" },
   "signup.pwMismatch": { th: "รหัสผ่านไม่ตรงกัน", en: "Passwords do not match" },
-  "signup.pwMatch": { th: "✅ รหัสผ่านตรงกัน", en: "✅ Passwords match" },
-  "signup.pwNoMatch": { th: "❌ รหัสผ่านไม่ตรงกัน", en: "❌ Passwords do not match" },
+  "signup.pwMatch": { th: "รหัสผ่านตรงกัน", en: "Passwords match" },
+  "signup.pwNoMatch": { th: "รหัสผ่านไม่ตรงกัน", en: "Passwords do not match" },
   "signup.pwTooShort": { th: "รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร", en: "Password must be at least 6 characters" },
   "signup.emailUsed": { th: "อีเมลนี้ถูกใช้งานแล้ว", en: "This email is already in use" },
   "signup.strength": { th: "ความปลอดภัย", en: "Strength" },
@@ -100,8 +100,8 @@ const T = {
   "myreg.noneInTab": { th: "ไม่มีรายการในหมวดนี้", en: "Nothing in this category" },
   "myreg.regId": { th: "รหัส", en: "ID" },
   "myreg.registeredOn": { th: "สมัครเมื่อ", en: "Registered" },
-  "myreg.payNow": { th: "💳 ชำระเงิน", en: "💳 Pay now" },
-  "myreg.showBarcode": { th: "🪪 บาร์โค้ดเช็คอิน", en: "🪪 Check-in barcode" },
+  "myreg.payNow": { th: "ชำระเงิน", en: "Pay now" },
+  "myreg.showBarcode": { th: "บาร์โค้ดเช็คอิน", en: "Check-in barcode" },
   "myreg.checkinTitle": { th: "บัตรเช็คอิน", en: "Check-in Card" },
   "myreg.checkinSub": { th: "โปรดแสดงหน้านี้แก่เจ้าหน้าที่", en: "Show this to staff" },
   "myreg.closeWindow": { th: "ปิดหน้าต่าง", en: "Close" },
@@ -126,7 +126,7 @@ const T = {
   "profile.addressInfo": { th: "ที่อยู่ปัจจุบัน / Current Address", en: "Current Address" },
   "profile.nationality": { th: "สัญชาติ / NATIONALITY", en: "Nationality" },
   "profile.thai": { th: "TH สัญชาติไทย", en: "TH Thai" },
-  "profile.foreign": { th: "🌏 ต่างชาติ", en: "🌏 Foreign" },
+  "profile.foreign": { th: "ต่างชาติ", en: "Foreign" },
   "profile.nationalId": { th: "เลขบัตรประชาชน", en: "National ID" },
   "profile.passport": { th: "เลขพาสปอร์ต", en: "Passport No." },
   "profile.idPlaceholder": { th: "13 หลัก", en: "13 digits" },
@@ -185,7 +185,7 @@ const T = {
   "pay.accountNo": { th: "เลขที่บัญชี", en: "Account no." },
   "pay.accountName": { th: "ชื่อบัญชี", en: "Account name" },
   "pay.copy": { th: "คัดลอก", en: "Copy" },
-  "pay.copied": { th: "คัดลอกแล้ว ✓", en: "Copied ✓" },
+  "pay.copied": { th: "คัดลอกแล้ว", en: "Copied" },
   "pay.uploadSlip": { th: "อัปโหลดสลิปโอนเงิน", en: "Upload payment slip" },
   "pay.tapSelect": { th: "แตะเพื่อเลือกสลิป", en: "Tap to select slip" },
   "pay.fileTypes": { th: "รองรับ JPG, PNG ขนาดไม่เกิน 5MB", en: "JPG, PNG up to 5MB" },
@@ -271,7 +271,7 @@ export function LangToggle({ style }) {
       }}
       title={lang === "th" ? "Switch to English" : "เปลี่ยนเป็นภาษาไทย"}
     >
-      {lang === "th" ? "🇹🇭 ไทย" : "🇬🇧 EN"}
+      {lang === "th" ? "ไทย" : "EN"}
     </button>
   )
 }

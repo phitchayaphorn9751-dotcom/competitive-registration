@@ -74,7 +74,7 @@ export default function AdminCourses() {
     const taken = c.seats_taken || 0
     const hasApplicants = taken > 0
     const ok = await confirm({
-      title: hasApplicants ? "⚠️ คอร์สนี้มีผู้สมัครแล้ว" : "ลบคอร์สนี้?",
+      title: hasApplicants ? "คอร์สนี้มีผู้สมัครแล้ว" : "ลบคอร์สนี้?",
       message: hasApplicants
         ? `คอร์ส "${c.title}" มีผู้สมัครแล้ว ${taken} รายการ\nหากลบ ข้อมูลผู้สมัครของคอร์สนี้จะหายไปด้วย\n\nยืนยันลบคอร์สหรือไม่?`
         : `ลบคอร์ส "${c.title}"`,
@@ -1266,7 +1266,7 @@ function ParticipantsModal({ course, onClose }) {
                       {hasSessions && <td className="px-4 py-3">{r.sessionName ? <span className="text-[11px] font-bold bg-orange-50 text-[#F15A24] px-2 py-0.5 rounded-full">{r.sessionName}</span> : <span className="text-slate-300">—</span>}</td>}
                       <td className="px-4 py-3 font-mono text-slate-600">{r.phone}</td>
                       <td className="px-4 py-3 text-slate-600">{r.status}</td>
-                      <td className={`px-4 py-3 text-center font-bold ${r.checkedIn ? "text-emerald-600" : "text-slate-300"}`}>{r.checkedIn ? "✓" : "—"}</td>
+                      <td className={`px-4 py-3 text-center font-bold ${r.checkedIn ? "text-emerald-600" : "text-slate-300"}`}>{r.checkedIn ? <Ico.check className="w-4 h-4 inline-block" /> : "—"}</td>
                     </tr>
                   ))}
                 </tbody>

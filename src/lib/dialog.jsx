@@ -1,14 +1,15 @@
 import { createContext, useContext, useState, useCallback } from "react"
+import { Ico } from "./icons.jsx"
 
 const DialogContext = createContext(null)
 
 // ใช้สีตามธีม: เขียว=สำเร็จ/ถูก, แดง=ผิด/ลบ, ฟ้า=ข้อมูล/เน้น, ส้ม=ปุ่มหลัก
 const TONE = {
-  success: { ring: "border-emerald-200", bar: "bg-emerald-500", icon: "✅", btn: "bg-emerald-600 hover:bg-emerald-700" },
-  error:   { ring: "border-rose-200", bar: "bg-rose-500", icon: "⚠️", btn: "bg-rose-600 hover:bg-rose-700" },
-  info:    { ring: "border-sky-200", bar: "bg-sky-500", icon: "ℹ️", btn: "bg-sky-600 hover:bg-sky-700" },
-  warn:    { ring: "border-orange-200", bar: "bg-[#F15A24]", icon: "🔔", btn: "bg-[#F15A24] hover:bg-orange-600" },
-  danger:  { ring: "border-rose-200", bar: "bg-rose-500", icon: "🗑️", btn: "bg-rose-600 hover:bg-rose-700" },
+  success: { ring: "border-emerald-200", bar: "bg-emerald-500", icon: Ico.check, iconCls: "text-emerald-500", btn: "bg-emerald-600 hover:bg-emerald-700" },
+  error:   { ring: "border-rose-200", bar: "bg-rose-500", icon: Ico.alert, iconCls: "text-rose-500", btn: "bg-rose-600 hover:bg-rose-700" },
+  info:    { ring: "border-sky-200", bar: "bg-sky-500", icon: Ico.bulb, iconCls: "text-sky-500", btn: "bg-sky-600 hover:bg-sky-700" },
+  warn:    { ring: "border-orange-200", bar: "bg-[#F15A24]", icon: Ico.alert, iconCls: "text-[#F15A24]", btn: "bg-[#F15A24] hover:bg-orange-600" },
+  danger:  { ring: "border-rose-200", bar: "bg-rose-500", icon: Ico.trash, iconCls: "text-rose-500", btn: "bg-rose-600 hover:bg-rose-700" },
 }
 
 export function DialogProvider({ children }) {
@@ -67,7 +68,7 @@ export function DialogProvider({ children }) {
               onClick={(e) => e.stopPropagation()}>
               <div className={`h-1.5 ${tone.bar}`} />
               <div className="p-5 sm:p-6 text-center">
-                <div className="text-4xl mb-3">{tone.icon}</div>
+                <div className="mb-3 flex justify-center">{tone.icon && <tone.icon className={`w-10 h-10 ${tone.iconCls || ""}`} />}</div>
                 <p className="text-sm sm:text-base text-slate-700 font-medium leading-relaxed whitespace-pre-line">{activePopup.message}</p>
               </div>
               <div className="px-5 sm:px-6 pb-5 sm:pb-6">
@@ -89,7 +90,7 @@ export function DialogProvider({ children }) {
             onClick={(e) => e.stopPropagation()}>
             <div className={`h-1.5 ${(TONE[confirmState.tone] || TONE.warn).bar}`} />
             <div className="p-5 sm:p-6 text-center">
-              <div className="text-4xl mb-3">{(TONE[confirmState.tone] || TONE.warn).icon}</div>
+              <div className="mb-3 flex justify-center">{(() => { const T = TONE[confirmState.tone] || TONE.warn; return T.icon ? <T.icon className={`w-10 h-10 ${T.iconCls || ""}`} /> : null })()}</div>
               <h3 className="font-bold text-slate-800 text-lg mb-2">{confirmState.title}</h3>
               {confirmState.message && <p className="text-sm text-slate-500 leading-relaxed whitespace-pre-line">{confirmState.message}</p>}
             </div>

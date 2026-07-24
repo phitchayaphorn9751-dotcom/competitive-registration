@@ -23,6 +23,7 @@ const Ico = {
   sparkle: (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>),
   gift:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg>),
   infinity:(p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M6 16c-2.2 0-4-1.8-4-4s1.8-4 4-4c1.5 0 2.5.8 3.5 2l5 4c1 1.2 2 2 3.5 2 2.2 0 4-1.8 4-4s-1.8-4-4-4c-1.5 0-2.5.8-3.5 2l-5 4c-1 1.2-2 2-3.5 2z"/></svg>),
+  megaphone:(p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>),
 }
 
 export default function HomePage() {
@@ -160,7 +161,7 @@ export default function HomePage() {
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
             <div className="text-center mb-8">
               <span className="inline-block bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full mb-3 tracking-widest uppercase">
-                🎓 {t("home.openNow")}
+                <Ico.cap className="w-3.5 h-3.5 inline-block mr-1 align-[-2px]" />{t("home.openNow")}
               </span>
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold mb-3 tracking-tight">
                 {siteTitle || event?.name || "CAMT SUMMER COURSE"}
@@ -210,7 +211,7 @@ export default function HomePage() {
           {/* แบนเนอร์แจ้งเตือน */}
           {notice.trim() && (
             <div className="bg-orange-50 border border-orange-100 rounded-2xl px-5 py-4 sm:px-6 sm:py-5 flex gap-3 sm:gap-4">
-              <span className="text-2xl sm:text-3xl shrink-0 leading-none">📷</span>
+              <Ico.megaphone className="w-6 h-6 sm:w-7 sm:h-7 shrink-0 text-[#F15A24]" />
               <p className="text-slate-700 text-sm sm:text-[15px] leading-relaxed whitespace-pre-line">{notice}</p>
             </div>
           )}
@@ -638,7 +639,7 @@ function DetailModal({ course, t, onClose, onRegister }) {
                           <span className={`font-bold text-sm ${full ? "text-slate-400" : "text-slate-800"}`}>{s.label || "รอบ"}</span>
                           {full && <span className="text-[10px] font-bold bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full">เต็ม</span>}
                         </div>
-                        {s.time && <div className="text-xs text-slate-500 mb-1">🕐 {s.time}</div>}
+                        {s.time && <div className="text-xs text-slate-500 mb-1 flex items-center gap-1"><Ico.clock className="w-3 h-3" /> {s.time}</div>}
                         <div className={`text-xs font-medium ${full ? "text-rose-500" : "text-emerald-600"}`}>
                           {full ? "เต็มแล้ว" : `เหลือ ${left}/${cap} ที่`}
                         </div>

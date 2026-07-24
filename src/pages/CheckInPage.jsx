@@ -366,7 +366,7 @@ export default function CheckInPage() {
                       onClick={() => { setSessionId(s.id); setLast(null) }}
                       className={`flex flex-col items-start px-3.5 py-2 rounded-xl border-2 transition text-left ${active ? "bg-[#F15A24] text-white border-[#F15A24] shadow-md shadow-orange-500/20" : "bg-white text-slate-600 border-slate-200 hover:border-orange-300"}`}>
                       <span className="text-sm font-bold">{s.label || "รอบ"}</span>
-                      {s.time && <span className={`text-[10px] ${active ? "text-orange-100" : "text-slate-400"}`}>🕐 {s.time}</span>}
+                      {s.time && <span className={`text-[10px] inline-flex items-center gap-1 ${active ? "text-orange-100" : "text-slate-400"}`}><Ico.clock className="w-3 h-3" /> {s.time}</span>}
                     </button>
                   )
                 })}
@@ -493,7 +493,7 @@ export default function CheckInPage() {
             )}
             {cameraError && (
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 px-6 text-center">
-                <div className="text-4xl mb-3">📵</div>
+                <div className="mb-3 flex justify-center"><Ico.warn className="w-10 h-10 text-slate-300" /></div>
                 <p className="text-white font-bold text-sm mb-4">{cameraError}</p>
                 <button onClick={stopCamera} className="px-6 py-2.5 bg-[#F15A24] text-white font-bold rounded-xl text-sm">ปิด</button>
               </div>

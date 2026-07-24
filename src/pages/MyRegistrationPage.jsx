@@ -400,9 +400,9 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
             )}
             {/* 3 การ์ดข้อมูล */}
             <div className="grid grid-cols-3 gap-2">
-              {[["📅", "วันเริ่ม", fmtThaiDate(course?.start_date)], ["🏁", "วันสิ้นสุด", fmtThaiDate(course?.end_date)], ["⏱️", "ระยะเวลา", course?.duration || "-"]].map(([ic, lb, vl], i) => (
+              {[[Ico.calendar, "วันเริ่ม", fmtThaiDate(course?.start_date)], [Ico.flag, "วันสิ้นสุด", fmtThaiDate(course?.end_date)], [Ico.clock, "ระยะเวลา", course?.duration || "-"]].map(([IcCmp, lb, vl], i) => (
                 <div key={i} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 text-center">
-                  <div className="text-2xl mb-1">{ic}</div>
+                  <div className="mb-1 flex justify-center">{IcCmp && <IcCmp className="w-5 h-5 text-[#F15A24]" />}</div>
                   <div className="text-[10px] text-slate-400">{lb}</div>
                   <div className="text-xs font-bold text-slate-800 mt-0.5 leading-tight">{vl}</div>
                 </div>
@@ -410,13 +410,13 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
             </div>
             {course?.level && (
               <div className="flex justify-center">
-                <span className="text-xs font-bold bg-orange-100 text-[#F15A24] px-3 py-1 rounded-full">📊 {course.level}</span>
+                <span className="text-xs font-bold bg-orange-100 text-[#F15A24] px-3 py-1 rounded-full inline-flex items-center gap-1.5"><Ico.chart className="w-3.5 h-3.5" /> {course.level}</span>
               </div>
             )}
             {/* คำอธิบาย */}
             {course?.description && (
               <div className="bg-white p-4 rounded-2xl border border-orange-100 shadow-sm">
-                <h4 className="font-bold text-[#F15A24] text-sm mb-2 flex items-center gap-2">📝 คำอธิบายรายวิชา</h4>
+                <h4 className="font-bold text-[#F15A24] text-sm mb-2 flex items-center gap-2"><Ico.note className="w-4 h-4" /> คำอธิบายรายวิชา</h4>
                 <p className="text-slate-700 text-sm leading-7 whitespace-pre-line">{course.description}</p>
               </div>
             )}
@@ -428,14 +428,14 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
                   <p className="text-3xl font-extrabold text-emerald-600">{Number(reg.price).toLocaleString()} บาท</p>
                 </>
               ) : (
-                <p className="text-xl font-extrabold text-emerald-600">✨ ไม่มีค่าลงทะเบียน</p>
+                <p className="text-xl font-extrabold text-emerald-600 flex items-center gap-2"><Ico.gift className="w-5 h-5" /> ไม่มีค่าลงทะเบียน</p>
               )}
             </div>
           </div>
 
           {/* ───── ขวา: ข้อมูลที่กรอกตอนสมัคร ───── */}
           <div className="md:w-1/2 p-5 space-y-1">
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2">📝 ข้อมูลการสมัคร</p>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5"><Ico.note className="w-3.5 h-3.5" /> ข้อมูลการสมัคร</p>
 
             {/* QR กลุ่มไลน์ — แสดงบนสุด (ถ้าคอร์สแนบ QR + ยืนยันแล้ว) */}
             {isConfirmed && reg.line_qr_url && (
@@ -527,7 +527,7 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
             {/* ลิงก์ผลงาน */}
             {reg.require_portfolio && (
               <div className="bg-orange-50 border border-orange-100 rounded-xl p-3 my-2">
-                <p className="text-xs font-bold text-[#F15A24] mb-1.5">📎 {reg.portfolio_label || "ผลงานที่แนบ"}</p>
+                <p className="text-xs font-bold text-[#F15A24] mb-1.5 flex items-center gap-1.5"><Ico.paperclip className="w-3.5 h-3.5" /> {reg.portfolio_label || "ผลงานที่แนบ"}</p>
                 {reg.portfolio_url ? (
                   <div className="space-y-1.5">
                     {reg.portfolio_url.split(/[\n,]+/).map((link, i) => {
@@ -638,7 +638,7 @@ function MemberBarcodeModal({ member, courseTitle, onClose }) {
           </div>
         </div>
         <div className="px-6 pb-6 bg-slate-50 flex gap-2">
-          <button onClick={saveImage} className="flex-1 bg-slate-900 hover:bg-slate-800 text-white py-3 rounded-xl font-semibold text-sm transition flex items-center justify-center gap-2"><Ico.barcode className="w-4 h-4" style={{ color: "#fb923c" }} />💾 บันทึกภาพ</button>
+          <button onClick={saveImage} className="flex-1 bg-slate-900 hover:bg-slate-800 text-white py-3 rounded-xl font-semibold text-sm transition flex items-center justify-center gap-2"><Ico.barcode className="w-4 h-4" style={{ color: "#fb923c" }} /> บันทึกภาพ</button>
           <button onClick={onClose} className="flex-1 bg-white border border-slate-200 text-slate-600 py-3 rounded-xl font-semibold text-sm hover:bg-slate-100 transition">ปิด</button>
         </div>
       </div>

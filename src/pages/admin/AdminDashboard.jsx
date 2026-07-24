@@ -575,7 +575,7 @@ const schoolRanking = useMemo(() => {
       )}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2">
-          <SectionCard title="📈 แนวโน้มการสมัคร (Registration Trend)" action={<span className="text-xs text-slate-400">{trendData.length} วัน</span>}>
+          <SectionCard title="แนวโน้มการสมัคร (Registration Trend)" icon={Ico.trend} action={<span className="text-xs text-slate-400">{trendData.length} วัน</span>}>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={trendData}>

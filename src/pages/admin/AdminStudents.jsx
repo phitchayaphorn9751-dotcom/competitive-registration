@@ -45,7 +45,7 @@ export default function AdminStudents() {
   // ข้อ 11: ลบผู้ใช้ + ประวัติการสมัครทั้งหมด
   async function doDeleteUser(u) {
     const ok = await confirm({
-      title: "🗑 ลบผู้ใช้นี้?",
+      title: "ลบผู้ใช้นี้?",
       message: `ลบ "${u.first_name || ""} ${u.last_name || ""}" (${u.email})\nประวัติการสมัครทั้งหมดของผู้ใช้นี้จะถูกลบถาวร กู้คืนไม่ได้`,
       confirmText: "ลบถาวร", tone: "danger",
     })
@@ -362,11 +362,11 @@ function EditStudentModal({ student, onClose, onSaved, toast }) {
           {/* ล็อก: เลขบัตร + อีเมล */}
           <div className="bg-slate-100 rounded-xl p-3 space-y-2">
             <div>
-              <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">เลขบัตร/Passport (แก้ไม่ได้) 🔒</label>
+              <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1">เลขบัตร/Passport (แก้ไม่ได้) <Ico.lock className="w-3 h-3" /></label>
               <div className="text-sm font-mono font-bold text-slate-500 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200">{student.national_id || student.passport_no || "-"}</div>
             </div>
             <div>
-              <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">อีเมล (แก้ไม่ได้) 🔒</label>
+              <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1">อีเมล (แก้ไม่ได้) <Ico.lock className="w-3 h-3" /></label>
               <div className="text-sm font-mono text-slate-500 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200">{student.email || "-"}</div>
             </div>
           </div>

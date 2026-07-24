@@ -8,6 +8,12 @@ const Ico = {
   grid:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>),
   ticket:  (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2M13 17v2M13 11v2"/></svg>),
   user:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>),
+  chat:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>),
+  phone:   (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>),
+  megaphone:(p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>),
+  home:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="m3 10 9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>),
+  file:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h5"/></svg>),
+  logout:  (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>),
 }
 
 export default function Navbar() {
@@ -87,7 +93,7 @@ export default function Navbar() {
         {/* Desktop centre: contact pill */}
         <div className="hidden items-center gap-4 rounded-full border border-white/25 bg-white/15 px-5 py-1.5 backdrop-blur-sm lg:flex">
           <a href={lineUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 transition-opacity hover:opacity-85">
-            <span className="text-base">💬</span>
+            <Ico.chat className="w-4 h-4 shrink-0" />
             <div className="flex flex-col leading-tight">
               <span className="text-[9px] font-light text-orange-100">ติดต่อ Line</span>
               <span className="text-xs font-bold text-yellow-200">{lineId}</span>
@@ -95,7 +101,7 @@ export default function Navbar() {
           </a>
           <div className="h-6 w-px bg-white/25" />
           <a href={telHref} className="flex items-center gap-2 transition-opacity hover:opacity-85">
-            <span className="text-base">📞</span>
+            <Ico.phone className="w-4 h-4 shrink-0" />
             <div className="flex flex-col leading-tight">
               <span className="text-[9px] font-light text-orange-100">โทรศัพท์</span>
               <span className="text-xs font-bold text-white">{phone}</span>
@@ -140,28 +146,28 @@ export default function Navbar() {
         <div className="px-4 py-4 space-y-4">
           {/* Contact card */}
           <div className="rounded-xl border border-yellow-400/40 bg-white/10 p-3">
-            <p className="mb-2.5 text-center text-[11px] font-semibold text-yellow-300">📣 ติดต่อสอบถามผ่านช่องทางนี้</p>
+            <p className="mb-2.5 flex items-center justify-center gap-1.5 text-center text-[11px] font-semibold text-yellow-300"><Ico.megaphone className="w-3.5 h-3.5" /> ติดต่อสอบถามผ่านช่องทางนี้</p>
             <div className="flex gap-2">
-              <a href={lineUrl} target="_blank" rel="noreferrer" className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#06c755] py-2 text-sm font-bold text-white shadow transition hover:bg-[#05b64d] active:scale-95">💬 Line</a>
-              <a href={telHref} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-white py-2 text-sm font-bold text-[#f15a24] shadow transition hover:bg-orange-50 active:scale-95">📞 โทรหาเรา</a>
+              <a href={lineUrl} target="_blank" rel="noreferrer" className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#06c755] py-2 text-sm font-bold text-white shadow transition hover:bg-[#05b64d] active:scale-95"><Ico.chat className="w-4 h-4" /> Line</a>
+              <a href={telHref} className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-white py-2 text-sm font-bold text-[#f15a24] shadow transition hover:bg-orange-50 active:scale-95"><Ico.phone className="w-4 h-4" /> โทรหาเรา</a>
             </div>
           </div>
           {/* Nav links */}
           <div className="space-y-1">
-            <MobileItem to="/" icon="🏠" label="Home" />
+            <MobileItem to="/" icon={Ico.home} label="Home" />
             {!user ? (
               <Link to="/login" className="block rounded-xl bg-white px-4 py-2.5 text-center text-sm font-bold text-[#f15a24] shadow transition hover:bg-orange-50 active:scale-95">เข้าสู่ระบบ</Link>
             ) : (
               <>
                 {profileDone && (
                   <>
-                    <MobileItem to="/my-registration" icon="📄" label="การสมัครของฉัน" />
-                    <MobileItem to="/profile" icon="👤" label="โปรไฟล์" />
+                    <MobileItem to="/my-registration" icon={Ico.file} label="การสมัครของฉัน" />
+                    <MobileItem to="/profile" icon={Ico.user} label="โปรไฟล์" />
                   </>
                 )}
                 <div className="pt-1 border-t border-white/25">
                   <button onClick={handleLogout} className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold text-red-200 transition hover:bg-white/15 hover:text-white active:scale-95">
-                    <span>🚪</span> ออกจากระบบ
+                    <Ico.logout className="w-4 h-4" /> ออกจากระบบ
                   </button>
                 </div>
               </>
@@ -216,12 +222,12 @@ function NavItem({ to, children }) {
   )
 }
 
-function MobileItem({ to, icon, label }) {
+function MobileItem({ to, icon: Icon, label }) {
   const location = useLocation()
   const isActive = location.pathname === to
   return (
     <Link to={to} className={`flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition ${isActive ? "bg-white/20 text-white" : "text-orange-100 hover:bg-white/15 hover:text-white"}`}>
-      <span className="text-base">{icon}</span>{label}
+      {Icon && <Icon className="w-4 h-4 shrink-0" />}{label}
     </Link>
   )
 }
