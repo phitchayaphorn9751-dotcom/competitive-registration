@@ -124,6 +124,7 @@ export default function AdminDashboard() {
   const [expandedTeams, setExpandedTeams] = useState({})  // {groupKey: true} — ทีมที่กางดูสมาชิก
   const [selectedUser, setSelectedUser] = useState(null)
   const [courseDetail, setCourseDetail] = useState(null)
+  const [detailSession, setDetailSession] = useState("all")  // filter รอบใน popup สรุปวิชา
 const [allCourses, setAllCourses] = useState([])  // ทุกวิชาในงาน (รวม 0 คน) — สำหรับ "จำนวนผู้สมัคร"
   const [showAllSchools, setShowAllSchools] = useState(false)  // ดูโรงเรียนทั้งหมด (ไม่จำกัด 10)
   const [exportOpen, setExportOpen] = useState(false)  // modal เลือกโหมด export
@@ -306,7 +307,11 @@ const schoolRanking = useMemo(() => {
     const approvedCount = allRegs.filter((r) => PAID_STATUSES.includes(r.status)).length
     const pendingCount = allRegs.filter((r) => ["slip_uploaded", "submitted", "pending_payment", "held"].includes(r.status)).length
     const waitlistCount = allRegs.filter((r) => r.status === "waitlist").length
-    setCourseDetail({ courseName, regs, allRegs, schools, grades, revenue: regs.reduce((s, r) => s + Number(r.price || 0), 0), isTeam, themeCount, approvedCount, pendingCount, waitlistCount })
+    // รอบของวิชา (จาก course_sessions ที่ RPC ส่งมา) — วิชาที่มีรอบ → แยก section ตามรอบ
+    const parseSessions = (raw) => { try { return Array.isArray(raw) ? raw : (typeof raw === "string" ? JSON.parse(raw || "[]") : []) } catch { return [] } }
+    const courseSessions = allRegs.map((r) => parseSessions(r.course_sessions)).find((a) => a.length) || []
+    setDetailSession("all")
+    setCourseDetail({ courseName, regs, allRegs, schools, grades, revenue: regs.reduce((s, r) => s + Number(r.price || 0), 0), isTeam, themeCount, approvedCount, pendingCount, waitlistCount, courseSessions })
   }
 
   // ประวัติการสมัครทุกวิชาของ user (จาก email)
@@ -834,7 +839,12 @@ const schoolRanking = useMemo(() => {
                 <button onClick={() => setCourseDetail(null)} className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xl font-bold flex items-center justify-center">×</button>
               </div>
             </div>
-            <div className={`grid ${courseDetail.isTeam ? "grid-cols-3 sm:grid-cols-5" : "grid-cols-2 sm:grid-cols-4"} divide-x divide-slate-100 border-b border-slate-100 shrink-0`}>
+            <div className={`grid ${
+              courseDetail.isTeam && courseDetail.courseSessions?.length ? "grid-cols-3 sm:grid-cols-6"
+              : (courseDetail.isTeam || courseDetail.courseSessions?.length) ? "grid-cols-3 sm:grid-cols-5"
+              : "grid-cols-2 sm:grid-cols-4"
+            } divide-x divide-slate-100 border-b border-slate-100 shrink-0`}>
+              {courseDetail.courseSessions?.length > 0 && <div className="px-3 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">รอบ</p><p className="text-base font-extrabold text-amber-600">{courseDetail.courseSessions.length}</p></div>}
               {courseDetail.isTeam && <div className="px-3 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">ธีม</p><p className="text-base font-extrabold text-violet-600">{courseDetail.themeCount}</p></div>}
               <div className="px-3 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">ผู้สมัคร</p><p className="text-base font-extrabold text-slate-700">{courseDetail.allRegs.length}</p></div>
               <div className="px-3 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">อนุมัติแล้ว</p><p className="text-base font-extrabold text-emerald-600">{courseDetail.approvedCount}</p></div>
@@ -842,57 +852,91 @@ const schoolRanking = useMemo(() => {
               <div className="px-3 py-3 text-center"><p className="text-[10px] text-slate-400 mb-0.5">คิวสำรอง</p><p className="text-base font-extrabold text-slate-400">{courseDetail.waitlistCount}</p></div>
             </div>
             <div className="overflow-y-auto flex-1 p-5">
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5"><Ico.users className="w-3.5 h-3.5 text-[#F15A24]" /> รายชื่อผู้สมัคร ({courseDetail.allRegs.length})</p>
-              {courseDetail.allRegs.length === 0 ? (
-                <p className="text-center text-slate-300 text-sm py-6">ยังไม่มีผู้สมัคร</p>
-              ) : (() => {
-                // จัดกลุ่มตามธีม (ถ้าไม่มีธีม → ไม่มีคอลัมน์ธีม)
-                const groupMap = {}
-                courseDetail.allRegs.forEach((r) => {
-                  const key = (r.theme_name || "").trim()
-                  if (!groupMap[key]) groupMap[key] = []
-                  groupMap[key].push(r)
-                })
-                const hasThemes = Object.keys(groupMap).some((k) => k !== "")
+              {(() => {
+                const cs = Array.isArray(courseDetail.courseSessions) ? courseDetail.courseSessions : []
+                const hasSessions = cs.length > 0
+                const sessLabel = (s) => (s.label || s.time || "รอบ").trim()
                 // เรียงตามสถานะก่อน (อนุมัติแล้ว→รอพิจารณา→คิวสำรอง→อื่นๆ) ภายในสถานะเดียวกันคงลำดับการสมัครเดิม (sort เสถียร)
                 const statusRank = (s) =>
                   (s === "confirmed" || s === "approved") ? 0
                   : (s === "slip_uploaded" || s === "submitted" || s === "pending_payment" || s === "held") ? 1
                   : (s === "waitlist") ? 2 : 3
-                const themeGroups = Object.entries(groupMap).map(([name, members]) => ({ name, members })).sort((a, b) => statusRank(a.members[0]?.status) - statusRank(b.members[0]?.status))
-                return (
-                  <div className="border border-slate-100 rounded-xl overflow-hidden">
-                    <table className="w-full text-xs border-collapse">
-                      <thead>
-                        <tr className="bg-slate-50 text-slate-400 text-[10px] uppercase tracking-wider">
-                          {hasThemes && <th className="text-center font-bold px-2 py-2 w-10">ธีม</th>}
-                          {hasThemes && <th className="text-left font-bold px-2 py-2">ชื่อธีม</th>}
-                          <th className="text-left font-bold px-2 py-2">สมาชิก</th>
-                          <th className="text-left font-bold px-2 py-2">โรงเรียน</th>
-                          <th className="text-left font-bold px-2 py-2">สถานะ</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {hasThemes
-                          ? themeGroups.flatMap((g, gi) => g.members.map((r, mi) => (
-                              <tr key={r.id || `${gi}-${mi}`} className="border-t border-slate-100 align-top">
-                                {mi === 0 && <td rowSpan={g.members.length} className="px-2 py-2 text-center font-black text-[#F15A24] border-r border-slate-100">{gi + 1}</td>}
-                                {mi === 0 && <td rowSpan={g.members.length} className="px-2 py-2 font-semibold text-slate-700 border-r border-slate-100 align-top w-36 break-words">{g.name || "(ไม่มีชื่อธีม)"}</td>}
-                                <td className="px-2 py-2 text-slate-700 whitespace-nowrap">{r.full_name || "ไม่ระบุ"}</td>
-                                <td className="px-2 py-2 text-slate-500 break-words">{r.school || "ไม่ระบุ"}</td>
-                                <td className="px-2 py-2"><StatusBadge status={r.status} /></td>
-                              </tr>
-                            )))
-                          : courseDetail.allRegs.map((r, i) => (
-                              <tr key={r.id || i} className="border-t border-slate-100">
-                                <td className="px-2 py-2 text-slate-700 whitespace-nowrap">{r.full_name || "ไม่ระบุ"}</td>
-                                <td className="px-2 py-2 text-slate-500 break-words">{r.school || "ไม่ระบุ"}</td>
-                                <td className="px-2 py-2"><StatusBadge status={r.status} /></td>
-                              </tr>
-                            ))}
-                      </tbody>
-                    </table>
+                // ตารางรายชื่อ (จัดกลุ่มธีม) สำหรับ regs ชุดหนึ่ง
+                const renderTable = (regs, kp) => {
+                  const groupMap = {}
+                  regs.forEach((r) => { const key = (r.theme_name || "").trim(); if (!groupMap[key]) groupMap[key] = []; groupMap[key].push(r) })
+                  const hasThemes = Object.keys(groupMap).some((k) => k !== "")
+                  const themeGroups = Object.entries(groupMap).map(([name, members]) => ({ name, members })).sort((a, b) => statusRank(a.members[0]?.status) - statusRank(b.members[0]?.status))
+                  return (
+                    <div className="border border-slate-100 rounded-xl overflow-hidden">
+                      <table className="w-full text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-slate-50 text-slate-400 text-[10px] uppercase tracking-wider">
+                            {hasThemes && <th className="text-center font-bold px-2 py-2 w-10">ธีม</th>}
+                            {hasThemes && <th className="text-left font-bold px-2 py-2">ชื่อธีม</th>}
+                            <th className="text-left font-bold px-2 py-2">สมาชิก</th>
+                            <th className="text-left font-bold px-2 py-2">โรงเรียน</th>
+                            <th className="text-left font-bold px-2 py-2">สถานะ</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {hasThemes
+                            ? themeGroups.flatMap((g, gi) => g.members.map((r, mi) => (
+                                <tr key={r.id || `${kp}-${gi}-${mi}`} className="border-t border-slate-100 align-top">
+                                  {mi === 0 && <td rowSpan={g.members.length} className="px-2 py-2 text-center font-black text-[#F15A24] border-r border-slate-100">{gi + 1}</td>}
+                                  {mi === 0 && <td rowSpan={g.members.length} className="px-2 py-2 font-semibold text-slate-700 border-r border-slate-100 align-top w-36 break-words">{g.name || "(ไม่มีชื่อธีม)"}</td>}
+                                  <td className="px-2 py-2 text-slate-700 whitespace-nowrap">{r.full_name || "ไม่ระบุ"}</td>
+                                  <td className="px-2 py-2 text-slate-500 break-words">{r.school || "ไม่ระบุ"}</td>
+                                  <td className="px-2 py-2"><StatusBadge status={r.status} /></td>
+                                </tr>
+                              )))
+                            : regs.map((r, i) => (
+                                <tr key={r.id || `${kp}-${i}`} className="border-t border-slate-100">
+                                  <td className="px-2 py-2 text-slate-700 whitespace-nowrap">{r.full_name || "ไม่ระบุ"}</td>
+                                  <td className="px-2 py-2 text-slate-500 break-words">{r.school || "ไม่ระบุ"}</td>
+                                  <td className="px-2 py-2"><StatusBadge status={r.status} /></td>
+                                </tr>
+                              ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )
+                }
+                const header = (
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><Ico.users className="w-3.5 h-3.5 text-[#F15A24]" /> รายชื่อผู้สมัคร ({courseDetail.allRegs.length})</p>
+                    {hasSessions && (
+                      <select value={detailSession} onChange={(e) => setDetailSession(e.target.value)}
+                        className="px-3 py-1.5 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-[#F15A24]/40 text-xs text-slate-700 bg-white shrink-0">
+                        <option value="all">ทุกรอบ</option>
+                        {cs.map((s) => <option key={s.id} value={s.id}>{sessLabel(s)}</option>)}
+                      </select>
+                    )}
                   </div>
+                )
+                if (courseDetail.allRegs.length === 0) return <>{header}<p className="text-center text-slate-300 text-sm py-6">ยังไม่มีผู้สมัคร</p></>
+                if (!hasSessions) return <>{header}{renderTable(courseDetail.allRegs, "flat")}</>
+                // แยก section ตามรอบ (ตามลำดับรอบที่กำหนด) + bucket รอบที่ไม่ระบุ
+                const sections = cs.map((s) => ({ id: s.id, label: sessLabel(s), regs: courseDetail.allRegs.filter((r) => r.session_id === s.id) }))
+                const noSess = courseDetail.allRegs.filter((r) => !cs.some((s) => s.id === r.session_id))
+                if (noSess.length) sections.push({ id: "__none", label: "ไม่ระบุรอบ", regs: noSess })
+                const shown = sections.filter((sec) => sec.regs.length > 0 && (detailSession === "all" || detailSession === sec.id))
+                return (
+                  <>
+                    {header}
+                    <div className="space-y-4">
+                      {shown.map((sec) => (
+                        <div key={sec.id}>
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1"><Ico.clock className="w-3.5 h-3.5" /> {sec.label}</span>
+                            <span className="text-[11px] font-bold text-slate-400">{sec.regs.length} คน</span>
+                          </div>
+                          {renderTable(sec.regs, sec.id)}
+                        </div>
+                      ))}
+                      {shown.length === 0 && <p className="text-center text-slate-300 text-sm py-6">ไม่มีผู้สมัครในรอบที่เลือก</p>}
+                    </div>
+                  </>
                 )
               })()}
             </div>
