@@ -60,6 +60,15 @@ function groupByTeam(list) {
   return groups
 }
 
+// ชื่อรอบของใบสมัคร (จาก course_sessions + session_id ที่ RPC ส่งมา) — ไม่มีรอบคืน ""
+function sessionLabelOf(r) {
+  if (!r?.session_id) return ""
+  let ss = r.course_sessions
+  try { ss = Array.isArray(ss) ? ss : (typeof ss === "string" ? JSON.parse(ss || "[]") : []) } catch { ss = [] }
+  const s = Array.isArray(ss) ? ss.find((x) => x.id === r.session_id) : null
+  return s ? (s.label || s.time || "").trim() : ""
+}
+
 function SectionCard({ title, icon: Icon, children, action, className = "", headerClassName = "" }) {
   return (
     <div className={`rounded-2xl border shadow-sm overflow-hidden ${className || "bg-white border-slate-200"}`}>
@@ -345,6 +354,19 @@ const schoolRanking = useMemo(() => {
 
   // จัดกลุ่มทีม (สำหรับแสดงใน drill — ทีมยุบ 1 แถว)
   const drillGroups = useMemo(() => groupByTeam(drillList), [drillList])
+
+  // แบ่ง section ตามวิชา (ถ้ามีรอบ → ต่อท้ายด้วยชื่อรอบ) คงลำดับเดิม
+  const drillSections = useMemo(() => {
+    const map = new Map()
+    drillGroups.forEach((g) => {
+      const head = g.head || {}
+      const sess = sessionLabelOf(head)
+      const title = `${head.course_name || "(ไม่ระบุวิชา)"}${sess ? ` · ${sess}` : ""}`
+      if (!map.has(title)) map.set(title, { key: title, title, groups: [] })
+      map.get(title).groups.push(g)
+    })
+    return [...map.values()]
+  }, [drillGroups])
 
   // ── Export CSV — แยก section ตามวิชา ──
   const csvEscape = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`
@@ -653,7 +675,7 @@ const schoolRanking = useMemo(() => {
       {drill && (
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={(e) => e.target === e.currentTarget && setDrill(null)}>
           <div className="bg-white w-full sm:rounded-2xl sm:max-w-5xl flex flex-col max-h-[95dvh] sm:max-h-[90vh] shadow-2xl rounded-t-2xl overflow-hidden">
-            <div className="bg-gradient-to-r from-[#F15A24] to-amber-500 px-5 py-4 flex justify-between items-center shrink-0">
+            <div className="bg-gradient-to-r from-[#F15A24] to-amber-500 px-5 py-4 flex justify-between items-center shrink-0 rounded-t-2xl">
               <div>
                 <h3 className="text-base font-bold text-white">{drill.title}</h3>
                 <p className="text-orange-100 text-xs mt-0.5">{drillGroups.length} ทีม/คน · {drillList.length} รายชื่อ</p>
@@ -679,64 +701,76 @@ const schoolRanking = useMemo(() => {
               {/* Desktop table */}
               <table className="w-full text-xs hidden sm:table">
                 <thead className="bg-slate-50 text-slate-400 text-[10px] uppercase sticky top-0 border-b border-slate-100">
-                  <tr><th className="px-4 py-3 text-center w-10">#</th><th className="px-4 py-3">ธีม / ชื่อ-สกุล</th><th className="px-4 py-3">ระดับชั้น</th><th className="px-4 py-3">วิชา</th><th className="px-4 py-3">จังหวัด</th><th className="px-4 py-3">สถานะ</th><th className="px-4 py-3 text-right">เบอร์</th></tr>
+                  <tr><th className="px-4 py-3 text-center w-10">#</th><th className="px-4 py-3">ธีม</th><th className="px-4 py-3">ชื่อ-สกุล</th><th className="px-4 py-3">ระดับชั้น</th><th className="px-4 py-3">วิชา</th><th className="px-4 py-3">จังหวัด</th><th className="px-4 py-3">สถานะ</th><th className="px-4 py-3 text-right">เบอร์</th></tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {drillGroups.map((g, gi) => {
-                    const head = g.head
-                    const isExpanded = expandedTeams[g.key]
-                    // ── ทีม (หลายคน) → 1 แถวยุบ คลิกกาง ──
-                    if (g.isTeam && g.members.length > 1) {
-                      return (
-                        <Fragment key={g.key}>
-                          <tr onClick={() => setExpandedTeams((p) => ({ ...p, [g.key]: !p[g.key] }))} className="hover:bg-orange-50/50 transition cursor-pointer bg-orange-50/20">
-                            <td className="px-4 py-3 text-center text-slate-400 font-bold">{gi + 1}</td>
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-2">
-                                <span className={`transition-transform ${isExpanded ? "rotate-90" : ""} text-[#F15A24] font-bold`}>›</span>
-                                <div>
-                                  <div className="font-bold text-slate-800 flex items-center gap-1.5">
-                                    <Ico.users className="w-3.5 h-3.5 text-[#F15A24]" /> {g.theme || "(ไม่มีชื่อธีม)"}
-                                  </div>
-                                  <div className="text-[10px] text-slate-400">ทีม {g.members.length} คน · หัวหน้า {head.full_name}</div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3"><span className="bg-sky-50 text-sky-700 border border-sky-100 px-2 py-0.5 rounded-md font-bold text-[10px]">{head.grade_level}</span></td>
-                            <td className="px-4 py-3 text-slate-600 max-w-[140px]"><span className="line-clamp-1">{head.course_name}</span></td>
-                            <td className="px-4 py-3 text-slate-500">{head.province}</td>
-                            <td className="px-4 py-3"><StatusBadge status={head.status} /></td>
-                            <td className="px-4 py-3 text-right font-mono text-slate-600">{head.phone}</td>
-                          </tr>
-                          {isExpanded && g.members.map((r, mi) => (
-                            <tr key={g.key + "-" + mi} onClick={() => openUser(r)} className="hover:bg-orange-50/40 transition cursor-pointer bg-slate-50/40">
-                              <td className="px-4 py-2.5 text-center text-slate-300 text-[10px]">{mi + 1}</td>
-                              <td className="px-4 py-2.5 pl-10 font-medium text-slate-700">{r.full_name} {r.nickname && <span className="text-slate-400 font-normal">({r.nickname})</span>}</td>
-                              <td className="px-4 py-2.5 text-slate-500">{r.grade_level}</td>
-                              <td className="px-4 py-2.5 text-slate-400 text-[10px]">สมาชิกทีม</td>
-                              <td className="px-4 py-2.5 text-slate-500">{r.province}</td>
-                              <td className="px-4 py-2.5"></td>
-                              <td className="px-4 py-2.5 text-right font-mono text-slate-500">{r.phone}</td>
-                            </tr>
-                          ))}
-                        </Fragment>
-                      )
-                    }
-                    // ── เดี่ยว (1 คน) → แถวปกติ ──
-                    const r = head
-                    return (
-                      <tr key={g.key} onClick={() => openUser(r)} className="hover:bg-orange-50/50 transition cursor-pointer">
-                        <td className="px-4 py-3 text-center text-slate-300 font-bold">{gi + 1}</td>
-                        <td className="px-4 py-3 font-medium text-slate-800">{r.full_name} {r.nickname && <span className="text-slate-400 font-normal">({r.nickname})</span>}</td>
-                        <td className="px-4 py-3"><span className="bg-sky-50 text-sky-700 border border-sky-100 px-2 py-0.5 rounded-md font-bold text-[10px]">{r.grade_level}</span></td>
-                        <td className="px-4 py-3 text-slate-600 max-w-[140px]"><span className="line-clamp-1">{r.course_name}</span></td>
-                        <td className="px-4 py-3 text-slate-500">{r.province}</td>
-                        <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
-                        <td className="px-4 py-3 text-right font-mono text-slate-600">{r.phone}</td>
+                  {drillSections.map((sec) => (
+                    <Fragment key={sec.key}>
+                      <tr className="bg-orange-50/70">
+                        <td colSpan="8" className="px-4 py-2 text-[11px] font-bold text-[#F15A24]">
+                          {sec.title} <span className="text-slate-400 font-normal">· {sec.groups.length} ทีม/คน</span>
+                        </td>
                       </tr>
-                    )
-                  })}
-                  {drillGroups.length === 0 && <tr><td colSpan="7" className="py-16 text-center text-sm text-slate-300">ไม่พบข้อมูล</td></tr>}
+                      {sec.groups.map((g, gi) => {
+                        const head = g.head
+                        const isExpanded = expandedTeams[g.key]
+                        // ── ทีม (หลายคน) → 1 แถวยุบ คลิกกาง ──
+                        if (g.isTeam && g.members.length > 1) {
+                          return (
+                            <Fragment key={g.key}>
+                              <tr onClick={() => setExpandedTeams((p) => ({ ...p, [g.key]: !p[g.key] }))} className="hover:bg-orange-50/50 transition cursor-pointer bg-orange-50/20">
+                                <td className="px-4 py-3 text-center text-slate-400 font-bold">{gi + 1}</td>
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center gap-2">
+                                    <span className={`transition-transform ${isExpanded ? "rotate-90" : ""} text-[#F15A24] font-bold`}>›</span>
+                                    <div>
+                                      <div className="font-bold text-slate-800 flex items-center gap-1.5">
+                                        <Ico.users className="w-3.5 h-3.5 text-[#F15A24]" /> {g.theme || "(ไม่มีชื่อธีม)"}
+                                      </div>
+                                      <div className="text-[10px] text-slate-400">ทีม {g.members.length} คน</div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 font-medium text-slate-700">{head.full_name} <span className="text-[10px] text-slate-400">(หัวหน้า)</span></td>
+                                <td className="px-4 py-3"><span className="bg-sky-50 text-sky-700 border border-sky-100 px-2 py-0.5 rounded-md font-bold text-[10px]">{head.grade_level}</span></td>
+                                <td className="px-4 py-3 text-slate-600 max-w-[140px]"><span className="line-clamp-1">{head.course_name}</span></td>
+                                <td className="px-4 py-3 text-slate-500">{head.province}</td>
+                                <td className="px-4 py-3"><StatusBadge status={head.status} /></td>
+                                <td className="px-4 py-3 text-right font-mono text-slate-600">{head.phone}</td>
+                              </tr>
+                              {isExpanded && g.members.map((r, mi) => (
+                                <tr key={g.key + "-" + mi} onClick={() => openUser(r)} className="hover:bg-orange-50/40 transition cursor-pointer bg-slate-50/40">
+                                  <td className="px-4 py-2.5 text-center text-slate-300 text-[10px]">{mi + 1}</td>
+                                  <td className="px-4 py-2.5"></td>
+                                  <td className="px-4 py-2.5 pl-10 font-medium text-slate-700">{r.full_name} {r.nickname && <span className="text-slate-400 font-normal">({r.nickname})</span>}</td>
+                                  <td className="px-4 py-2.5 text-slate-500">{r.grade_level}</td>
+                                  <td className="px-4 py-2.5 text-slate-400 text-[10px]">สมาชิกทีม</td>
+                                  <td className="px-4 py-2.5 text-slate-500">{r.province}</td>
+                                  <td className="px-4 py-2.5"></td>
+                                  <td className="px-4 py-2.5 text-right font-mono text-slate-500">{r.phone}</td>
+                                </tr>
+                              ))}
+                            </Fragment>
+                          )
+                        }
+                        // ── เดี่ยว (1 คน) → แถวปกติ ──
+                        const r = head
+                        return (
+                          <tr key={g.key} onClick={() => openUser(r)} className="hover:bg-orange-50/50 transition cursor-pointer">
+                            <td className="px-4 py-3 text-center text-slate-300 font-bold">{gi + 1}</td>
+                            <td className="px-4 py-3 text-slate-300">—</td>
+                            <td className="px-4 py-3 font-medium text-slate-800">{r.full_name} {r.nickname && <span className="text-slate-400 font-normal">({r.nickname})</span>}</td>
+                            <td className="px-4 py-3"><span className="bg-sky-50 text-sky-700 border border-sky-100 px-2 py-0.5 rounded-md font-bold text-[10px]">{r.grade_level}</span></td>
+                            <td className="px-4 py-3 text-slate-600 max-w-[140px]"><span className="line-clamp-1">{r.course_name}</span></td>
+                            <td className="px-4 py-3 text-slate-500">{r.province}</td>
+                            <td className="px-4 py-3"><StatusBadge status={r.status} /></td>
+                            <td className="px-4 py-3 text-right font-mono text-slate-600">{r.phone}</td>
+                          </tr>
+                        )
+                      })}
+                    </Fragment>
+                  ))}
+                  {drillGroups.length === 0 && <tr><td colSpan="8" className="py-16 text-center text-sm text-slate-300">ไม่พบข้อมูล</td></tr>}
                 </tbody>
               </table>
               {/* Mobile cards */}
