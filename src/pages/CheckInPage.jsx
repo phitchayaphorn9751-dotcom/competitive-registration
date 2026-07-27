@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useNavigate, useOutletContext } from "react-router-dom"
-import { fetchCoursesAdmin, checkInDaily, attendanceDaily, subscribeCheckins } from "../lib/supabase.js"
+import { fetchCoursesAdmin, checkInDaily, attendanceDaily, attendanceRoster, subscribeCheckins } from "../lib/supabase.js"
 
 const Ico = {
   scan:    (p) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" x2="17" y1="12" y2="12"/></svg>),
@@ -64,6 +64,8 @@ export default function CheckInPage() {
   const popupTimer = useRef(null)
   const [logs, setLogs] = useState([])
   const [total, setTotal] = useState(0)
+  const [roster, setRoster] = useState([])       // รายชื่อยืนยันแล้วของวิชา+วัน (ใช้ค้นหาด้วยชื่อ)
+  const [nameQuery, setNameQuery] = useState("")  // คำค้นหาชื่อ/โรงเรียน/เบอร์/รหัส
   const [cameraOpen, setCameraOpen] = useState(false)
   const [cameraError, setCameraError] = useState("")
   const [scanning, setScanning] = useState(false)
@@ -111,12 +113,19 @@ export default function CheckInPage() {
     } catch (_) {}
   }, [courseId, dateKey])
 
+  // รายชื่อยืนยันแล้วของวิชา+วัน (สำหรับค้นหาด้วยชื่อ กรณีไม่มีบาร์โค้ด/จำรหัสไม่ได้)
+  const loadRoster = useCallback(async () => {
+    if (!courseId || !dateKey) { setRoster([]); return }
+    try { setRoster(await attendanceRoster(courseId, dateKey) || []) }
+    catch (_) { setRoster([]) }
+  }, [courseId, dateKey])
+
   useEffect(() => {
-    loadLogs()
+    loadLogs(); loadRoster()
     if (!courseId || !dateKey) return
-    const ch = subscribeCheckins(() => loadLogs())
+    const ch = subscribeCheckins(() => { loadLogs(); loadRoster() })
     return () => { ch.unsubscribe() }
-  }, [courseId, dateKey, loadLogs])
+  }, [courseId, dateKey, loadLogs, loadRoster])
 
   // แสดงผล + เด้ง popup · สำเร็จ = หายเอง 1.5 วิ, เคสอื่นค้างไว้จนแตะ/สแกนใหม่
   function showResult(obj) {
@@ -264,6 +273,15 @@ export default function CheckInPage() {
   const courseSessions = courseHasSessions ? selCourse.sessions : []
   // พร้อมสแกน = เลือกวิชา+วันแล้ว และถ้าวิชามีรอบต้องเลือกรอบด้วย
   const canScan = !!courseId && !!dateKey && (!courseNeedsSession || !!sessionId)
+
+  // ผลค้นหาด้วยชื่อ/โรงเรียน/เบอร์/รหัส (fallback กรณีไม่มีบาร์โค้ด)
+  const nq = nameQuery.trim().toLowerCase()
+  const nameMatches = !nq ? [] : roster.filter((r) =>
+    (r.full_name || "").toLowerCase().includes(nq) ||
+    (r.school || "").toLowerCase().includes(nq) ||
+    (r.phone || "").includes(nq) ||
+    (r.participant_code || "").toLowerCase().includes(nq)
+  ).slice(0, 20)
 
   const SC = {
     success: { bg: "bg-emerald-50", border: "border-emerald-400", Icon: Ico.check, iconBg: "bg-emerald-100", iconColor: "text-emerald-600", text: "text-emerald-700" },
@@ -429,6 +447,51 @@ export default function CheckInPage() {
             </button>
           </div>
         </div>
+
+        {/* ค้นหาด้วยชื่อ — fallback กรณีไม่มีบาร์โค้ด / จำรหัสไม่ได้ */}
+        {canScan && (
+          <div className="mt-5">
+            <h3 className="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2 mb-2 flex-wrap">
+              ค้นหาด้วยชื่อ
+              <span className="text-xs font-normal text-slate-400">กรณีไม่มีบาร์โค้ด / จำรหัสไม่ได้</span>
+            </h3>
+            <input value={nameQuery} onChange={(e) => setNameQuery(e.target.value)}
+              placeholder="พิมพ์ชื่อ · โรงเรียน · เบอร์ · รหัส…"
+              className="w-full px-4 py-3 border-2 border-slate-300 rounded-xl outline-none focus:border-[#F15A24] focus:ring-4 focus:ring-orange-100 text-sm" />
+            {nameQuery.trim() && (
+              <div className="mt-2 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                {nameMatches.length === 0 ? (
+                  <div className="py-8 text-center text-slate-400 text-sm">ไม่พบชื่อที่ค้นหา<div className="text-xs text-slate-300 mt-1">(แสดงเฉพาะผู้ที่ยืนยันแล้วในวิชา/รอบนี้)</div></div>
+                ) : (
+                  <div className="divide-y divide-slate-100 max-h-96 overflow-y-auto">
+                    {nameMatches.map((r) => {
+                      const sLabel = courseHasSessions ? sessionLabelOf(r.session_id) : ""
+                      return (
+                        <div key={r.participant_id} className="px-4 py-3 flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="font-bold text-slate-800 text-sm truncate flex items-center gap-1.5">
+                              {r.full_name}
+                              {sLabel && <span className="text-[9px] font-bold text-[#F15A24] bg-orange-50 border border-orange-100 px-1.5 py-px rounded shrink-0">{sLabel}</span>}
+                            </div>
+                            <div className="text-xs text-slate-400 truncate">{[r.participant_code, r.school, r.phone].filter(Boolean).join(" · ")}</div>
+                          </div>
+                          {r.present ? (
+                            <span className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-lg"><Ico.check className="w-3.5 h-3.5" /> เช็คอินแล้ว</span>
+                          ) : (
+                            <button onClick={() => process(r.participant_code, "manual")}
+                              className="shrink-0 px-4 py-2 rounded-xl bg-[#F15A24] hover:bg-orange-600 active:scale-95 text-white font-bold text-xs shadow-md shadow-orange-500/20 transition">
+                              เช็คอิน
+                            </button>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="mt-5">
           <h3 className="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2 mb-3">
