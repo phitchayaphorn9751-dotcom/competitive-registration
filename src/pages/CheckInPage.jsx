@@ -242,8 +242,6 @@ export default function CheckInPage() {
       } else {
         playSound("success")
         showResult({ type: "success", msg: "เช็คอินสำเร็จ!", sub: r.full_name || "", session: rowSessionLabel(r), ...disp })
-        // อัปเดตสถานะในลิสต์ทันที
-        setAllRoster((prev) => prev.map((x) => x.reg_id === r.reg_id ? { ...x, checked_in: true } : x))
         loadLogs()
       }
     } catch (e) {
@@ -408,11 +406,6 @@ export default function CheckInPage() {
                   <span className="font-bold text-slate-700 text-right">{v}</span>
                 </div>
               ))}
-              {confirmRow.checked_in && (
-                <div className="flex items-center gap-1.5 text-[12px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2 mt-1">
-                  <Ico.check className="w-4 h-4" /> เคยเช็คอินแล้ว (กดยืนยันได้ถ้าต้องการเช็คอินซ้ำวันนี้)
-                </div>
-              )}
             </div>
             <div className="px-5 pb-5 flex gap-2">
               <button onClick={() => setConfirmRow(null)}
@@ -480,13 +473,10 @@ export default function CheckInPage() {
                           </div>
                           <div className="text-[11px] text-slate-400 truncate">{[r.participant_code, r.school, r.phone].filter(Boolean).join(" · ")}</div>
                         </div>
-                        <div className="shrink-0 flex items-center gap-2">
-                          {r.checked_in && <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md"><Ico.check className="w-3 h-3" /> เคยเช็คอิน</span>}
-                          <button onClick={() => setConfirmRow(r)}
-                            className="px-4 py-2 rounded-xl bg-[#F15A24] hover:bg-orange-600 active:scale-95 text-white font-bold text-xs shadow-md shadow-orange-500/20 transition">
-                            เช็คอิน
-                          </button>
-                        </div>
+                        <button onClick={() => setConfirmRow(r)}
+                          className="shrink-0 px-4 py-2 rounded-xl bg-[#F15A24] hover:bg-orange-600 active:scale-95 text-white font-bold text-xs shadow-md shadow-orange-500/20 transition">
+                          เช็คอิน
+                        </button>
                       </div>
                     )
                   })}
