@@ -66,6 +66,7 @@ export default function CheckInPage() {
   const [total, setTotal] = useState(0)
   const [allRoster, setAllRoster] = useState([])  // รายชื่อทั้งงาน (ทุกรายการ) — สำหรับค้นหาด้วยชื่อ
   const [nameQuery, setNameQuery] = useState("")  // คำค้นหาชื่อ/โรงเรียน/เบอร์/รหัส/รายการ
+  const [confirmRow, setConfirmRow] = useState(null)  // แถวที่กำลังยืนยันเช็คอิน (จาก search)
   const [cameraOpen, setCameraOpen] = useState(false)
   const [cameraError, setCameraError] = useState("")
   const [scanning, setScanning] = useState(false)
@@ -129,8 +130,9 @@ export default function CheckInPage() {
   function showResult(obj) {
     if (popupTimer.current) { clearTimeout(popupTimer.current); popupTimer.current = null }
     setLast(obj)
+    // สำเร็จ = ไม่เด้ง popup ทับจอ แสดงแค่กรอบเขียวตรงจุดสแกน · เคสผิด/ซ้ำค่อยเด้ง popup
+    if (obj.type === "success") { setPopupOpen(false); return }
     setPopupOpen(true)
-    if (obj.type === "success") popupTimer.current = setTimeout(() => setPopupOpen(false), 1500)
   }
 
   async function process(token, method = "qr") {
@@ -208,7 +210,18 @@ export default function CheckInPage() {
     return s ? (s.label || s.time || "รอบ").trim() : ""
   }
 
-  // เช็คอินจากผลค้นหาด้วยชื่อ — ใช้รายการ/รอบของผู้สมัครเอง + วันนี้ (ไม่ต้องเลือกรายการก่อน)
+  // วันเช็คอินของรายการ (ตามช่วงวันของรายการ — วันนี้ถ้าอยู่ในช่วง ไม่งั้นวันเริ่ม) ให้ตรงกับ flow บาร์โค้ด/สรุปมาเรียน
+  function courseDateKey(cid) {
+    const today = new Date().toISOString().split("T")[0]
+    const c = courses.find((x) => x.id === cid)
+    if (!c?.start_date || !c?.end_date) return today
+    const out = []
+    let cur = new Date(c.start_date); const end = new Date(c.end_date)
+    while (cur <= end) { out.push(new Date(cur).toISOString().split("T")[0]); cur.setDate(cur.getDate() + 1) }
+    return out.includes(today) ? today : (out[0] || today)
+  }
+
+  // เช็คอินจากผลค้นหาด้วยชื่อ — ใช้รายการ/รอบของผู้สมัครเอง (ไม่ต้องเลือกรายการก่อน)
   async function checkInRow(r) {
     if (busyRef.current) return
     const code = (r.participant_code || "").trim()
@@ -216,8 +229,7 @@ export default function CheckInPage() {
     if (!code) { playSound("error"); showResult({ type: "error", msg: "รายการนี้ไม่มีรหัส", sub: r.full_name || "", ...disp }); return }
     busyRef.current = true
     try {
-      const today = new Date().toISOString().split("T")[0]
-      const res = await checkInDaily(code, r.course_id, today, "manual", r.session_id || null)
+      const res = await checkInDaily(code, r.course_id, courseDateKey(r.course_id), "manual", r.session_id || null)
       if (!res?.ok) {
         playSound("error")
         const msg = res?.reason === "NOT_CONFIRMED" ? "ยังไม่ยืนยันการสมัคร"
@@ -372,6 +384,48 @@ export default function CheckInPage() {
         </div>
       )}
 
+      {/* Popup ยืนยันเช็คอินจากผลค้นหา — แสดงข้อมูลก่อน แล้วกดยืนยันอีกที */}
+      {confirmRow && (
+        <div onClick={() => setConfirmRow(null)}
+          className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-sm">
+          <div onClick={(e) => e.stopPropagation()} style={{ animation: "popIn .15s ease-out" }}
+            className="w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden">
+            <div className="bg-gradient-to-r from-[#F15A24] to-amber-500 px-5 py-4 text-white">
+              <p className="text-orange-100 text-[11px] uppercase tracking-widest">ยืนยันเช็คอิน</p>
+              <h3 className="text-lg font-extrabold leading-snug">{confirmRow.full_name}</h3>
+            </div>
+            <div className="p-5 space-y-2.5 text-sm">
+              {[
+                ["หมวดหมู่", confirmRow.course_category],
+                ["รายการ", confirmRow.course_name],
+                ["รอบ", rowSessionLabel(confirmRow)],
+                ["รหัส", confirmRow.participant_code],
+                ["โรงเรียน", confirmRow.school],
+                ["เบอร์", confirmRow.phone],
+              ].filter(([, v]) => v).map(([k, v]) => (
+                <div key={k} className="flex justify-between gap-3">
+                  <span className="text-slate-400 shrink-0">{k}</span>
+                  <span className="font-bold text-slate-700 text-right">{v}</span>
+                </div>
+              ))}
+              {confirmRow.checked_in && (
+                <div className="flex items-center gap-1.5 text-[12px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2 mt-1">
+                  <Ico.check className="w-4 h-4" /> เคยเช็คอินแล้ว (กดยืนยันได้ถ้าต้องการเช็คอินซ้ำวันนี้)
+                </div>
+              )}
+            </div>
+            <div className="px-5 pb-5 flex gap-2">
+              <button onClick={() => setConfirmRow(null)}
+                className="flex-1 py-3 rounded-xl bg-white border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 transition">ยกเลิก</button>
+              <button onClick={() => { const r = confirmRow; setConfirmRow(null); checkInRow(r) }}
+                className="flex-1 py-3 rounded-xl bg-[#F15A24] hover:bg-orange-600 active:scale-95 text-white font-bold text-sm shadow-md shadow-orange-500/20 transition flex items-center justify-center gap-2">
+                <Ico.check className="w-4 h-4" /> เช็คอิน
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2.5">
@@ -428,7 +482,7 @@ export default function CheckInPage() {
                         </div>
                         <div className="shrink-0 flex items-center gap-2">
                           {r.checked_in && <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md"><Ico.check className="w-3 h-3" /> เคยเช็คอิน</span>}
-                          <button onClick={() => checkInRow(r)}
+                          <button onClick={() => setConfirmRow(r)}
                             className="px-4 py-2 rounded-xl bg-[#F15A24] hover:bg-orange-600 active:scale-95 text-white font-bold text-xs shadow-md shadow-orange-500/20 transition">
                             เช็คอิน
                           </button>
