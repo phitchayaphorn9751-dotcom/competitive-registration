@@ -88,12 +88,18 @@ export default function AdminApplicants() {
   const { event } = useOutletContext()
   const [regs, setRegs] = useState([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState("all")
-  const [courseFilter, setCourseFilter] = useState("all")
-  const [sessionFilter, setSessionFilter] = useState("all")
-  const [search, setSearch] = useState("")
+  const [filter, setFilter] = useState(() => sessionStorage.getItem("applicants_filter") || "all")
+  const [courseFilter, setCourseFilter] = useState(() => sessionStorage.getItem("applicants_courseFilter") || "all")
+  const [sessionFilter, setSessionFilter] = useState(() => sessionStorage.getItem("applicants_sessionFilter") || "all")
+  const [search, setSearch] = useState(() => sessionStorage.getItem("applicants_search") || "")
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(20)
+
+  // จำ filter/ค้นหาที่เลือกไว้ เมื่อกดเข้าดูรายละเอียดแล้วย้อนกลับมาให้คงค่าเดิม
+  useEffect(() => { sessionStorage.setItem("applicants_filter", filter) }, [filter])
+  useEffect(() => { sessionStorage.setItem("applicants_courseFilter", courseFilter) }, [courseFilter])
+  useEffect(() => { sessionStorage.setItem("applicants_sessionFilter", sessionFilter) }, [sessionFilter])
+  useEffect(() => { sessionStorage.setItem("applicants_search", search) }, [search])
 
   useEffect(() => { load() }, [event?.id])
   // เรียลไทม์ — มีผู้สมัครใหม่/อัปเดต/ลบ ข้อมูลขึ้นทันทีไม่ต้องรีเฟรช
@@ -316,8 +322,13 @@ export default function AdminApplicants() {
                     </div>
                   </div>
 
-                  {/* แถวกลาง: ชื่อผู้สมัคร + badge ทีม */}
+                  {/* แถวกลาง: ชื่อธีม (ถ้ามี) เหนือชื่อผู้สมัคร + badge ทีม */}
                   <div className="flex flex-wrap items-center gap-2 mt-3 pt-2.5 border-t border-slate-50">
+                    {r.theme_name && (
+                      <span className="w-full inline-flex items-center gap-1.5 text-xs font-bold text-violet-700">
+                        <Ico.target className="w-3.5 h-3.5 shrink-0" /> {r.theme_name}
+                      </span>
+                    )}
                     <span className="text-sm font-medium text-slate-700">{mainName(r)}</span>
                     {teamCount > 1 && <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#F15A24] bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full"><Ico.users className="w-3 h-3" /> ทีม {teamCount} คน</span>}
                   </div>
