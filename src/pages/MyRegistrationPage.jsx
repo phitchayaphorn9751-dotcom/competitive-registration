@@ -66,6 +66,7 @@ export default function MyRegistrationPage() {
   const [filter, setFilter] = useState("all")
   const [search, setSearch] = useState("")
   const [barcodeReg, setBarcodeReg] = useState(null)
+  const [lineQrReg, setLineQrReg] = useState(null)
   const [detailReg, setDetailReg] = useState(null)
 
   useEffect(() => {
@@ -215,7 +216,7 @@ export default function MyRegistrationPage() {
               const cfg = STATUS_CFG[d] || STATUS_CFG.held
               const isPaid = (reg.price || 0) > 0
               const sess = sessionText(reg)
-              const hasAction = d === "pending_payment" || (d === "rejected" && (reg.price || 0) > 0) || d === "expired" || (d === "confirmed" && (reg.participant_code || reg.my_qr_token || reg.qr_token))
+              const hasAction = d === "pending_payment" || (d === "rejected" && (reg.price || 0) > 0) || d === "expired" || (d === "confirmed" && (reg.participant_code || reg.my_qr_token || reg.qr_token || reg.line_qr_url))
               return (
                 <div key={reg.id} onClick={() => setDetailReg(reg)}
                   className="group bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md hover:border-orange-200 transition-all duration-300 cursor-pointer flex flex-col">
@@ -313,6 +314,13 @@ export default function MyRegistrationPage() {
                             {t("myreg.showBarcode")}
                           </button>
                         )}
+                        {d === "confirmed" && reg.line_qr_url && (
+                          <button onClick={() => setLineQrReg(reg)}
+                            className="flex-1 min-w-[130px] px-4 py-2.5 rounded-xl bg-[#06c755] hover:bg-[#05b64d] active:scale-[0.98] text-white font-semibold text-xs shadow-md shadow-[#06c755]/20 transition flex items-center justify-center gap-2 group/btn">
+                            <Ico.qr className="w-4 h-4 group-hover/btn:scale-110 transition-transform" />
+                            QR เข้ากลุ่มไลน์
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -324,6 +332,7 @@ export default function MyRegistrationPage() {
       </div>
 
       {barcodeReg && <CheckinModal reg={barcodeReg} t={t} onClose={() => setBarcodeReg(null)} />}
+      {lineQrReg && <LineQrModal reg={lineQrReg} onClose={() => setLineQrReg(null)} />}
       {detailReg && <RegDetailModal reg={detailReg} t={t} navigate={navigate} onClose={() => setDetailReg(null)} />}
     </div>
   )
@@ -711,6 +720,53 @@ function CheckinModal({ reg, t, onClose }) {
           <button onClick={onClose} className="flex-1 bg-white border border-slate-200 text-slate-600 py-3 rounded-xl font-semibold hover:bg-slate-100 transition text-sm">
             {t("myreg.closeWindow")}
           </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function LineQrModal({ reg, onClose }) {
+  async function saveImage() {
+    if (!reg.line_qr_url) return
+    try {
+      const res = await fetch(reg.line_qr_url)
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url; a.download = `line_qr_${reg.id}.png`; a.click()
+      URL.revokeObjectURL(url)
+    } catch { window.open(reg.line_qr_url, "_blank") }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="bg-white w-full sm:rounded-[28px] shadow-2xl sm:max-w-sm overflow-hidden rounded-t-[28px]">
+        {/* Header เขียวไลน์ */}
+        <div className="bg-gradient-to-r from-[#06c755] to-[#05b64d] p-6 text-white text-center relative">
+          <button onClick={onClose} aria-label="ปิด" className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition text-lg leading-none">×</button>
+          <div className="mx-auto w-12 h-12 bg-white/15 rounded-full flex items-center justify-center mb-2">
+            <Ico.chat className="w-6 h-6 text-white" />
+          </div>
+          <h3 className="font-bold text-lg">QR เข้ากลุ่มไลน์</h3>
+          <p className="text-xs text-green-100">สแกนเพื่อเข้ากลุ่มไลน์ของวิชานี้</p>
+        </div>
+
+        <div className="p-6 bg-slate-50">
+          <div className="flex flex-col items-center">
+            <p className="text-sm font-bold text-[#06874a] text-center mb-4 flex items-center justify-center gap-1.5"><Ico.card className="w-4 h-4" /> {reg.course_title}</p>
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-3 w-full flex justify-center">
+              <img src={reg.line_qr_url} alt="Line QR" className="h-52 w-auto max-w-full object-contain" />
+            </div>
+            <p className="text-[11px] text-slate-400 text-center">เปิดแอปไลน์ → สแกน QR นี้เพื่อเข้ากลุ่ม</p>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 pb-6 bg-slate-50 flex gap-2">
+          <button onClick={saveImage} className="flex-1 bg-[#06c755] hover:bg-[#05b64d] text-white py-3 rounded-xl font-semibold transition text-sm flex items-center justify-center gap-2"><Ico.download className="w-4 h-4" /> บันทึกภาพ</button>
+          <button onClick={onClose} className="flex-1 bg-white border border-slate-200 text-slate-600 py-3 rounded-xl font-semibold hover:bg-slate-100 transition text-sm">ปิด</button>
         </div>
       </div>
     </div>
