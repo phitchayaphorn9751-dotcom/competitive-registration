@@ -7,6 +7,7 @@ import {
 } from "../lib/supabase.js"
 import { useLang, LangToggle } from "../lib/i18n.jsx"
 import { useDialog } from "../lib/dialog.jsx"
+import { isCheckinOnly } from "../lib/roles.js"
 
 function EyeIcon({ off }) {
   return off ? (
@@ -291,7 +292,12 @@ function Spinner() {
 
 // หลัง login: admin → panel, อีเมลอื่น → หน้าลงทะเบียน
 export async function routeAfterAuth(navigate) {
-  if (await isAdminUser()) { navigate("/admin/dashboard"); return }
+  if (await isAdminUser()) {
+    // บัญชีเช็คอินอย่างเดียว → เข้าหน้า Check-in โดยตรง
+    const s = await getSession()
+    navigate(isCheckinOnly(s) ? "/admin/checkin" : "/admin/dashboard")
+    return
+  }
   // เฟส 1: เช็คว่ามีโปรไฟล์ที่ admin import ไว้ล่วงหน้าไหม (ผูกด้วย email) → ดึงมาผูก
   try { await claimPendingProfile() } catch (_) {}
   try {

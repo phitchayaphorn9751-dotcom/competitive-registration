@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { useNavigate, useLocation, Outlet, NavLink } from "react-router-dom"
 import { getSession, isAdminUser, isSuperAdmin, signOut, fetchAllEvents } from "../../lib/supabase.js"
 import { LangToggle } from "../../lib/i18n.jsx"
+import { isCheckinOnly } from "../../lib/roles.js"
 
 // ───── ไอคอน SVG inline (สไตล์ lucide) สำหรับ bottom bar มือถือ ─────
 const BIco = {
@@ -49,6 +50,7 @@ export default function AdminLayout() {
   const location = useLocation()
   const [session, setSession] = useState(null)
   const [isSuper, setIsSuper] = useState(false)
+  const [checkinOnly, setCheckinOnly] = useState(false)
   const [event, setEvent] = useState(null)
   const [events, setEvents] = useState([])
   const [ready, setReady] = useState(false)
@@ -75,7 +77,10 @@ export default function AdminLayout() {
       if (!s) { navigate("/login"); return }
       if (!(await isAdminUser())) { await signOut(); navigate("/login"); return }
       setSession(s)
-      setIsSuper(await isSuperAdmin())
+      const coOnly = isCheckinOnly(s)
+      setCheckinOnly(coOnly)
+      // บัญชีเช็คอินอย่างเดียว → ไม่เช็ค super, ข้ามการโหลด events ที่ไม่จำเป็นได้ แต่คงไว้เพื่อ context เดิม
+      setIsSuper(coOnly ? false : await isSuperAdmin())
       const evs = await fetchAllEvents()
       setEvents(evs || [])
       // เลือกงานที่เปิดรับสมัครก่อน (ปีปัจจุบัน) ถ้าไม่มีใช้งานล่าสุด
@@ -84,6 +89,13 @@ export default function AdminLayout() {
       setReady(true)
     })
   }, [navigate])
+
+  // บัญชีเช็คอินอย่างเดียว: เข้าได้เฉพาะ /admin/checkin — path อื่นเด้งกลับ
+  useEffect(() => {
+    if (ready && checkinOnly && !location.pathname.startsWith("/admin/checkin")) {
+      navigate("/admin/checkin", { replace: true })
+    }
+  }, [ready, checkinOnly, location.pathname, navigate])
 
   async function handleLogout() { await signOut(); navigate("/login") }
 
@@ -95,7 +107,9 @@ export default function AdminLayout() {
     )
   }
 
-  const visibleNav = NAV.filter((n) => !n.superOnly || isSuper)
+  // บัญชีเช็คอินอย่างเดียว → เห็นเฉพาะเมนู Check-in
+  const visibleNav = (checkinOnly ? NAV.filter((n) => n.to === "/admin/checkin") : NAV)
+    .filter((n) => !n.superOnly || isSuper)
   const current = NAV.find((n) => location.pathname.startsWith(n.to))
 
   return (
@@ -143,7 +157,7 @@ export default function AdminLayout() {
             <span className="text-[#F15A24] font-medium">{current?.label || ""}</span>
           </div>
           <div className="ml-auto flex items-center gap-2">
-            {events.length > 0 && (
+            {events.length > 0 && !checkinOnly && (
               <div className="relative">
                 <select value={event?.id || ""} onChange={(e) => setEvent(events.find((x) => x.id === e.target.value))}
                   className="appearance-none text-xs sm:text-sm font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-9 py-2 outline-none cursor-pointer max-w-[180px] sm:max-w-[220px] truncate hover:bg-slate-100 transition">
@@ -164,7 +178,7 @@ export default function AdminLayout() {
         {/* pb เผื่อ bottom bar (h-16=64px) + ปุ่มกลางนูน + safe-area มือถือรุ่นใหม่ */}
         <main className="flex-1 p-4 sm:p-6 w-full lg:pb-6" style={{ paddingBottom: "calc(6rem + env(safe-area-inset-bottom, 0px))" }}>
           <div className="max-w-6xl mx-auto w-full">
-            <Outlet context={{ session, event, events, setEvent, isSuper, reloadEvents }} />
+            <Outlet context={{ session, event, events, setEvent, isSuper, checkinOnly, reloadEvents }} />
 
             {/* Footer — แสดงทุกหน้า admin (ระยะห่างจาก bottom bar คงที่) */}
             <footer className="mt-10 pt-6 border-t border-slate-200 text-center text-xs text-slate-400">
@@ -176,7 +190,7 @@ export default function AdminLayout() {
       </div>
 
       {/* Bottom navigation (มือถือ — แสดงเฉพาะจอเล็ก, ซ่อนบน lg ที่มี sidebar) */}
-      <AdminBottomBar />
+      {!checkinOnly && <AdminBottomBar />}
     </div>
   )
 }
