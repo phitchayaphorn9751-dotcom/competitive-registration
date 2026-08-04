@@ -15,8 +15,9 @@ import AdminUsers from "./AdminUsers.jsx"
 const inputCls = "w-full px-3 py-2.5 border border-slate-200 rounded-xl outline-none focus:border-[#F15A24] focus:ring-1 focus:ring-[#F15A24] text-sm transition"
 const labelCls = "text-xs font-bold text-slate-500 block mb-1.5"
 
-// ค่าเริ่มต้นรายการรางวัลเกียรติบัตร
-const DEFAULT_AWARDS = ["รางวัลชนะเลิศ", "รางวัลรองชนะเลิศอันดับ 1", "รางวัลรองชนะเลิศอันดับ 2", "รางวัลชมเชย", "เข้าร่วมกิจกรรม"]
+// หมายเหตุ: ค่าเกียรติบัตร (รูปพื้นหลัง/รายการรางวัล/ตำแหน่งข้อความ)
+// ย้ายไปหน้า "ออกเกียรติบัตร" แล้ว — หน้านี้ต้องไม่แตะ ไม่งั้นการกดบันทึกที่นี่
+// จะเขียนทับค่าที่ตั้งไว้ในหน้านั้น
 
 export default function AdminSettings() {
   const { confirm, toast } = useDialog()
@@ -46,8 +47,6 @@ export default function AdminSettings() {
         home_notice: es.home_notice || "",
         schedule_image_url: es.schedule_image_url || "",
         banner_image: es.banner_image || "",
-        cert_template_url: es.cert_template_url || "",
-        cert_awards: (Array.isArray(es.cert_awards) && es.cert_awards.length) ? es.cert_awards : DEFAULT_AWARDS,
       })
       setTypes(await fetchCourseTypes(event?.id) || [])
     } catch (e) { toast("โหลดไม่สำเร็จ: " + e.message, "error") }
@@ -55,7 +54,7 @@ export default function AdminSettings() {
   async function loadEventPart() {
     try {
       const es = await fetchEventSettings(event.id)
-      setForm((f) => ({ ...(f || { line_id: "", phone: "" }), site_title: es.site_title || "", hero_subtitle: es.hero_subtitle || "", home_notice: es.home_notice || "", schedule_image_url: es.schedule_image_url || "", banner_image: es.banner_image || "", cert_template_url: es.cert_template_url || "", cert_awards: (Array.isArray(es.cert_awards) && es.cert_awards.length) ? es.cert_awards : DEFAULT_AWARDS }))
+      setForm((f) => ({ ...(f || { line_id: "", phone: "" }), site_title: es.site_title || "", hero_subtitle: es.hero_subtitle || "", home_notice: es.home_notice || "", schedule_image_url: es.schedule_image_url || "", banner_image: es.banner_image || "" }))
       setTypes(await fetchCourseTypes(event.id) || [])
     } catch (e) { toast("โหลดไม่สำเร็จ: " + e.message, "error") }
   }
@@ -66,7 +65,7 @@ export default function AdminSettings() {
       // ค่ากลาง: Line/เบอร์
       await updateSettings({ line_id: form.line_id, phone: form.phone })
       // ค่าตามงาน: ชื่อเว็บ/ข้อความแจ้งเตือน
-      if (event?.id) await updateEventSettings(event.id, { site_title: form.site_title, hero_subtitle: form.hero_subtitle, home_notice: form.home_notice, schedule_image_url: form.schedule_image_url || "", banner_image: form.banner_image || "", cert_template_url: form.cert_template_url || "", cert_awards: form.cert_awards || [] })
+      if (event?.id) await updateEventSettings(event.id, { site_title: form.site_title, hero_subtitle: form.hero_subtitle, home_notice: form.home_notice, schedule_image_url: form.schedule_image_url || "", banner_image: form.banner_image || "" })
       toast("บันทึกข้อมูลสำเร็จ", "success")
     }
     catch (e) { toast("บันทึกไม่สำเร็จ: " + e.message, "error") } finally { setSaving(false) }
