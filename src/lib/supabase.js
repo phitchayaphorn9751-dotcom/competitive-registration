@@ -129,14 +129,20 @@ export async function adminDeleteUser(email) {
   return data
 }
 // ข้อ 9: แก้ข้อมูลนักเรียน (ไม่แตะ national_id/email)
+// ⚠️ update ตรงบนตาราง (ไม่ใช่ RPC) → ถ้า RLS ไม่ให้สิทธิ์ Supabase จะ "ไม่คืน error"
+//    แต่แก้ได้ 0 แถว ถ้าไม่เช็คจะขึ้น "บันทึกแล้ว" ทั้งที่ข้อมูลไม่เปลี่ยน (ค่าเด้งกลับเป็นของเดิม)
+//    ต้องมี RLS policy ให้แอดมิน update profiles — ดู supabase/migrations/*_admin_update_profile.sql
 export async function adminUpdateStudent(profileId, fields) {
-  const { error } = await supabase.from("profiles").update({
+  const { data, error } = await supabase.from("profiles").update({
     title: fields.title, first_name: fields.first_name, last_name: fields.last_name,
     nickname: fields.nickname, age: fields.age ? Number(fields.age) : null, phone: fields.phone,
     grade_level: fields.grade_level, line_id: fields.line_id, school: fields.school,
     parent_full_name: fields.parent_full_name, parent_phone: fields.parent_phone,
-  }).eq("id", profileId)
+  }).eq("id", profileId).select("id")
   if (error) throw error
+  if (!data || data.length === 0) {
+    throw new Error("ไม่มีสิทธิ์แก้ข้อมูลผู้ใช้รายนี้ (RLS บล็อก) — ต้องรัน SQL เพิ่ม policy ให้แอดมินก่อน")
+  }
   return true
 }
 
