@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { getSession, isAdminUser, fetchMyRegistrations, fetchCourse, fetchRegistrationMembers, subscribeMyRegistrations } from "../lib/supabase.js"
+import { getSession, isAdminUser, fetchMyRegistrations, fetchCourse, fetchRegistrationMembers, subscribeMyRegistrations, fetchMyCertificates, fetchEventSettings } from "../lib/supabase.js"
 import { catColor } from "../lib/categoryColors.js"
 import { useLang } from "../lib/i18n.jsx"
 import { Ico } from "../lib/icons.jsx"
+import { previewCertificate, generateCertificatePDF, safeFileName } from "../lib/certificate.js"
 
 // map สถานะ → สี/dot (ดีไซน์ CAMT: badge rounded-lg + dot สี)
 const STATUS_CFG = {
@@ -68,6 +69,9 @@ export default function MyRegistrationPage() {
   const [barcodeReg, setBarcodeReg] = useState(null)
   const [lineQrReg, setLineQrReg] = useState(null)
   const [detailReg, setDetailReg] = useState(null)
+  // เกียรติบัตรที่ผู้จัด "ส่ง" แล้ว → { [participant_id]: {...} } (ยังไม่ส่ง = ไม่มีคีย์ = ไม่โชว์อะไรเลย)
+  const [certs, setCerts] = useState({})
+  const [certTpl, setCertTpl] = useState({})   // { [event_id]: {templateUrl, fields} }
 
   useEffect(() => {
     getSession().then(async (s) => {
@@ -78,6 +82,22 @@ export default function MyRegistrationPage() {
       finally { setLoading(false) }
     })
   }, [navigate])
+
+  // โหลดเกียรติบัตร + รูปพื้นหลัง/ตำแหน่งข้อความของงานที่เกี่ยวข้อง
+  useEffect(() => {
+    let alive = true
+    fetchMyCertificates().then(async (map) => {
+      if (!alive) return
+      setCerts(map)
+      const eventIds = [...new Set(Object.values(map).map((c) => c.event_id).filter(Boolean))]
+      const entries = await Promise.all(eventIds.map(async (id) => {
+        const es = await fetchEventSettings(id)
+        return [id, { templateUrl: es.cert_template_url || "", fields: es.cert_fields }]
+      }))
+      if (alive) setCertTpl(Object.fromEntries(entries))
+    }).catch(() => {})
+    return () => { alive = false }
+  }, [regs.length])
 
   // อัปเดตสถานะแบบ realtime (อนุมัติ/ตีกลับ user เห็นทันที ไม่ต้องรีเฟรช)
   useEffect(() => {
@@ -90,6 +110,11 @@ export default function MyRegistrationPage() {
 
   const counts = regs.reduce((acc, r) => { const d = displayStatus(r); acc[d] = (acc[d] || 0) + 1; return acc }, {})
   const activeCount = regs.filter((r) => ["confirmed", "pending_payment", "pending_review", "held", "waitlist"].includes(displayStatus(r))).length
+  // จำนวนเกียรติบัตรที่พร้อมแล้วของแต่ละใบสมัคร → { [registration_id]: n }
+  const certsByReg = Object.values(certs).reduce((acc, c) => {
+    if (c.registration_id) acc[c.registration_id] = (acc[c.registration_id] || 0) + 1
+    return acc
+  }, {})
 
   const tabs = [
     { key: "all", label: t("myreg.tabAll"), count: regs.length },
@@ -216,7 +241,7 @@ export default function MyRegistrationPage() {
               const cfg = STATUS_CFG[d] || STATUS_CFG.held
               const isPaid = (reg.price || 0) > 0
               const sess = sessionText(reg)
-              const hasAction = d === "pending_payment" || (d === "rejected" && (reg.price || 0) > 0) || d === "expired" || (d === "confirmed" && (reg.participant_code || reg.my_qr_token || reg.qr_token || reg.line_qr_url))
+              const hasAction = d === "pending_payment" || (d === "rejected" && (reg.price || 0) > 0) || d === "expired" || (d === "confirmed" && (reg.participant_code || reg.my_qr_token || reg.qr_token || reg.line_qr_url)) || certsByReg[reg.id] > 0
               return (
                 <div key={reg.id} onClick={() => setDetailReg(reg)}
                   className="group bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md hover:border-orange-200 transition-all duration-300 cursor-pointer flex flex-col">
@@ -314,6 +339,14 @@ export default function MyRegistrationPage() {
                             {t("myreg.showBarcode")}
                           </button>
                         )}
+                        {/* เกียรติบัตรพร้อมแล้ว → เปิดรายละเอียดไปดูรายคน */}
+                        {certsByReg[reg.id] > 0 && (
+                          <button onClick={() => setDetailReg(reg)}
+                            className="flex-1 min-w-[130px] px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#F15A24] to-amber-500 hover:from-[#c44215] hover:to-amber-600 active:scale-[0.98] text-white font-semibold text-xs shadow-md shadow-orange-500/20 transition flex items-center justify-center gap-2 group/btn">
+                            <Ico.cap className="w-4 h-4 group-hover/btn:scale-110 transition-transform" />
+                            เกียรติบัตร
+                          </button>
+                        )}
                         {d === "confirmed" && reg.line_qr_url && (
                           <button onClick={() => setLineQrReg(reg)}
                             className="flex-1 min-w-[130px] px-4 py-2.5 rounded-xl bg-[#06c755] hover:bg-[#05b64d] active:scale-[0.98] text-white font-semibold text-xs shadow-md shadow-[#06c755]/20 transition flex items-center justify-center gap-2 group/btn">
@@ -333,13 +366,13 @@ export default function MyRegistrationPage() {
 
       {barcodeReg && <CheckinModal reg={barcodeReg} t={t} onClose={() => setBarcodeReg(null)} />}
       {lineQrReg && <LineQrModal reg={lineQrReg} onClose={() => setLineQrReg(null)} />}
-      {detailReg && <RegDetailModal reg={detailReg} t={t} navigate={navigate} onClose={() => setDetailReg(null)} />}
+      {detailReg && <RegDetailModal reg={detailReg} t={t} navigate={navigate} certs={certs} certTpl={certTpl} onClose={() => setDetailReg(null)} />}
     </div>
   )
 }
 
 // Modal รายละเอียด 2 ฝั่ง: ซ้าย=ข้อมูลวิชา ขวา=ข้อมูลที่กรอกตอนสมัคร
-function RegDetailModal({ reg, t, navigate, onClose }) {
+function RegDetailModal({ reg, t, navigate, certs = {}, certTpl = {}, onClose }) {
   const d = displayStatus(reg)
   const cfg = STATUS_CFG[d] || STATUS_CFG.held
   const isPaid = (reg.price || 0) > 0
@@ -352,6 +385,7 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
   const [imgIdx, setImgIdx] = useState(0)
   const [showBarcode, setShowBarcode] = useState(false)
   const [barcodeMember, setBarcodeMember] = useState(null)
+  const [certMember, setCertMember] = useState(null)
 
   useEffect(() => {
     fetchCourse(reg.course_id).then(setCourse).catch(() => {})
@@ -498,14 +532,23 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
                         {m.email && <p className="text-[11px] text-slate-500 truncate flex items-center gap-1.5"><Ico.mail className="w-3 h-3 shrink-0 text-slate-400" /> {m.email}</p>}
                         {m.phone && <p className="text-[11px] text-slate-500 flex items-center gap-1.5"><Ico.phone className="w-3 h-3 shrink-0 text-slate-400" /> {m.phone}</p>}
                       </div>
-                      {isConfirmed && m.participant_code && (
-                        <div style={{ paddingLeft: "2.375rem" }}>
-                          <button onClick={() => setBarcodeMember(m)}
-                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 active:scale-95 px-3 py-1.5 rounded-lg shadow-md shadow-slate-900/10 transition">
-                            <Ico.barcode className="w-3.5 h-3.5" style={{ color: "#fb923c" }} /> ดูบาร์โค้ด
-                          </button>
+                      {(isConfirmed && m.participant_code) || certs[m.id] ? (
+                        <div className="flex flex-wrap gap-1.5" style={{ paddingLeft: "2.375rem" }}>
+                          {isConfirmed && m.participant_code && (
+                            <button onClick={() => setBarcodeMember(m)}
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 active:scale-95 px-3 py-1.5 rounded-lg shadow-md shadow-slate-900/10 transition">
+                              <Ico.barcode className="w-3.5 h-3.5" style={{ color: "#fb923c" }} /> ดูบาร์โค้ด
+                            </button>
+                          )}
+                          {/* เกียรติบัตร — ขึ้นเฉพาะใบที่ผู้จัดส่งแล้ว (ยังไม่ส่ง = ไม่แสดงอะไรเลย) */}
+                          {certs[m.id] && (
+                            <button onClick={() => setCertMember(m)}
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-gradient-to-r from-[#F15A24] to-amber-500 hover:from-[#c44215] hover:to-amber-600 active:scale-95 px-3 py-1.5 rounded-lg shadow-md shadow-orange-500/20 transition">
+                              <Ico.cap className="w-3.5 h-3.5" /> เกียรติบัตร
+                            </button>
+                          )}
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   ))}
                 </div>
@@ -581,6 +624,81 @@ function RegDetailModal({ reg, t, navigate, onClose }) {
       </div>
       {showBarcode && <CheckinModal reg={reg} t={t} onClose={() => setShowBarcode(false)} />}
       {barcodeMember && <MemberBarcodeModal member={barcodeMember} courseTitle={reg.course_title} onClose={() => setBarcodeMember(null)} />}
+      {certMember && (
+        <MemberCertificateModal
+          cert={certs[certMember.id]}
+          tpl={certTpl[certs[certMember.id]?.event_id]}
+          onClose={() => setCertMember(null)} />
+      )}
+    </div>
+  )
+}
+
+// เกียรติบัตรของสมาชิก 1 คน — โครงเดียวกับ MemberBarcodeModal (ดูตัวอย่าง + โหลดเอง)
+function MemberCertificateModal({ cert, tpl, onClose }) {
+  const [imgUrl, setImgUrl] = useState("")
+  const [err, setErr] = useState("")
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    let alive = true
+    if (!tpl?.templateUrl) { setErr("ผู้จัดยังไม่ได้ตั้งรูปพื้นหลังเกียรติบัตร"); return }
+    previewCertificate({ templateUrl: tpl.templateUrl, recipient: cert, fields: tpl.fields })
+      .then((u) => { if (alive) setImgUrl(u) })
+      .catch((e) => { if (alive) setErr(e.message) })
+    return () => { alive = false }
+  }, [cert, tpl])
+
+  async function downloadPdf() {
+    setBusy(true)
+    try {
+      const doc = await generateCertificatePDF({
+        templateUrl: tpl.templateUrl, recipients: [cert], fields: tpl.fields,
+      })
+      doc.save(`เกียรติบัตร_${safeFileName(cert.full_name, 30)}.pdf`)
+    } catch (e) { setErr("ดาวน์โหลดไม่สำเร็จ: " + e.message) }
+    finally { setBusy(false) }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-[60] p-0 sm:p-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="bg-white w-full sm:rounded-[28px] shadow-2xl sm:max-w-2xl overflow-hidden rounded-t-[28px] max-h-[94dvh] flex flex-col">
+        <div className="bg-gradient-to-r from-[#F15A24] to-amber-500 p-5 text-white text-center relative shrink-0">
+          <button onClick={onClose} aria-label="ปิด" className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition text-lg leading-none">×</button>
+          <div className="mx-auto w-11 h-11 bg-white/15 rounded-full flex items-center justify-center mb-2">
+            <Ico.cap className="w-5 h-5 text-white" />
+          </div>
+          <h3 className="font-bold text-lg">{cert.full_name}</h3>
+          <p className="text-amber-100 text-xs mt-0.5 truncate flex items-center justify-center gap-1">
+            <Ico.card className="w-3 h-3" /> {cert.course_title}
+          </p>
+        </div>
+
+        <div className="p-5 bg-slate-50 overflow-y-auto">
+          {cert.award && (
+            <div className="bg-[#F15A24] text-white rounded-xl px-4 py-3 mb-4 text-center shadow-sm">
+              <p className="text-[11px] text-orange-100 mb-0.5">รางวัลที่ได้รับ</p>
+              <p className="text-xl font-extrabold">{cert.award}</p>
+            </div>
+          )}
+          {err ? (
+            <p className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl p-3 text-center">{err}</p>
+          ) : imgUrl ? (
+            <img src={imgUrl} alt="เกียรติบัตร" className="w-full rounded-xl shadow border border-slate-200" />
+          ) : (
+            <p className="text-sm text-slate-400 text-center py-10">กำลังสร้างเกียรติบัตร…</p>
+          )}
+        </div>
+
+        <div className="px-6 py-5 bg-slate-50 border-t border-slate-100 flex gap-2 shrink-0">
+          <button onClick={downloadPdf} disabled={busy || !imgUrl}
+            className="flex-1 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white py-3 rounded-xl font-semibold text-sm transition flex items-center justify-center gap-2">
+            <Ico.download className="w-4 h-4" style={{ color: "#fb923c" }} /> {busy ? "กำลังสร้าง…" : "ดาวน์โหลด PDF"}
+          </button>
+          <button onClick={onClose} className="flex-1 bg-white border border-slate-200 text-slate-600 py-3 rounded-xl font-semibold text-sm hover:bg-slate-100 transition">ปิด</button>
+        </div>
+      </div>
     </div>
   )
 }

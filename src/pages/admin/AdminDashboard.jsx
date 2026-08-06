@@ -203,18 +203,33 @@ const [allCourses, setAllCourses] = useState([])  // ทุกวิชาใน
     const paidRows = filtered.filter(isPaid)
     const uniquePaid = new Set(paidRows.map((r) => r.submitter_email)).size
     // รวมเป็น "ใบสมัคร" — ทีม (reg_id เดียว) = 1 ใบ, เดี่ยว = ต่อคน; ราคาต่อใบ = ราคาวิชา (แถวหัวหน้า) นับครั้งเดียว
+    // เก็บ is_imported ไปพร้อมราคาด้วย — ต้องแยกตอนยุบเป็นใบ ไม่ใช่รวมทีหลัง ไม่งั้นทีมจะถูกนับซ้ำทุกคน
     const regPrice = new Map()
     paidRows.forEach((r) => {
       const key = r.count_mode === "team" && r.reg_id ? `reg:${r.reg_id}` : `solo:${r.participant_id || r.reg_id}`
-      regPrice.set(key, Math.max(regPrice.get(key) || 0, Number(r.price || 0)))
+      const prev = regPrice.get(key)
+      regPrice.set(key, {
+        price: Math.max(prev?.price || 0, Number(r.price || 0)),
+        imported: prev?.imported || !!r.is_imported,
+      })
     })
     // นับเฉพาะใบที่มีรายได้จริง (ราคา > 0 = มีจ่าย/แนบสลิป) — ใบฟรีไม่นับ
-    const paidVals = [...regPrice.values()].filter((v) => v > 0)
+    const paidVals = [...regPrice.values()].filter((v) => v.price > 0)
     const paidRegCount = paidVals.length
-    const totalIncome = paidVals.reduce((s, v) => s + v, 0)  // Σ รายการสมัคร × ราคาวิชานั้น
+    const totalIncome = paidVals.reduce((s, v) => s + v.price, 0)  // Σ รายการสมัคร × ราคาวิชานั้น
+    // แยกเงินที่เก็บได้จริง ออกจากใบที่แอดมิน import เข้ามา (ไม่ได้จ่ายผ่านระบบ)
+    const importedVals = paidVals.filter((v) => v.imported)
+    const importIncome = importedVals.reduce((s, v) => s + v.price, 0)
+    const importRegCount = importedVals.length
+    const realIncome = totalIncome - importIncome
+    const realRegCount = paidRegCount - importRegCount
     return {
       totalUsers: uniqueUsers.length,
       totalIncome,
+      realIncome,
+      importIncome,
+      realRegCount,
+      importRegCount,
       pendingSlips: filtered.filter((r) => r.status === "slip_uploaded").length,
       pendingPayment: filtered.filter((r) => r.status === "pending_payment").length,
       waitlist: filtered.filter((r) => r.status === "waitlist").length,
@@ -464,7 +479,8 @@ const schoolRanking = useMemo(() => {
   const seatHeldCount = filtered.filter((r) => SEAT_HELD_STATUSES.includes(r.status)).length
   const kpiCards = [
     { title: "ผู้สมัครทั้งหมด", value: seatHeldCount.toLocaleString(), unit: "คน", sub: todayUsers > 0 ? `+${todayUsers} วันนี้` : "ยังไม่มีวันนี้", color: "sky", icon: "users", onClick: () => drillDown("ผู้สมัครทั้งหมด", (r) => SEAT_HELD_STATUSES.includes(r.status)) },
-    { title: "รายได้รวม", value: stats.totalIncome.toLocaleString(), unit: "฿", sub: `${stats.paidRegCount.toLocaleString()} ใบ`, color: "emerald", icon: "money", onClick: () => drillDown("ชำระแล้ว", isPaid) },
+    { title: "รายได้จากผู้สมัครเอง", value: stats.realIncome.toLocaleString(), unit: "฿", sub: `${stats.realRegCount.toLocaleString()} ใบ`, color: "emerald", icon: "money", onClick: () => drillDown("ชำระแล้ว (สมัครเอง)", (r) => isPaid(r) && !r.is_imported) },
+    { title: "รายได้จากการ import", value: stats.importIncome.toLocaleString(), unit: "฿", sub: `${stats.importRegCount.toLocaleString()} ใบ`, color: "violet", icon: "money", onClick: () => drillDown("ชำระแล้ว (นำเข้า)", (r) => isPaid(r) && !!r.is_imported) },
     { title: "คิวสำรอง", value: stats.waitlist.toLocaleString(), unit: "รายการ", sub: stats.waitlist > 0 ? "รอที่นั่งว่าง" : "ไม่มีคิวสำรอง", color: "violet", icon: "clock", onClick: () => drillDown("คิวสำรอง", (r) => r.status === "waitlist") },
     { title: "รอตรวจสลิป", value: stats.pendingSlips.toLocaleString(), unit: "รายการ", sub: stats.pendingSlips > 0 ? "ต้องรีบตรวจ" : "เคลียร์หมดแล้ว", color: "orange", icon: "receipt", onClick: () => drillDown("รอตรวจสลิป", (r) => r.status === "slip_uploaded") },
   ]
@@ -524,7 +540,7 @@ const schoolRanking = useMemo(() => {
       </div>
 
       {/* KPI */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {kpiCards.map((k) => {
           const st = KPI_STYLE[k.color]
           const I = Ico[k.icon]
@@ -573,6 +589,7 @@ const schoolRanking = useMemo(() => {
           </div>
         </SectionCard>
       )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2">
           <SectionCard title="แนวโน้มการสมัคร (Registration Trend)" icon={Ico.trend} action={<span className="text-xs text-slate-400">{trendData.length} วัน</span>}>

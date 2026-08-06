@@ -129,14 +129,20 @@ export async function adminDeleteUser(email) {
   return data
 }
 // ข้อ 9: แก้ข้อมูลนักเรียน (ไม่แตะ national_id/email)
+// ⚠️ update ตรงบนตาราง (ไม่ใช่ RPC) → ถ้า RLS ไม่ให้สิทธิ์ Supabase จะ "ไม่คืน error"
+//    แต่แก้ได้ 0 แถว ถ้าไม่เช็คจะขึ้น "บันทึกแล้ว" ทั้งที่ข้อมูลไม่เปลี่ยน (ค่าเด้งกลับเป็นของเดิม)
+//    ต้องมี RLS policy ให้แอดมิน update profiles — ดู supabase/migrations/*_admin_update_profile.sql
 export async function adminUpdateStudent(profileId, fields) {
-  const { error } = await supabase.from("profiles").update({
+  const { data, error } = await supabase.from("profiles").update({
     title: fields.title, first_name: fields.first_name, last_name: fields.last_name,
     nickname: fields.nickname, age: fields.age ? Number(fields.age) : null, phone: fields.phone,
     grade_level: fields.grade_level, line_id: fields.line_id, school: fields.school,
     parent_full_name: fields.parent_full_name, parent_phone: fields.parent_phone,
-  }).eq("id", profileId)
+  }).eq("id", profileId).select("id")
   if (error) throw error
+  if (!data || data.length === 0) {
+    throw new Error("ไม่มีสิทธิ์แก้ข้อมูลผู้ใช้รายนี้ (RLS บล็อก) — ต้องรัน SQL เพิ่ม policy ให้แอดมินก่อน")
+  }
   return true
 }
 
@@ -975,19 +981,28 @@ export async function registerExternal(courseId) {
 // เทมเพลต + รายการรางวัล เก็บใน event_settings (jsonb) ไม่ต้องแก้ schema
 // ═══════════════════════════════════════════════════════════════════
 
+// สถานะใบสมัครที่มีสิทธิ์รับเกียรติบัตร (ตรงกับที่หน้า "รายการสมัครของฉัน" ถือว่ายืนยันแล้ว)
+export const CERT_ELIGIBLE_STATUSES = ["confirmed", "approved"]
+
 // ดึงคนที่ "check-in แล้ว" ในคอร์ส (สำหรับออกเกียรติบัตร)
-// คืน participant + ชื่อคอร์ส + หมวด — เฉพาะคนที่มี checkin record
+// คืน participant + ชื่อคอร์ส + หมวด — เฉพาะใบสมัครที่ยืนยันแล้ว และคนที่มี checkin record
 export async function fetchCertificateRecipients(courseId) {
   const { data, error } = await supabase
     .from("registrations")
-    .select("id, status, theme_name, course_id, courses!inner(title, event_id, course_types:type_id(label)), participants(id, full_name, school, grade_level, award, cert_published, checkins(id, scanned_at))")
+    .select("id, status, theme_name, course_id, submitter_email, is_imported, import_seat_mode, courses!inner(title, event_id, course_types:type_id(label)), participants(id, full_name, school, grade_level, award, cert_published, checkins(id, scanned_at))")
     .eq("course_id", courseId)
+    .in("status", CERT_ELIGIBLE_STATUSES)
     .order("created_at", { ascending: true })
   if (error) throw error
   // แตก participant ออกมาเป็นรายคน — เฉพาะคนที่ check-in แล้ว
+  // หมายเหตุ: participant ผูกกับใบสมัคร → คนเดียวสมัครหลายรายการ = ได้เกียรติบัตรตามรายการ (ไม่ dedupe)
   const recipients = []
   for (const reg of data || []) {
     const course = reg.courses
+    // ใบสมัครที่ผู้จัดนำเข้าเอง — เช็ค 3 ทางเหมือนหน้า "นำเข้าผู้สมัคร" (ข้อมูลเก่าไม่ได้ตั้ง flag ครบ)
+    const isImported = reg.is_imported === true
+      || (reg.import_seat_mode != null && reg.import_seat_mode !== "")
+      || (typeof reg.submitter_email === "string" && reg.submitter_email.includes("@import.local"))
     for (const p of reg.participants || []) {
       const checkedIn = (p.checkins || []).length > 0
       if (!checkedIn) continue
@@ -1002,6 +1017,7 @@ export async function fetchCertificateRecipients(courseId) {
         theme_name: reg.theme_name || "",
         course_title: course?.title || "",
         category: course?.course_types?.label || "",
+        is_imported: isImported,
       })
     }
   }
@@ -1009,8 +1025,15 @@ export async function fetchCertificateRecipients(courseId) {
 }
 
 // อัปโหลดรูปพื้นหลังเกียรติบัตร → คืน public URL
+// ⚠️ ไม่บีบรูป (ต่างจาก asset อื่น) — เกียรติบัตรต้องเอาไปพิมพ์ ความละเอียดต้องคงเดิม
 export async function uploadCertificateTemplate(file, eventId) {
-  return uploadCourseAsset(file, "certificates", eventId)
+  const ext = (file.name.split(".").pop() || "png").toLowerCase()
+  const path = `certificates/${eventId}.${ext}`
+  const { error } = await supabase.storage.from("course-assets")
+    .upload(path, file, { upsert: true, cacheControl: "31536000", contentType: file.type })
+  if (error) throw error
+  const { data } = supabase.storage.from("course-assets").getPublicUrl(path)
+  return `${data.publicUrl}?v=${Date.now()}`   // bust CDN cache (เขียนทับ path เดิม)
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1052,24 +1075,48 @@ export async function fetchMyRegistrationStatus(registrationId) {
 // ═══════════════════════════════════════════════════════════════════
 
 // บันทึกรางวัลของผู้รับหลายคน — assignments = [{participant_id, award}]
+// ⚠️ ใช้ .select() เพื่อรู้ว่าแถวถูกอัปเดตจริง — ถ้า RLS บล็อก Supabase จะไม่คืน error
+//    แต่จะได้ 0 แถว ถ้าไม่เช็คจะขึ้น "สำเร็จ" ทั้งที่ไม่มีอะไรเปลี่ยน
 export async function saveCertAwards(assignments) {
-  if (!Array.isArray(assignments) || !assignments.length) return
-  // อัปเดตทีละคน (Supabase ไม่มี bulk update ต่างค่า) — Promise.all ให้เร็ว
+  if (!Array.isArray(assignments) || !assignments.length) return 0
   const results = await Promise.all(
     assignments.map((a) =>
-      supabase.from("participants").update({ award: a.award }).eq("id", a.participant_id)
+      supabase.from("participants").update({ award: a.award }).eq("id", a.participant_id).select("id")
     )
   )
   const err = results.find((r) => r.error)
   if (err?.error) throw err.error
+  const saved = results.reduce((n, r) => n + (r.data?.length || 0), 0)
+  if (saved < assignments.length) {
+    throw new Error(`บันทึกได้ ${saved}/${assignments.length} คน — สิทธิ์ไม่พอ (ตรวจ RLS ของตาราง participants)`)
+  }
+  return saved
 }
 
 // แจกเกียรติบัตร (mark cert_published = true) ให้ผู้รับที่ระบุ
 export async function publishCertificates(participantIds) {
-  if (!Array.isArray(participantIds) || !participantIds.length) return
-  const { error } = await supabase
-    .from("participants").update({ cert_published: true }).in("id", participantIds)
+  if (!Array.isArray(participantIds) || !participantIds.length) return 0
+  const { data, error } = await supabase
+    .from("participants").update({ cert_published: true }).in("id", participantIds).select("id")
   if (error) throw error
+  const n = data?.length || 0
+  if (n < participantIds.length) {
+    throw new Error(`แจกได้ ${n}/${participantIds.length} คน — สิทธิ์ไม่พอ (ตรวจ RLS ของตาราง participants)`)
+  }
+  return n
+}
+
+// เกียรติบัตรของผู้ใช้ที่ล็อกอิน — เฉพาะใบที่แอดมินกด "ส่งเกียรติบัตร" แล้ว
+// คืน map { [participant_id]: { award, course_title, theme_name, full_name } }
+// ถ้า RPC ยังไม่ได้รัน SQL → คืน {} (หน้าเดิมทำงานต่อได้ แค่ไม่โชว์เกียรติบัตร)
+export async function fetchMyCertificates() {
+  try {
+    const { data, error } = await supabase.rpc("my_certificates")
+    if (error) return {}
+    const map = {}
+    for (const row of data || []) map[row.participant_id] = row
+    return map
+  } catch (_) { return {} }
 }
 
 // บันทึกแบบสอบถาม (PDPA + เคยร่วมกิจกรรม + ประชาสัมพันธ์) — ตอบครั้งเดียว
