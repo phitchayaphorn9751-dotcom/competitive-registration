@@ -344,7 +344,7 @@ export default function MyRegistrationPage() {
                           <button onClick={() => setDetailReg(reg)}
                             className="flex-1 min-w-[130px] px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#F15A24] to-amber-500 hover:from-[#c44215] hover:to-amber-600 active:scale-[0.98] text-white font-semibold text-xs shadow-md shadow-orange-500/20 transition flex items-center justify-center gap-2 group/btn">
                             <Ico.cap className="w-4 h-4 group-hover/btn:scale-110 transition-transform" />
-                            เกียรติบัตร{certsByReg[reg.id] > 1 ? ` (${certsByReg[reg.id]})` : ""}
+                            เกียรติบัตร
                           </button>
                         )}
                         {d === "confirmed" && reg.line_qr_url && (
@@ -544,7 +544,7 @@ function RegDetailModal({ reg, t, navigate, certs = {}, certTpl = {}, onClose })
                           {certs[m.id] && (
                             <button onClick={() => setCertMember(m)}
                               className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-gradient-to-r from-[#F15A24] to-amber-500 hover:from-[#c44215] hover:to-amber-600 active:scale-95 px-3 py-1.5 rounded-lg shadow-md shadow-orange-500/20 transition">
-                              <Ico.cap className="w-3.5 h-3.5" /> ดูเกียรติบัตร
+                              <Ico.cap className="w-3.5 h-3.5" /> เกียรติบัตร
                             </button>
                           )}
                         </div>
