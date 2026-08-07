@@ -84,7 +84,7 @@ const TOOLTIP_STYLE = { borderRadius: "12px", border: "none", boxShadow: "0 8px 
 
 // แท่งสรุปคำตอบแบบเลือกได้หลายข้อ (แบบสอบถามตอนสมัคร)
 // base = จำนวนผู้สมัครทั้งงาน ใช้คิด % — ไม่ใช่ผลรวมของทุกตัวเลือก (เลือกได้หลายข้อ)
-function SurveyBars({ title, items, others, base, color }) {
+function SurveyBars({ title, items, base, color }) {
   const max = Math.max(1, ...items.map((i) => i.cnt))
   return (
     <div>
@@ -107,18 +107,6 @@ function SurveyBars({ title, items, others, base, color }) {
               </div>
             </div>
           ))}
-        </div>
-      )}
-      {others.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-slate-100">
-          <p className="text-[11px] font-bold text-slate-400 mb-1.5">อื่นๆ (พิมพ์เอง)</p>
-          <div className="flex flex-wrap gap-1.5">
-            {others.map((o) => (
-              <span key={o.label} className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[11px] text-slate-600">
-                {o.label}{o.cnt > 1 && <b className="text-slate-400">×{o.cnt}</b>}
-              </span>
-            ))}
-          </div>
         </div>
       )}
     </div>
@@ -208,9 +196,7 @@ const [allCourses, setAllCourses] = useState([])  // ทุกวิชาใน
     const totalOf = (label) => surveyRows.find((r) => r.kind === "total" && r.label === label)?.cnt || 0
     return {
       activities: pick("activity"),
-      activitiesOther: pick("activity_other"),
       prs: pick("pr"),
-      prsOther: pick("pr_other"),
       pdpa: pick("pdpa"),
       answered: Number(totalOf("ตอบแบบสอบถามแล้ว")) || 0,
       people: Number(totalOf("ผู้สมัครในงานนี้")) || 0,
@@ -756,8 +742,8 @@ const schoolRanking = useMemo(() => {
         <SectionCard title="แบบสอบถามตอนสมัคร" icon={Ico.puzzle}
           action={<span className="text-xs text-slate-400">ตอบแล้ว {survey.answered.toLocaleString()}/{survey.people.toLocaleString()} คน</span>}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <SurveyBars title="เคยร่วมกิจกรรมของ CAMT" items={survey.activities} others={survey.activitiesOther} base={survey.people} color="#F15A24" />
-            <SurveyBars title="รู้จักงานนี้จากช่องทางไหน" items={survey.prs} others={survey.prsOther} base={survey.people} color="#0ea5e9" />
+            <SurveyBars title="เคยร่วมกิจกรรมของ CAMT" items={survey.activities} base={survey.people} color="#F15A24" />
+            <SurveyBars title="รู้จักงานนี้จากช่องทางไหน" items={survey.prs} base={survey.people} color="#0ea5e9" />
           </div>
           {survey.pdpa.length > 0 && (
             <div className="mt-5 pt-4 border-t border-slate-100">
