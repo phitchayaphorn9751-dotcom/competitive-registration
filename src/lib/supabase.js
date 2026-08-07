@@ -751,6 +751,17 @@ export async function fetchDashboardRegistrations(eventId) {
   return data || []
 }
 
+// สรุปแบบสอบถามตอนสมัคร (PDPA / เคยร่วมกิจกรรม / รู้จักจากช่องทางไหน)
+// คืน [{kind, label, cnt}] — ถ้ายังไม่ได้รัน SQL จะคืน [] (หน้า Dashboard ไม่พัง แค่ไม่โชว์การ์ด)
+export async function fetchSignupSurveySummary(eventId) {
+  if (!eventId) return []
+  try {
+    const { data, error } = await supabase.rpc("dashboard_signup_survey", { p_event_id: eventId })
+    if (error) return []
+    return data || []
+  } catch (_) { return [] }
+}
+
 export async function fetchAttendanceByCourse(eventId) {
   const { data, error } = await supabase.rpc("attendance_by_course", { p_event_id: eventId })
   if (error) throw error
