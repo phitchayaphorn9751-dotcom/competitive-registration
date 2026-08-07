@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react"
 import { useOutletContext } from "react-router-dom"
-import { fetchDashboardRegistrations, fetchDashboardCourses } from "../../lib/supabase.js"
+import { fetchDashboardRegistrations, fetchDashboardCourses, fetchSignupSurveySummary } from "../../lib/supabase.js"
 import { Ico } from "../../lib/icons.jsx"
 import { catColor } from "../../lib/categoryColors.js"
 import {
@@ -82,6 +82,49 @@ function SectionCard({ title, icon: Icon, children, action, className = "", head
 
 const TOOLTIP_STYLE = { borderRadius: "12px", border: "none", boxShadow: "0 8px 24px rgba(0,0,0,.10)", fontSize: "12px" }
 
+// แท่งสรุปคำตอบแบบเลือกได้หลายข้อ (แบบสอบถามตอนสมัคร)
+// base = จำนวนผู้สมัครทั้งงาน ใช้คิด % — ไม่ใช่ผลรวมของทุกตัวเลือก (เลือกได้หลายข้อ)
+function SurveyBars({ title, items, others, base, color }) {
+  const max = Math.max(1, ...items.map((i) => i.cnt))
+  return (
+    <div>
+      <p className="text-xs font-bold text-slate-600 mb-3">{title}</p>
+      {items.length === 0 ? (
+        <p className="text-xs text-slate-400 py-4 text-center">ยังไม่มีคำตอบ</p>
+      ) : (
+        <div className="space-y-2">
+          {items.map((i) => (
+            <div key={i.label}>
+              <div className="flex items-baseline justify-between gap-3 mb-1">
+                <span className="text-xs text-slate-600 min-w-0 flex-1">{i.label}</span>
+                <span className="text-xs font-bold text-slate-700 shrink-0">
+                  {i.cnt.toLocaleString()}
+                  {base > 0 && <span className="text-slate-400 font-normal"> · {Math.round((i.cnt / base) * 100)}%</span>}
+                </span>
+              </div>
+              <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                <div className="h-full rounded-full" style={{ width: `${(i.cnt / max) * 100}%`, background: color }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {others.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-slate-100">
+          <p className="text-[11px] font-bold text-slate-400 mb-1.5">อื่นๆ (พิมพ์เอง)</p>
+          <div className="flex flex-wrap gap-1.5">
+            {others.map((o) => (
+              <span key={o.label} className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[11px] text-slate-600">
+                {o.label}{o.cnt > 1 && <b className="text-slate-400">×{o.cnt}</b>}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // map คอร์สจาก RPC dashboard_courses → รูปแบบที่ใช้ในการ์ด "จำนวนผู้สมัคร"
 function mapDashCourse(c) {
   let sessions = []
@@ -138,6 +181,7 @@ const [allCourses, setAllCourses] = useState([])  // ทุกวิชาใน
   const [showAllSchools, setShowAllSchools] = useState(false)  // ดูโรงเรียนทั้งหมด (ไม่จำกัด 10)
   const [exportOpen, setExportOpen] = useState(false)  // modal เลือกโหมด export
   const [exportSel, setExportSel] = useState("__combined")  // "__combined" | "__split" | ชื่อวิชา
+  const [surveyRows, setSurveyRows] = useState([])          // สรุปแบบสอบถามตอนสมัคร (จาก RPC)
 
   useEffect(() => {
     if (!event?.id) { setLoading(false); return }
@@ -145,14 +189,33 @@ const [allCourses, setAllCourses] = useState([])  // ทุกวิชาใน
     Promise.all([
       fetchDashboardRegistrations(event.id),
       fetchDashboardCourses(event.id).catch(() => []),
+      fetchSignupSurveySummary(event.id),
     ])
-      .then(([regs, courses]) => {
+      .then(([regs, courses, survey]) => {
         setRows((regs || []).map((r) => ({ ...r, created: r.created_at ? new Date(r.created_at) : new Date() })))
         setAllCourses(courses || [])
+        setSurveyRows(survey || [])
       })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [event?.id])
+
+  // แบบสอบถามตอนสมัคร — แยกตามชนิด แล้วเรียงจากมากไปน้อย
+  const survey = useMemo(() => {
+    const pick = (k) => surveyRows.filter((r) => r.kind === k)
+      .map((r) => ({ label: r.label, cnt: Number(r.cnt) || 0 }))
+      .sort((a, b) => b.cnt - a.cnt)
+    const totalOf = (label) => surveyRows.find((r) => r.kind === "total" && r.label === label)?.cnt || 0
+    return {
+      activities: pick("activity"),
+      activitiesOther: pick("activity_other"),
+      prs: pick("pr"),
+      prsOther: pick("pr_other"),
+      pdpa: pick("pdpa"),
+      answered: Number(totalOf("ตอบแบบสอบถามแล้ว")) || 0,
+      people: Number(totalOf("ผู้สมัครในงานนี้")) || 0,
+    }
+  }, [surveyRows])
 
   // time filter
   const filtered = useMemo(() => {
@@ -687,6 +750,37 @@ const schoolRanking = useMemo(() => {
           </div>
         </div>
       </SectionCard>
+
+      {/* แบบสอบถามตอนสมัคร (หน้าโปรไฟล์/สมัคร) — ต้องรัน RPC dashboard_signup_survey ก่อนถึงมีข้อมูล */}
+      {surveyRows.length > 0 && (
+        <SectionCard title="แบบสอบถามตอนสมัคร" icon={Ico.puzzle}
+          action={<span className="text-xs text-slate-400">ตอบแล้ว {survey.answered.toLocaleString()}/{survey.people.toLocaleString()} คน</span>}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <SurveyBars title="เคยร่วมกิจกรรมของ CAMT" items={survey.activities} others={survey.activitiesOther} base={survey.people} color="#F15A24" />
+            <SurveyBars title="รู้จักงานนี้จากช่องทางไหน" items={survey.prs} others={survey.prsOther} base={survey.people} color="#0ea5e9" />
+          </div>
+          {survey.pdpa.length > 0 && (
+            <div className="mt-5 pt-4 border-t border-slate-100">
+              <p className="text-xs font-bold text-slate-500 mb-2">ความยินยอม PDPA</p>
+              <div className="flex flex-wrap gap-2">
+                {survey.pdpa.map((p) => (
+                  <span key={p.label}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${
+                      p.label === "ยินยอม" ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                      : p.label === "ไม่ยินยอม" ? "bg-rose-50 text-rose-600 border-rose-100"
+                      : "bg-slate-50 text-slate-500 border-slate-200"}`}>
+                    {p.label} {p.cnt.toLocaleString()} คน
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          <p className="text-[11px] text-slate-400 mt-4">
+            นับคนละครั้งเดียว (สมัครหลายวิชาไม่นับซ้ำ) · เลือกได้หลายข้อ ผลรวมจึงเกิน 100% ได้ ·
+            เป็นยอดทั้งงาน <b>ไม่ขยับตามตัวกรองช่วงเวลา/หมวด</b> ด้านบน
+          </p>
+        </SectionCard>
+      )}
 
       {/* Drill-down modal */}
       {drill && (
