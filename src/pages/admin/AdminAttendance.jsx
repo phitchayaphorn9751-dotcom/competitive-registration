@@ -90,10 +90,12 @@ export default function AdminAttendance() {
     setSessionFilter("All")
     if (!courseId) { setPInfo({}); return }
     const lbl = (id) => courseSessions.find((s) => s.id === id)?.label || ""
+    // fetchCourseParticipants เรียงตาม created_at ขึ้น → seq = ลำดับที่สมัคร (คนสมัครก่อนได้เลขน้อย)
     fetchCourseParticipants(courseId).then((regs) => {
       const m = {}
+      let seq = 0
       ;(regs || []).forEach((r) => (r.participants || []).forEach((p) => {
-        m[p.id] = { code: p.participant_code || "", sid: r.session_id || "", label: lbl(r.session_id) }
+        m[p.id] = { code: p.participant_code || "", sid: r.session_id || "", label: lbl(r.session_id), seq: ++seq }
       }))
       setPInfo(m)
     }).catch(() => setPInfo({}))
@@ -101,7 +103,7 @@ export default function AdminAttendance() {
 
   const withInfo = useCallback((r) => {
     const i = pInfo[r.participant_id] || {}
-    return { ...r, code: i.code || "", sessionId: i.sid || "", sessionName: i.label || "" }
+    return { ...r, code: i.code || "", sessionId: i.sid || "", sessionName: i.label || "", seq: i.seq || 9999 }
   }, [pInfo])
   const passSession = useCallback((r) => sessionFilter === "All" || (pInfo[r.participant_id]?.sid || "") === sessionFilter, [sessionFilter, pInfo])
 
@@ -161,23 +163,25 @@ export default function AdminAttendance() {
   const overallFiltered = overallBase.filter((s) => !search || (s.full_name || "").toLowerCase().includes(search.toLowerCase()))
 
   // ── export ──
+  // บรรทัดแรก = หัวเรื่อง "สรุปการลงทะเบียน <ชื่อรายการ> · <รอบ>" · บรรทัดสองเป็นหัวคอลัมน์
+  // ลำดับ (คอลัมน์แรก) เรียงจากคนสมัครก่อน แล้วรันเลขใหม่ 1..N ตามแถวที่ export จริง
   function exportCsv() {
-    let headers, lines
-    const sessCol = hasSessions ? ["รอบ"] : []
+    const esc = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`
+    const sessLabel = !hasSessions ? ""
+      : sessionFilter === "All" ? "ทุกรอบ"
+      : (courseSessions.find((s) => s.id === sessionFilter)?.label || "")
+    const titleRow = `สรุปการลงทะเบียน ${[courses.find((c) => c.id === courseId)?.title, sessLabel].filter(Boolean).join(" · ")}`.trim()
+
+    const lines = [esc(titleRow)]
     if (viewMode === "daily") {
-      headers = ["รหัส", "ชื่อ-สกุล", ...sessCol, "โรงเรียน", "เบอร์", "วันที่", "สถานะ", "ประเมิน", "หมายเหตุ"]
-      lines = [headers.join(",")]
-      dailyFiltered.forEach((r) => {
-        lines.push([r.code || "", r.full_name, ...(hasSessions ? [r.sessionName || ""] : []), r.school || "", r.phone || "", dateKey, r.present ? "มาเรียน" : "ขาด", r.present ? r.evaluation : "-", r.present ? r.note : "-"]
-          .map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      lines.push(["ลำดับ", "รหัส", "ชื่อ-สกุล", "โรงเรียน", "เบอร์", "สถานะลงทะเบียน (1/0)"].map(esc).join(","))
+      dailyFiltered.slice().sort((a, b) => a.seq - b.seq).forEach((r, i) => {
+        lines.push([i + 1, r.code || "", r.full_name || "", r.school || "", r.phone || "", r.present ? 1 : 0].map(esc).join(","))
       })
     } else {
-      headers = ["รหัส", "ชื่อ-สกุล", ...sessCol, "โรงเรียน", "เบอร์", "มาเรียน", "ขาด", "ทั้งหมด", "เปอร์เซ็นต์", "ดีมาก", "ดี", "พอใช้", "ปรับปรุง", "ผล"]
-      lines = [headers.join(",")]
-      overallFiltered.forEach((s) => {
-        lines.push([s.code || "", s.full_name, ...(hasSessions ? [s.sessionName || ""] : []), s.school || "", s.phone || "", s.presentCount, s.absentCount, s.totalSessions, s.percent + "%",
-          s.evalCounts["ดีมาก"], s.evalCounts["ดี"], s.evalCounts["พอใช้"], s.evalCounts["ปรับปรุง"], s.percent >= 80 ? "ผ่านเกณฑ์" : "ต่ำกว่าเกณฑ์"]
-          .map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      lines.push(["ลำดับ", "รหัส", "ชื่อ-สกุล", "โรงเรียน", "เบอร์", "มาเรียน", "ทั้งหมด", "เปอร์เซ็นต์"].map(esc).join(","))
+      overallFiltered.slice().sort((a, b) => a.seq - b.seq).forEach((s, i) => {
+        lines.push([i + 1, s.code || "", s.full_name || "", s.school || "", s.phone || "", s.presentCount, s.totalSessions, s.percent + "%"].map(esc).join(","))
       })
     }
     const blob = new Blob(["\ufeff" + lines.join("\n")], { type: "text/csv;charset=utf-8;" })
