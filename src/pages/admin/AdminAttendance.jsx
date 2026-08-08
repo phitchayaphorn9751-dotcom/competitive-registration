@@ -184,10 +184,15 @@ export default function AdminAttendance() {
         lines.push([i + 1, s.code || "", s.full_name || "", s.school || "", s.phone || "", s.presentCount, s.totalSessions, s.percent + "%"].map(esc).join(","))
       })
     }
+
+    // ชื่อไฟล์ = หัวเรื่องบรรทัดแรก (ตัดอักขระที่ Windows ห้าม) · รายวันต่อท้ายด้วยวันที่ กันไฟล์ทับกัน
+    const safe = titleRow.replace(/[\\/:*?"<>|]/g, "_").replace(/\s+/g, " ").trim().slice(0, 80)
+    const fileName = viewMode === "daily" ? `${safe} ${dateKey}.csv` : `${safe}.csv`
+
     const blob = new Blob(["\ufeff" + lines.join("\n")], { type: "text/csv;charset=utf-8;" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a"); a.href = url
-    a.download = viewMode === "daily" ? `เช็คชื่อ_${dateKey}.csv` : `สรุปเข้าเรียน.csv`; a.click()
+    a.download = fileName; a.click()
     URL.revokeObjectURL(url)
   }
 
