@@ -4,7 +4,7 @@ import { getSession, isAdminUser, fetchMyRegistrations, fetchCourse, fetchRegist
 import { catColor } from "../lib/categoryColors.js"
 import { useLang } from "../lib/i18n.jsx"
 import { Ico } from "../lib/icons.jsx"
-import { previewCertificate, generateCertificatePDF, safeFileName } from "../lib/certificate.js"
+import { previewCertificate, generateCertificatePDF, safeFileName, normalizeCertTemplates } from "../lib/certificate.js"
 
 // map สถานะ → สี/dot (ดีไซน์ CAMT: badge rounded-lg + dot สี)
 const STATUS_CFG = {
@@ -71,7 +71,7 @@ export default function MyRegistrationPage() {
   const [detailReg, setDetailReg] = useState(null)
   // เกียรติบัตรที่ผู้จัด "ส่ง" แล้ว → { [participant_id]: {...} } (ยังไม่ส่ง = ไม่มีคีย์ = ไม่โชว์อะไรเลย)
   const [certs, setCerts] = useState({})
-  const [certTpl, setCertTpl] = useState({})   // { [event_id]: {templateUrl, fields} }
+  const [certTpl, setCertTpl] = useState({})   // { [event_id]: { templates, awardTpl } }
 
   useEffect(() => {
     getSession().then(async (s) => {
@@ -92,7 +92,10 @@ export default function MyRegistrationPage() {
       const eventIds = [...new Set(Object.values(map).map((c) => c.event_id).filter(Boolean))]
       const entries = await Promise.all(eventIds.map(async (id) => {
         const es = await fetchEventSettings(id)
-        return [id, { templateUrl: es.cert_template_url || "", fields: es.cert_fields }]
+        return [id, {
+          templates: normalizeCertTemplates(es.cert_templates, es.cert_template_url, es.cert_fields),
+          awardTpl: es.cert_award_tpl && typeof es.cert_award_tpl === "object" ? es.cert_award_tpl : {},
+        }]
       }))
       if (alive) setCertTpl(Object.fromEntries(entries))
     }).catch(() => {})
@@ -640,21 +643,24 @@ function MemberCertificateModal({ cert, tpl, onClose }) {
   const [err, setErr] = useState("")
   const [busy, setBusy] = useState(false)
 
+  // เทมเพลตของใบนี้ — ดูจากที่ผู้จัดผูกไว้กับชื่อรางวัล ไม่มีก็ใช้แบบผู้เข้าร่วม
+  const tplKey = tpl?.awardTpl?.[(cert.award || "").trim()] || "participant"
+  const one = { ...cert, templateKey: tplKey }
+  const active = tpl?.templates?.[tplKey] || tpl?.templates?.participant
+
   useEffect(() => {
     let alive = true
-    if (!tpl?.templateUrl) { setErr("ผู้จัดยังไม่ได้ตั้งรูปพื้นหลังเกียรติบัตร"); return }
-    previewCertificate({ templateUrl: tpl.templateUrl, recipient: cert, fields: tpl.fields })
+    if (!active?.url) { setErr("ผู้จัดยังไม่ได้ตั้งรูปพื้นหลังเกียรติบัตร"); return }
+    previewCertificate({ templateUrl: active.url, recipient: cert, fields: active.fields })
       .then((u) => { if (alive) setImgUrl(u) })
       .catch((e) => { if (alive) setErr(e.message) })
     return () => { alive = false }
-  }, [cert, tpl])
+  }, [cert, active])
 
   async function downloadPdf() {
     setBusy(true)
     try {
-      const doc = await generateCertificatePDF({
-        templateUrl: tpl.templateUrl, recipients: [cert], fields: tpl.fields,
-      })
+      const doc = await generateCertificatePDF({ templates: tpl.templates, recipients: [one] })
       doc.save(`เกียรติบัตร_${safeFileName(cert.full_name, 30)}.pdf`)
     } catch (e) { setErr("ดาวน์โหลดไม่สำเร็จ: " + e.message) }
     finally { setBusy(false) }

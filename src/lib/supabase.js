@@ -1036,10 +1036,11 @@ export async function fetchCertificateRecipients(courseId) {
 }
 
 // อัปโหลดรูปพื้นหลังเกียรติบัตร → คืน public URL
+// templateKey = training | participant | winner1..3 (แยกไฟล์ต่อเทมเพลต)
 // ⚠️ ไม่บีบรูป (ต่างจาก asset อื่น) — เกียรติบัตรต้องเอาไปพิมพ์ ความละเอียดต้องคงเดิม
-export async function uploadCertificateTemplate(file, eventId) {
+export async function uploadCertificateTemplate(file, eventId, templateKey = "participant") {
   const ext = (file.name.split(".").pop() || "png").toLowerCase()
-  const path = `certificates/${eventId}.${ext}`
+  const path = `certificates/${eventId}_${templateKey}.${ext}`
   const { error } = await supabase.storage.from("course-assets")
     .upload(path, file, { upsert: true, cacheControl: "31536000", contentType: file.type })
   if (error) throw error

@@ -3,23 +3,42 @@
 // (ฝังเป็นภาพ ไม่ใช่ text → ไม่ต้องฝังฟอนต์ไทยใน PDF)
 // ขนาดหน้า = สัดส่วนของรูปเทมเพลตจริง (ไม่ยัดลง A4 → ไม่ยืด ไม่บิด)
 //
-// ค่าที่เก็บใน event_settings (jsonb) — คีย์แบนระดับบนสุด:
-//   cert_template_url : "url รูปพื้นหลัง"
-//   cert_awards       : ["รางวัลชนะเลิศ", "รองชนะเลิศอันดับ 1", ...]
-//   cert_fields       : {
-//     name:   { x, y, size, color, weight, maxWidth },  // ชื่อผู้รับ
-//     award:  { x, y, size, color, weight, maxWidth },  // ชื่อรางวัล
-//     course: { x, y, size, color, weight, maxWidth },  // ชื่อคอร์ส
-//     theme:  { x, y, size, color, weight, maxWidth },  // ชื่อทีม/ธีม (ว่าง = ไม่วาด)
+// มี 5 เทมเพลต แต่ละอันมีรูปและตำแหน่งข้อความของตัวเอง
+// เก็บใน event_settings.cert_templates:
+//   {
+//     training:    { url, fields },   // อบรม/workshop
+//     participant: { url, fields },   // แข่งขัน — ผู้เข้าร่วม
+//     winner1:     { url, fields },   // แข่งขัน — ชนะที่ 1
+//     winner2:     { url, fields },
+//     winner3:     { url, fields },
 //   }
-//   x, y, maxWidth = เปอร์เซ็นต์ (0-100) ของความกว้าง/สูงใบ → ยืดหยุ่นกับทุกขนาดรูป
+//   fields = { name|award|course|theme: { x, y, size, color, weight, maxWidth } }
+//   x, y, maxWidth = เปอร์เซ็นต์ (0-100) ของความกว้าง/สูงใบ
 //   size           = พิกเซล อิงฐานรูปกว้าง 1000px แล้วสเกลตามรูปจริง
 // ═══════════════════════════════════════════════════════════════════
+
+// ฟอนต์บนใบเกียรติบัตร — LINE Seed Sans TH (self-host ใน public/fonts)
+// ถ้ายังไม่ได้วางไฟล์ เบราว์เซอร์จะ fallback เป็น Sarabun เอง
+export const CERT_FONT = "'LINE Seed Sans TH', 'Sarabun', sans-serif"
 
 // jsPDF โหลดแบบ dynamic import — ไม่ถ่วง bundle หน้าอื่น และไม่พึ่ง CDN
 async function loadJsPDF() {
   const mod = await import("jspdf")
   return mod.jsPDF
+}
+
+// ── เทมเพลต 5 แบบ ──────────────────────────────────────────────────
+export const CERT_TEMPLATE_KEYS = ["training", "participant", "winner1", "winner2", "winner3"]
+export const CERT_TEMPLATE_LABELS = {
+  training:    "อบรม",
+  participant: "แข่งขัน — ผู้เข้าร่วม",
+  winner1:     "แข่งขัน — ชนะที่ 1",
+  winner2:     "แข่งขัน — ชนะที่ 2",
+  winner3:     "แข่งขัน — ชนะที่ 3",
+}
+// เทมเพลตเริ่มต้นของแถวรางวัลลำดับที่ N (แถวที่ 4 ขึ้นไปใช้ของชนะที่ 3)
+export function winnerKeyOf(rowIndex) {
+  return CERT_TEMPLATE_KEYS[Math.min(rowIndex, 2) + 2]
 }
 
 // ค่า default ตำแหน่ง (อิงจากเทมเพลตตัวอย่าง CAMT) — admin ลากปรับได้ในหน้าออกเกียรติบัตร
@@ -48,6 +67,19 @@ export function normalizeCertFields(fields) {
   return out
 }
 
+// เติมเทมเพลตให้ครบ 5 ช่อง — รองรับข้อมูลเก่าที่มีรูป/ตำแหน่งเดียว (cert_template_url + cert_fields)
+export function normalizeCertTemplates(raw, legacyUrl = "", legacyFields = null) {
+  const out = {}
+  for (const k of CERT_TEMPLATE_KEYS) {
+    const t = raw?.[k] || {}
+    out[k] = {
+      url: t.url || legacyUrl || "",
+      fields: normalizeCertFields(t.fields || legacyFields),
+    }
+  }
+  return out
+}
+
 // โหลดรูปเป็น Image element (รอโหลดเสร็จ)
 function loadImage(url) {
   return new Promise((resolve, reject) => {
@@ -59,7 +91,7 @@ function loadImage(url) {
   })
 }
 
-// รอให้ฟอนต์เว็บ (Sarabun) พร้อมก่อนวาด — ไม่งั้นใบแรกอาจได้ฟอนต์ fallback
+// รอให้ฟอนต์เว็บพร้อมก่อนวาด — ไม่งั้นใบแรกอาจได้ฟอนต์ fallback
 async function waitFonts() {
   try { await document.fonts?.ready } catch { /* เบราว์เซอร์เก่า — ข้ามไป */ }
 }
@@ -93,14 +125,12 @@ function wrapLines(ctx, text, maxPx) {
 // recipient = { full_name, course_title, award, theme_name }
 function renderCanvas(bgImg, recipient, fields, fontFamily) {
   const canvas = document.createElement("canvas")
-  // ใช้ขนาดรูปจริงเป็น canvas (คมชัดเท่าที่เทมเพลตให้ได้)
   canvas.width = bgImg.naturalWidth
   canvas.height = bgImg.naturalHeight
   const ctx = canvas.getContext("2d")
   ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height)
 
-  // สเกลฟอนต์ตามความกว้างรูป (size อิง 1000px ฐาน)
-  const scale = canvas.width / 1000
+  const scale = canvas.width / 1000   // สเกลฟอนต์ตามความกว้างรูป (size อิง 1000px ฐาน)
 
   const draw = (text, cfg) => {
     if (!text || !cfg) return
@@ -138,45 +168,51 @@ function renderCanvas(bgImg, recipient, fields, fontFamily) {
 }
 
 // สร้าง PDF จากผู้รับหลายคน (1 คน = 1 หน้า) → คืน jsPDF doc
-// recipients = [{ full_name, course_title, award, theme_name }]
-// onProgress(done, total) — เรียกทุกใบ เอาไว้โชว์ความคืบหน้า
+// templates  = { key: {url, fields} } (ผ่าน normalizeCertTemplates มาแล้ว)
+// recipients = [{ full_name, course_title, award, theme_name, templateKey }]
+// แต่ละหน้าใช้ขนาดตามรูปของเทมเพลตตัวเอง → ผสมหลายแบบในไฟล์เดียวได้
 export async function generateCertificatePDF({
-  templateUrl, recipients, fields, fontFamily = "'Sarabun', sans-serif", onProgress,
+  templates, recipients, fontFamily = CERT_FONT, onProgress,
 }) {
-  if (!templateUrl) throw new Error("ยังไม่ได้ตั้งรูปพื้นหลังเกียรติบัตร")
   if (!recipients?.length) throw new Error("ไม่มีรายชื่อผู้รับ")
 
-  const f = normalizeCertFields(fields)
   await waitFonts()
-  const bgImg = await loadImage(templateUrl)
   const jsPDF = await loadJsPDF()
+  const imgCache = new Map()
+  const getImg = async (url) => {
+    if (!imgCache.has(url)) imgCache.set(url, await loadImage(url))
+    return imgCache.get(url)
+  }
 
-  // ขนาดหน้า = สัดส่วนรูปจริง (หน่วย px) → รูปไม่ถูกยืดให้พอดี A4
-  const w = bgImg.naturalWidth
-  const h = bgImg.naturalHeight
-  const doc = new jsPDF({
-    orientation: w >= h ? "landscape" : "portrait",
-    unit: "px",
-    format: [w, h],
-    compress: true,
-  })
-
+  let doc = null
   for (let i = 0; i < recipients.length; i++) {
-    if (i > 0) doc.addPage([w, h], w >= h ? "landscape" : "portrait")
-    const canvas = renderCanvas(bgImg, recipients[i], f, fontFamily)
+    const r = recipients[i]
+    const t = templates?.[r.templateKey] || templates?.participant
+    if (!t?.url) {
+      throw new Error(`ยังไม่ได้ตั้งรูปพื้นหลังของเทมเพลต "${CERT_TEMPLATE_LABELS[r.templateKey] || r.templateKey}"`)
+    }
+    const img = await getImg(t.url)
+    const w = img.naturalWidth
+    const h = img.naturalHeight
+    const orientation = w >= h ? "landscape" : "portrait"
+
+    if (!doc) doc = new jsPDF({ orientation, unit: "px", format: [w, h], compress: true })
+    else doc.addPage([w, h], orientation)
+
+    const canvas = renderCanvas(img, r, normalizeCertFields(t.fields), fontFamily)
     doc.addImage(canvas.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, w, h)
     onProgress?.(i + 1, recipients.length)
     // คืน main thread ให้ UI อัปเดตได้ระหว่างทำใบเยอะๆ
-    if (i % 5 === 4) await new Promise((r) => setTimeout(r, 0))
+    if (i % 5 === 4) await new Promise((res) => setTimeout(res, 0))
   }
   return doc
 }
 
 // สร้าง preview ใบเดียว → คืน dataURL (สำหรับโชว์บนหน้าจอ)
 export async function previewCertificate({
-  templateUrl, recipient, fields, fontFamily = "'Sarabun', sans-serif",
+  templateUrl, recipient, fields, fontFamily = CERT_FONT,
 }) {
-  if (!templateUrl) throw new Error("ยังไม่ได้ตั้งรูปพื้นหลัง")
+  if (!templateUrl) throw new Error("ยังไม่ได้ตั้งรูปพื้นหลังของเทมเพลตนี้")
   await waitFonts()
   const bgImg = await loadImage(templateUrl)
   const canvas = renderCanvas(bgImg, recipient, normalizeCertFields(fields), fontFamily)
