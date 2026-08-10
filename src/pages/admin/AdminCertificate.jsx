@@ -9,11 +9,12 @@ import { useDialog } from "../../lib/dialog.jsx"
 import { Ico } from "../../lib/icons.jsx"
 import {
   generateCertificatePDF, previewCertificate,
-  DEFAULT_CERT_FIELDS, CERT_FIELD_KEYS, CERT_FIELD_LABELS, normalizeCertFields,
-  safeFileName,
+  DEFAULT_CERT_FIELDS, CERT_FIELD_KEYS, CERT_FIELD_LABELS,
+  CERT_TEMPLATE_KEYS, CERT_TEMPLATE_LABELS, normalizeCertTemplates, winnerKeyOf,
+  CERT_FONT, safeFileName,
 } from "../../lib/certificate.js"
 
-const FONT = "'Sarabun', sans-serif"
+const FONT = CERT_FONT
 
 // ── โหมดของหมวดหมู่ ─────────────────────────────────────────────────
 // competition = มีรางวัล (แข่งขัน) · attendance = ทุกคนได้ข้อความเดียวกัน (อบรม/workshop)
@@ -48,7 +49,7 @@ const SAMPLE = {
   theme_name: "ทีมตัวอย่าง",
 }
 
-const newRow = (label = "") => ({ id: "r" + Math.random().toString(36).slice(2, 9), label, members: [] })
+const newRow = (label = "", tpl = "") => ({ id: "r" + Math.random().toString(36).slice(2, 9), label, tpl, members: [] })
 
 export default function AdminCertificate() {
   const { event } = useOutletContext()
@@ -68,9 +69,10 @@ export default function AdminCertificate() {
   const [openPanel, setOpenPanel] = useState("")   // "template" | "layout" | "awards" | "types" | ""
 
   // ── ค่าตั้งทั้งงาน (เก็บใน event_settings) ──
-  const [templateUrl, setTemplateUrl] = useState("")
-  const [fields, setFields] = useState(DEFAULT_CERT_FIELDS)
+  const [templates, setTemplates] = useState(() => normalizeCertTemplates(null))  // 5 แบบ { key: {url, fields} }
+  const [layoutKey, setLayoutKey] = useState("participant")  // เทมเพลตที่กำลังแก้ตำแหน่งอยู่
   const [baseAwards, setBaseAwards] = useState([])        // รายการรางวัลกลาง — พิมพ์ครั้งเดียว
+  const [awardTpl, setAwardTpl] = useState({})            // { [ชื่อรางวัล]: templateKey } — override ต่อชื่อรางวัล
   const [certTypes, setCertTypes] = useState({})          // { [typeId]: {mode, participantLabel} }
   const [courseAwards, setCourseAwards] = useState({})    // { [courseId]: string[] } — คอร์สที่แก้เฉพาะตัว
 
@@ -82,8 +84,9 @@ export default function AdminCertificate() {
     fetchCoursesAdmin(event.id).then((d) => setCourses(d || [])).catch(() => {})
     fetchCourseTypes(event.id).then((d) => setTypes(d || [])).catch(() => {})
     fetchEventSettings(event.id).then((es) => {
-      setTemplateUrl(es.cert_template_url || "")
-      setFields(normalizeCertFields(es.cert_fields))
+      // รองรับข้อมูลเก่าที่มีรูป/ตำแหน่งเดียว → ใช้เป็นค่าตั้งต้นของทั้ง 5 แบบ
+      setTemplates(normalizeCertTemplates(es.cert_templates, es.cert_template_url, es.cert_fields))
+      setAwardTpl(es.cert_award_tpl && typeof es.cert_award_tpl === "object" ? es.cert_award_tpl : {})
       setBaseAwards(Array.isArray(es.cert_awards) ? es.cert_awards.filter(Boolean) : [])
       setCertTypes(es.cert_types && typeof es.cert_types === "object" ? es.cert_types : {})
       setCourseAwards(es.cert_course_awards && typeof es.cert_course_awards === "object" ? es.cert_course_awards : {})
@@ -97,26 +100,28 @@ export default function AdminCertificate() {
   const isAttendance = cfg.mode === MODE_ATTENDANCE
   const hasOverride = courseId ? Object.prototype.hasOwnProperty.call(courseAwards, courseId) : false
 
-  // ═══════════════════ รูปพื้นหลัง ═══════════════════
-  async function handleTemplateFile(e) {
+  // ═══════════════════ รูปพื้นหลัง (5 แบบ) ═══════════════════
+  async function handleTemplateFile(e, key) {
     const file = e.target.files?.[0]
     if (!file) return
     if (!event?.id) return toast("ยังไม่ได้เลือกงาน", "error")
-    setUploading(true)
+    setUploading(key)
     try {
-      const url = await uploadCertificateTemplate(file, event.id)
-      await updateEventSettings(event.id, { cert_template_url: url })
-      setTemplateUrl(url)
-      toast("ตั้งรูปพื้นหลังเรียบร้อย", "success")
+      const url = await uploadCertificateTemplate(file, event.id, key)
+      const next = { ...templates, [key]: { ...templates[key], url } }
+      setTemplates(next)
+      await updateEventSettings(event.id, { cert_templates: next })
+      toast(`ตั้งรูป "${CERT_TEMPLATE_LABELS[key]}" เรียบร้อย`, "success")
     } catch (err) { toast("อัปโหลดไม่สำเร็จ: " + err.message, "error") }
-    finally { setUploading(false); e.target.value = "" }
+    finally { setUploading(""); e.target.value = "" }
   }
-  async function removeTemplate() {
+  async function removeTemplate(key) {
     if (!event?.id) return
     try {
-      await updateEventSettings(event.id, { cert_template_url: "" })
-      setTemplateUrl("")
-      toast("ลบรูปพื้นหลังแล้ว", "success")
+      const next = { ...templates, [key]: { ...templates[key], url: "" } }
+      setTemplates(next)
+      await updateEventSettings(event.id, { cert_templates: next })
+      toast("ลบรูปแล้ว", "success")
     } catch (err) { toast("ลบไม่สำเร็จ: " + err.message, "error") }
   }
 
@@ -127,11 +132,27 @@ export default function AdminCertificate() {
     catch (e) { toast("บันทึกไม่สำเร็จ: " + e.message, "error") }
     finally { setSavingCfg(false) }
   }
-  const saveFields = () => persist({ cert_fields: fields }, "บันทึกตำแหน่งข้อความแล้ว")
+  const saveFields = () => persist({ cert_templates: templates }, "บันทึกตำแหน่งข้อความแล้ว")
   const saveBaseAwards = () => persist({ cert_awards: baseAwards.map((a) => a.trim()).filter(Boolean) }, "บันทึกรายการรางวัลกลางแล้ว")
   const saveCertTypes = () => persist({ cert_types: certTypes }, "บันทึกค่าตามหมวดหมู่แล้ว")
 
-  function setField(key, patch) { setFields((f) => ({ ...f, [key]: { ...f[key], ...patch } })) }
+  // แก้ตำแหน่งข้อความของเทมเพลตที่กำลังเลือกอยู่ (layoutKey)
+  const fields = templates[layoutKey].fields
+  function setField(fieldKey, patch) {
+    setTemplates((t) => ({
+      ...t,
+      [layoutKey]: { ...t[layoutKey], fields: { ...t[layoutKey].fields, [fieldKey]: { ...t[layoutKey].fields[fieldKey], ...patch } } },
+    }))
+  }
+  function resetFields() {
+    setTemplates((t) => ({ ...t, [layoutKey]: { ...t[layoutKey], fields: DEFAULT_CERT_FIELDS } }))
+  }
+
+  // เทมเพลตของแถวรางวัลลำดับที่ i — ใช้ที่ตั้งไว้ต่อชื่อรางวัล ถ้าไม่มีก็ไล่ตามลำดับแถว
+  function rowTplOf(row, i) {
+    return row.tpl || awardTpl[row.label.trim()] || winnerKeyOf(i)
+  }
+  function setRowTpl(id, tpl) { setRows((rs) => rs.map((r) => r.id === id ? { ...r, tpl } : r)) }
   function setTypeCfg(typeId, patch) {
     setCertTypes((m) => ({ ...m, [typeId]: { ...typeCfgOf(m, typeId), ...patch } }))
   }
@@ -163,11 +184,14 @@ export default function AdminCertificate() {
   function removeMember(rowId, pid) { setRows((rs) => rs.map((r) => r.id === rowId ? { ...r, members: r.members.filter((m) => m !== pid) } : r)) }
 
   // บันทึกชื่อรางวัลเฉพาะคอร์สนี้ (กลายเป็น override — ค่ากลางเปลี่ยนแล้วไม่ทับ)
+  // เก็บเทมเพลตที่เลือกไว้ต่อชื่อรางวัลด้วย จะได้จำได้ตอนเปิดคอร์สอื่นที่ใช้ชื่อรางวัลเดียวกัน
   async function saveCourseAwards() {
     const labels = rows.map((r) => r.label.trim()).filter(Boolean)
-    const next = { ...courseAwards, [courseId]: labels }
-    setCourseAwards(next)
-    await persist({ cert_course_awards: next }, "บันทึกรางวัลเฉพาะคอร์สนี้แล้ว")
+    const nextAwards = { ...courseAwards, [courseId]: labels }
+    const nextTpl = { ...awardTpl }
+    rows.forEach((r, i) => { const l = r.label.trim(); if (l) nextTpl[l] = rowTplOf(r, i) })
+    setCourseAwards(nextAwards); setAwardTpl(nextTpl)
+    await persist({ cert_course_awards: nextAwards, cert_award_tpl: nextTpl }, "บันทึกรางวัลเฉพาะคอร์สนี้แล้ว")
   }
   // เลิก override → กลับไปใช้ค่ากลาง
   async function resetToBase() {
@@ -184,18 +208,20 @@ export default function AdminCertificate() {
   const unassigned = recipients.filter((r) => !assignedIds.has(r.participant_id))
   const pFind = (pid) => recipients.find((r) => r.participant_id === pid)
 
+  // แนบ templateKey ให้ทุกคน — ตัวสร้าง PDF ใช้เลือกรูป/ตำแหน่งข้อความของใบนั้น
   function buildFinal() {
-    // โหมดอบรม — ทุกคนได้ข้อความเดียวกันของหมวด ไม่มีรางวัล
-    if (isAttendance) return recipients.map((p) => ({ ...p, award: cfg.participantLabel }))
+    // โหมดอบรม — ทุกคนได้ข้อความเดียวกันของหมวด ไม่มีรางวัล ใช้เทมเพลต "อบรม"
+    if (isAttendance) return recipients.map((p) => ({ ...p, award: cfg.participantLabel, templateKey: "training" }))
     const out = []
-    for (const row of rows) {
+    rows.forEach((row, i) => {
       const label = row.label.trim() || "รางวัล"
+      const templateKey = rowTplOf(row, i)
       for (const pid of row.members) {
         const p = pFind(pid)
-        if (p) out.push({ ...p, award: label })
+        if (p) out.push({ ...p, award: label, templateKey })
       }
-    }
-    for (const p of unassigned) out.push({ ...p, award: cfg.participantLabel })
+    })
+    for (const p of unassigned) out.push({ ...p, award: cfg.participantLabel, templateKey: "participant" })
     return out
   }
 
@@ -222,6 +248,11 @@ export default function AdminCertificate() {
     setGenning(true)
     try {
       await saveCertAwards(final.map((r) => ({ participant_id: r.participant_id, award: r.award })))
+      // ผูกชื่อรางวัล → เทมเพลต ก่อนส่ง — ฝั่งผู้สมัครใช้ map นี้เลือกรูปให้ตรงใบ
+      const nextTpl = { ...awardTpl }
+      final.forEach((r) => { if (r.award) nextTpl[r.award] = r.templateKey })
+      setAwardTpl(nextTpl)
+      await updateEventSettings(event.id, { cert_award_tpl: nextTpl })
       await publishCertificates(final.map((r) => r.participant_id))
       setRecipients((rs) => rs.map((r) => ({ ...r, cert_published: true })))
       toast(`ส่งเกียรติบัตรแล้ว ${final.length} คน`, "success")
@@ -229,21 +260,24 @@ export default function AdminCertificate() {
     finally { setGenning(false) }
   }
 
-  async function doPreview(r, label) {
-    if (!templateUrl) return toast("กรุณาอัปโหลดรูปพื้นหลังก่อน", "error")
+  async function doPreview(r, label, key = "participant") {
+    const t = templates[key] || templates.participant
+    if (!t?.url) return toast(`ยังไม่ได้อัปโหลดรูปของเทมเพลต "${CERT_TEMPLATE_LABELS[key]}"`, "error")
     try {
-      setPreviewUrl(await previewCertificate({ templateUrl, recipient: { ...r, award: label }, fields, fontFamily: FONT }))
+      setPreviewUrl(await previewCertificate({ templateUrl: t.url, recipient: { ...r, award: label }, fields: t.fields, fontFamily: FONT }))
     } catch (e) { toast("สร้างตัวอย่างไม่สำเร็จ: " + e.message, "error") }
   }
 
   async function doGenerate(list = null, groupLabel = "") {
-    if (!templateUrl) return toast("กรุณาอัปโหลดรูปพื้นหลังก่อน", "error")
     const final = list || buildFinal()
     if (final.length === 0) return toast("ไม่มีรายชื่อผู้รับ", "error")
+    // เช็คว่าเทมเพลตที่ต้องใช้จริงในชุดนี้มีรูปครบไหม (ไม่ต้องมีครบทั้ง 5)
+    const missing = [...new Set(final.map((r) => r.templateKey))].filter((k) => !templates[k]?.url)
+    if (missing.length) return toast(`ยังไม่ได้อัปโหลดรูป: ${missing.map((k) => CERT_TEMPLATE_LABELS[k]).join(", ")}`, "error")
     setGenning(true); setProgress({ done: 0, total: final.length })
     try {
       const doc = await generateCertificatePDF({
-        templateUrl, recipients: final, fields, fontFamily: FONT,
+        templates, recipients: final, fontFamily: FONT,
         onProgress: (done, total) => setProgress({ done, total }),
       })
       const suffix = groupLabel ? `_${safeFileName(groupLabel, 30)}` : ""
@@ -263,6 +297,7 @@ export default function AdminCertificate() {
     : []
 
   const publishedCount = recipients.filter((r) => r.cert_published).length
+  const tplReady = CERT_TEMPLATE_KEYS.filter((k) => templates[k]?.url).length
 
   if (!event) return <div className="bg-white rounded-2xl p-12 text-center text-slate-400 shadow-sm border border-slate-200">ยังไม่มีงาน — สร้างงานในเมนูตั้งค่าเว็บ</div>
 
@@ -288,58 +323,85 @@ export default function AdminCertificate() {
           <p className="text-[11px] text-slate-400 mt-0.5">ตั้งครั้งเดียว ทุกรายการแข่งขันใช้ค่านี้ — แก้เฉพาะบางคอร์สได้ในส่วนด้านล่าง</p>
         </div>
 
-        {/* 1.1 รูปพื้นหลัง */}
+        {/* 1.1 รูปพื้นหลัง — 5 แบบ */}
         <Section
-          title="รูปพื้นหลังเกียรติบัตร"
-          desc={templateUrl ? "ตั้งไว้แล้ว" : "ยังไม่ได้ตั้ง — ต้องมีก่อนถึงออก PDF ได้"}
-          tone={templateUrl ? "ok" : "warn"} {...panel("template")}>
-          <p className="text-xs text-slate-400 mb-3">ขนาดหน้า PDF ยึดสัดส่วนรูปที่อัปโหลด (ไม่ยืด) · เก็บไฟล์ต้นฉบับไม่บีบอัด — พิมพ์ A4 แนะนำกว้าง 3508px (300 DPI)</p>
-          {templateUrl ? (
-            <div className="flex flex-col sm:flex-row gap-4 items-start">
-              <img src={templateUrl} alt="template" className="w-full sm:w-72 rounded-xl border border-slate-200" />
-              <div className="flex flex-col gap-2">
-                <label className="cursor-pointer inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-xl text-sm font-bold transition">
-                  <Ico.cap className="w-4 h-4" /> {uploading ? "กำลังอัปโหลด…" : "เปลี่ยนรูป"}
-                  <input type="file" accept="image/*" onChange={handleTemplateFile} disabled={uploading} className="hidden" />
-                </label>
-                <button onClick={removeTemplate} className="inline-flex items-center gap-2 text-rose-500 hover:bg-rose-50 px-4 py-2 rounded-xl text-sm font-bold transition">
-                  <Ico.alert className="w-4 h-4" /> ลบรูป
-                </button>
+          title="รูปพื้นหลังเกียรติบัตร (5 แบบ)"
+          desc={`ตั้งแล้ว ${tplReady}/5 แบบ${tplReady === 0 ? " — ต้องมีอย่างน้อย 1 ถึงออก PDF ได้" : ""}`}
+          tone={tplReady === 5 ? "ok" : tplReady > 0 ? "" : "warn"} {...panel("template")}>
+          <p className="text-xs text-slate-400 mb-3">
+            ขนาดหน้า PDF ยึดสัดส่วนรูปแต่ละแบบ (ไม่ยืด) · เก็บไฟล์ต้นฉบับไม่บีบอัด — พิมพ์ A4 แนะนำกว้าง 3508px (300 DPI) ·
+            อัปเฉพาะแบบที่ใช้จริงก็ได้ ไม่ต้องครบ 5
+          </p>
+          <div className="grid sm:grid-cols-2 gap-3">
+            {CERT_TEMPLATE_KEYS.map((k) => (
+              <div key={k} className="border border-slate-200 rounded-xl p-3 bg-slate-50/50">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className="text-xs font-bold text-slate-700">{CERT_TEMPLATE_LABELS[k]}</span>
+                  {templates[k].url
+                    ? <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md">พร้อม</span>
+                    : <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">ยังไม่มีรูป</span>}
+                </div>
+                {templates[k].url && (
+                  <img src={templates[k].url} alt={k} className="w-full rounded-lg border border-slate-200 mb-2" />
+                )}
+                <div className="flex gap-1.5">
+                  <label className="flex-1 cursor-pointer inline-flex items-center justify-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold transition">
+                    <Ico.cap className="w-3.5 h-3.5" />
+                    {uploading === k ? "กำลังอัปโหลด…" : templates[k].url ? "เปลี่ยนรูป" : "อัปโหลดรูป"}
+                    <input type="file" accept="image/*" onChange={(e) => handleTemplateFile(e, k)} disabled={!!uploading} className="hidden" />
+                  </label>
+                  {templates[k].url && (
+                    <button onClick={() => removeTemplate(k)} className="text-rose-400 hover:bg-rose-50 px-2 rounded-lg transition" title="ลบรูป">
+                      <Ico.alert className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ) : (
-            <label className="cursor-pointer block border-2 border-dashed border-slate-200 rounded-xl px-4 py-10 text-center hover:border-[#F15A24] hover:bg-orange-50/40 transition">
-              <Ico.cap className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-              <span className="text-sm font-bold text-slate-600">{uploading ? "กำลังอัปโหลด…" : "คลิกเพื่ออัปโหลดรูปพื้นหลัง"}</span>
-              <span className="block text-[11px] text-slate-400 mt-1">JPG / PNG</span>
-              <input type="file" accept="image/*" onChange={handleTemplateFile} disabled={uploading} className="hidden" />
-            </label>
-          )}
+            ))}
+          </div>
         </Section>
 
-        {/* 1.2 ตำแหน่งข้อความ */}
-        <Section title="ตำแหน่งข้อความบนใบ" desc="ลากป้ายบนรูปเพื่อย้าย · ปรับขนาด/สี/ความกว้าง"
-          disabled={!templateUrl} disabledHint="อัปโหลดรูปพื้นหลังก่อน" {...panel("layout")}>
+        {/* 1.2 ตำแหน่งข้อความ — แยกต่อเทมเพลต */}
+        <Section title="ตำแหน่งข้อความบนใบ" desc="เลือกแบบ แล้วลากป้ายบนรูป · แต่ละแบบตั้งตำแหน่งของตัวเอง"
+          disabled={tplReady === 0} disabledHint="อัปโหลดรูปอย่างน้อย 1 แบบก่อน" {...panel("layout")}>
           <div className="space-y-4">
-            <LayoutCanvas templateUrl={templateUrl} fields={fields} onMove={setField} />
-            <div className="grid sm:grid-cols-2 gap-3">
-              {CERT_FIELD_KEYS.map((k) => (
-                <FieldControls key={k} fieldKey={k} cfg={fields[k]} onChange={(patch) => setField(k, patch)} />
+            <div className="flex flex-wrap gap-1.5">
+              {CERT_TEMPLATE_KEYS.map((k) => (
+                <button key={k} onClick={() => setLayoutKey(k)} disabled={!templates[k].url}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition disabled:opacity-40 disabled:cursor-not-allowed ${
+                    layoutKey === k ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
+                  {CERT_TEMPLATE_LABELS[k]}
+                </button>
               ))}
             </div>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <SaveBtn onClick={saveFields} busy={savingCfg}>บันทึกตำแหน่งข้อความ</SaveBtn>
-              <button onClick={() => doPreview({ ...SAMPLE }, SAMPLE.award)}
-                className="flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl text-sm font-bold transition">
-                <Ico.eye className="w-4 h-4" /> ดูใบตัวอย่างจริง
-              </button>
-              <button onClick={() => setFields(DEFAULT_CERT_FIELDS)}
-                className="flex items-center justify-center gap-2 text-slate-500 hover:bg-slate-100 px-4 py-2.5 rounded-xl text-sm font-bold transition">
-                คืนค่าเริ่มต้น
-              </button>
-            </div>
+
+            {templates[layoutKey].url ? (
+              <>
+                <LayoutCanvas templateUrl={templates[layoutKey].url} fields={fields} onMove={setField} />
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {CERT_FIELD_KEYS.map((k) => (
+                    <FieldControls key={k} fieldKey={k} cfg={fields[k]} onChange={(patch) => setField(k, patch)} />
+                  ))}
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <SaveBtn onClick={saveFields} busy={savingCfg}>บันทึกตำแหน่งข้อความ (ทุกแบบ)</SaveBtn>
+                  <button onClick={() => doPreview({ ...SAMPLE }, SAMPLE.award, layoutKey)}
+                    className="flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl text-sm font-bold transition">
+                    <Ico.eye className="w-4 h-4" /> ดูใบตัวอย่างจริง
+                  </button>
+                  <button onClick={resetFields}
+                    className="flex items-center justify-center gap-2 text-slate-500 hover:bg-slate-100 px-4 py-2.5 rounded-xl text-sm font-bold transition">
+                    คืนค่าเริ่มต้น (แบบนี้)
+                  </button>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-slate-400 text-center py-8 bg-slate-50 rounded-xl">แบบนี้ยังไม่มีรูป — อัปโหลดในส่วนด้านบนก่อน</p>
+            )}
+
             <p className="text-[11px] text-slate-400">
-              ฟิลด์ "ชื่อทีม/ธีม" วาดเฉพาะใบที่ใบสมัครมีชื่อทีม · ข้อความยาวเกินความกว้างที่ตั้งไว้ ระบบจะย่อฟอนต์ก่อน แล้วค่อยตัดขึ้นบรรทัดใหม่
+              ฟิลด์ "ชื่อทีม/ธีม" วาดเฉพาะใบที่ใบสมัครมีชื่อทีม · ข้อความยาวเกินความกว้างที่ตั้งไว้ ระบบจะย่อฟอนต์ก่อน แล้วค่อยตัดขึ้นบรรทัดใหม่ ·
+              ปุ่มบันทึกเก็บตำแหน่งของทุกแบบพร้อมกัน
             </p>
           </div>
         </Section>
@@ -507,11 +569,14 @@ export default function AdminCertificate() {
                 <AwardRow key={row.id} idx={idx + 1} row={row}
                   members={row.members.map(pFind).filter(Boolean)}
                   pool={unassigned}
+                  tplKey={rowTplOf(row, idx)}
+                  templates={templates}
+                  onTpl={(v) => setRowTpl(row.id, v)}
                   onLabel={(v) => setRowLabel(row.id, v)}
                   onAddMember={(pid) => addMember(row.id, pid)}
                   onRemoveMember={(pid) => removeMember(row.id, pid)}
                   onRemoveRow={() => removeRow(row.id)}
-                  onPreview={(r) => doPreview(r, row.label.trim() || "รางวัล")} />
+                  onPreview={(r) => doPreview(r, row.label.trim() || "รางวัล", rowTplOf(row, idx))} />
               ))}
             </div>
 
@@ -549,7 +614,7 @@ export default function AdminCertificate() {
                 className="flex-1 flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-3 rounded-xl text-sm font-bold transition disabled:opacity-50">
                 <Ico.download className="w-4 h-4" /> บันทึกผลรางวัล
               </button>
-              <button onClick={() => doGenerate()} disabled={genning || !templateUrl}
+              <button onClick={() => doGenerate()} disabled={genning || tplReady === 0}
                 className="flex-1 flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-3 rounded-xl text-sm font-bold transition disabled:opacity-50">
                 <Ico.download className="w-4 h-4" />
                 {progress ? `กำลังสร้าง ${progress.done}/${progress.total}…` : genning ? "กำลังสร้าง…" : "โหลด PDF ทั้งหมด"}
@@ -580,7 +645,7 @@ export default function AdminCertificate() {
                     <div key={g.label} className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
                       <span className="flex-1 min-w-0 text-sm font-bold text-slate-700 truncate">{g.label}</span>
                       <span className="text-xs text-slate-400 shrink-0">{g.list.length} ใบ</span>
-                      <button onClick={() => doGenerate(g.list, g.label)} disabled={genning || !templateUrl}
+                      <button onClick={() => doGenerate(g.list, g.label)} disabled={genning || tplReady === 0}
                         className="shrink-0 inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition disabled:opacity-50">
                         <Ico.download className="w-3.5 h-3.5" /> โหลด
                       </button>
@@ -764,7 +829,7 @@ function FieldControls({ fieldKey, cfg, onChange }) {
 }
 
 // ── แถวรางวัล 1 แถว: ซ้าย = ชื่อรางวัล · ขวา = search + คนที่เพิ่ม ──
-function AwardRow({ idx, row, members, pool, onLabel, onAddMember, onRemoveMember, onRemoveRow, onPreview }) {
+function AwardRow({ idx, row, members, pool, tplKey, templates, onTpl, onLabel, onAddMember, onRemoveMember, onRemoveRow, onPreview }) {
   const [q, setQ] = useState("")
   const results = q.trim()
     ? pool.filter((r) =>
@@ -775,10 +840,19 @@ function AwardRow({ idx, row, members, pool, onLabel, onAddMember, onRemoveMembe
   return (
     <div className="border border-slate-200 rounded-xl p-3 bg-slate-50/50">
       <div className="flex gap-2 items-start">
-        <div className="w-40 sm:w-48 shrink-0">
+        <div className="w-40 sm:w-48 shrink-0 space-y-1.5">
           <input value={row.label} onChange={(e) => onLabel(e.target.value)}
             placeholder={`รางวัลที่ ${idx}`}
             className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-bold text-slate-800 outline-none focus:border-[#F15A24] focus:ring-1 focus:ring-[#F15A24]" />
+          {/* เทมเพลตที่ใช้พิมพ์ใบของรางวัลนี้ — ค่าเริ่มต้นไล่ตามลำดับแถว */}
+          <select value={tplKey} onChange={(e) => onTpl(e.target.value)}
+            className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-[11px] font-bold text-slate-600 bg-white outline-none focus:border-[#F15A24]">
+            {CERT_TEMPLATE_KEYS.map((k) => (
+              <option key={k} value={k} disabled={!templates?.[k]?.url}>
+                {CERT_TEMPLATE_LABELS[k]}{templates?.[k]?.url ? "" : " (ยังไม่มีรูป)"}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="flex-1 min-w-0">
