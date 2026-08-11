@@ -46,10 +46,23 @@ const SAMPLE = {
   full_name: "เด็กหญิงตัวอย่าง นามสกุลยาวมากพอสมควร",
   award: "รางวัลชนะเลิศ",
   course_title: "การแข่งขันตัวอย่าง",
-  theme_name: "ทีมตัวอย่าง",
 }
 
+// ─ หมายเหตุ: ใบเกียรติบัตรวาดแค่ชื่อผู้รับ + ชื่อคอร์ส
+//   ชื่อรางวัลไม่ได้วาดทับรูป เพราะอยู่ในดีไซน์ของเทมเพลตแต่ละแบบแล้ว
+//   แต่ยังเก็บลง participants.award เหมือนเดิม (ใช้เลือกว่าจะพิมพ์ด้วยเทมเพลตไหน)
+
 const newRow = (label = "", tpl = "") => ({ id: "r" + Math.random().toString(36).slice(2, 9), label, tpl, members: [] })
+
+// แถวตั้งต้นของคอร์สแข่งขันที่ยังไม่เคยตั้งรางวัล — 1 แถวต่อ 1 เทมเพลต ผูกแบบไว้ให้เลย
+const DEFAULT_ROW_LABELS = {
+  training:    "เข้าร่วมอบรม",
+  participant: "ผู้เข้าร่วม",
+  winner1:     "รางวัลที่ 1",
+  winner2:     "รางวัลที่ 2",
+  winner3:     "รางวัลที่ 3",
+}
+const seedRows = () => CERT_TEMPLATE_KEYS.map((k) => newRow(DEFAULT_ROW_LABELS[k], k))
 
 export default function AdminCertificate() {
   const { event } = useOutletContext()
@@ -171,8 +184,8 @@ export default function AdminCertificate() {
       const c = courses.find((x) => x.id === cid)
       const mode = typeCfgOf(certTypes, c?.type_id).mode
       // โหมดอบรมไม่มีแถวรางวัล · โหมดแข่งขันดึงผลที่เคยบันทึกกลับเข้าแถว
-      setRows(mode === MODE_ATTENDANCE ? [] : rehydrateRows(start.length ? start : [newRow()], list, cfgLabelOf(certTypes, c?.type_id)))
-    } catch (e) { toast("โหลดรายชื่อไม่สำเร็จ: " + e.message, "error"); setRows(start) }
+      setRows(mode === MODE_ATTENDANCE ? [] : rehydrateRows(start.length ? start : seedRows(), list, cfgLabelOf(certTypes, c?.type_id)))
+    } catch (e) { toast("โหลดรายชื่อไม่สำเร็จ: " + e.message, "error"); setRows(start.length ? start : seedRows()) }
     finally { setLoading(false) }
   }
 
@@ -199,7 +212,7 @@ export default function AdminCertificate() {
     delete next[courseId]
     setCourseAwards(next)
     const start = baseAwards.filter(Boolean).map((l) => newRow(l))
-    setRows(rehydrateRows(start.length ? start : [newRow()], recipients, cfg.participantLabel))
+    setRows(rehydrateRows(start.length ? start : seedRows(), recipients, cfg.participantLabel))
     await persist({ cert_course_awards: next }, "กลับไปใช้รายการรางวัลกลางแล้ว")
   }
 
@@ -400,7 +413,8 @@ export default function AdminCertificate() {
             )}
 
             <p className="text-[11px] text-slate-400">
-              ฟิลด์ "ชื่อทีม/ธีม" วาดเฉพาะใบที่ใบสมัครมีชื่อทีม · ข้อความยาวเกินความกว้างที่ตั้งไว้ ระบบจะย่อฟอนต์ก่อน แล้วค่อยตัดขึ้นบรรทัดใหม่ ·
+              วาดแค่ชื่อผู้รับกับชื่อคอร์ส — ชื่อรางวัลอยู่ในรูปเทมเพลตแต่ละแบบอยู่แล้ว ·
+              ข้อความยาวเกินความกว้างที่ตั้งไว้ ระบบจะย่อฟอนต์ก่อน แล้วค่อยตัดขึ้นบรรทัดใหม่ ·
               ปุ่มบันทึกเก็บตำแหน่งของทุกแบบพร้อมกัน
             </p>
           </div>
