@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { useOutletContext } from "react-router-dom"
 import {
   fetchCoursesAdmin, fetchCourseTypes, fetchCertificateRecipients,
-  fetchEventSettings, uploadCertificateTemplate, updateEventSettings,
+  fetchEventSettings, uploadCertificateTemplate, patchEventSettings,
   saveCertAwards, publishCertificates,
 } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
@@ -54,15 +54,17 @@ const SAMPLE = {
 
 const newRow = (label = "", tpl = "") => ({ id: "r" + Math.random().toString(36).slice(2, 9), label, tpl, members: [] })
 
-// แถวตั้งต้นของคอร์สแข่งขันที่ยังไม่เคยตั้งรางวัล — 1 แถวต่อ 1 เทมเพลต ผูกแบบไว้ให้เลย
+// แถวตั้งต้นของคอร์สแข่งขันที่ยังไม่เคยตั้งรางวัล — เฉพาะ 3 แถวชนะ
+// ไม่ต้องมีแถว "ผู้เข้าร่วม"/"อบรม" เพราะระบบจัดให้อัตโนมัติอยู่แล้ว:
+//   คนที่ไม่ได้อยู่แถวไหน → ผู้เข้าร่วม (เทมเพลต participant)
+//   คอร์สหมวดอบรม        → ทุกคนได้เทมเพลต training ไม่มีแถวรางวัล
+const WINNER_KEYS = ["winner1", "winner2", "winner3"]
 const DEFAULT_ROW_LABELS = {
-  training:    "เข้าร่วมอบรม",
-  participant: "ผู้เข้าร่วม",
-  winner1:     "รางวัลที่ 1",
-  winner2:     "รางวัลที่ 2",
-  winner3:     "รางวัลที่ 3",
+  winner1: "รางวัลที่ 1",
+  winner2: "รางวัลที่ 2",
+  winner3: "รางวัลที่ 3",
 }
-const seedRows = () => CERT_TEMPLATE_KEYS.map((k) => newRow(DEFAULT_ROW_LABELS[k], k))
+const seedRows = () => WINNER_KEYS.map((k) => newRow(DEFAULT_ROW_LABELS[k], k))
 
 export default function AdminCertificate() {
   const { event } = useOutletContext()
@@ -123,7 +125,7 @@ export default function AdminCertificate() {
       const url = await uploadCertificateTemplate(file, event.id, key)
       const next = { ...templates, [key]: { ...templates[key], url } }
       setTemplates(next)
-      await updateEventSettings(event.id, { cert_templates: next })
+      await patchEventSettings(event.id, { cert_templates: next })
       toast(`ตั้งรูป "${CERT_TEMPLATE_LABELS[key]}" เรียบร้อย`, "success")
     } catch (err) { toast("อัปโหลดไม่สำเร็จ: " + err.message, "error") }
     finally { setUploading(""); e.target.value = "" }
@@ -133,7 +135,7 @@ export default function AdminCertificate() {
     try {
       const next = { ...templates, [key]: { ...templates[key], url: "" } }
       setTemplates(next)
-      await updateEventSettings(event.id, { cert_templates: next })
+      await patchEventSettings(event.id, { cert_templates: next })
       toast("ลบรูปแล้ว", "success")
     } catch (err) { toast("ลบไม่สำเร็จ: " + err.message, "error") }
   }
@@ -141,7 +143,7 @@ export default function AdminCertificate() {
   // ═══════════════════ บันทึกค่าตั้งทั้งงาน ═══════════════════
   async function persist(patch, okMsg) {
     setSavingCfg(true)
-    try { await updateEventSettings(event.id, patch); toast(okMsg, "success") }
+    try { await patchEventSettings(event.id, patch); toast(okMsg, "success") }
     catch (e) { toast("บันทึกไม่สำเร็จ: " + e.message, "error") }
     finally { setSavingCfg(false) }
   }
@@ -265,7 +267,7 @@ export default function AdminCertificate() {
       const nextTpl = { ...awardTpl }
       final.forEach((r) => { if (r.award) nextTpl[r.award] = r.templateKey })
       setAwardTpl(nextTpl)
-      await updateEventSettings(event.id, { cert_award_tpl: nextTpl })
+      await patchEventSettings(event.id, { cert_award_tpl: nextTpl })
       await publishCertificates(final.map((r) => r.participant_id))
       setRecipients((rs) => rs.map((r) => ({ ...r, cert_published: true })))
       toast(`ส่งเกียรติบัตรแล้ว ${final.length} คน`, "success")
@@ -602,6 +604,9 @@ export default function AdminCertificate() {
             <div className="border-t border-slate-100 pt-3">
               <p className="text-xs font-bold text-slate-500 mb-2">
                 {cfg.participantLabel} <span className="text-slate-400 font-normal">({unassigned.length} คน)</span>
+                <span className="ml-2 font-normal text-[11px] text-slate-400">
+                  · คนที่ไม่ได้จัดรางวัล ได้เทมเพลต "{CERT_TEMPLATE_LABELS.participant}" อัตโนมัติ
+                </span>
               </p>
               {unassigned.length === 0 ? (
                 <p className="text-xs text-slate-400">ทุกคนถูกจัดรางวัลหมดแล้ว</p>

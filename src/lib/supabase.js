@@ -873,6 +873,17 @@ export async function updateEventSettings(eventId, settings) {
   if (error) throw error
 }
 
+// เขียนทับเฉพาะคีย์ที่ส่งมา โดยอ่านค่าปัจจุบันมารวมก่อนเสมอ
+// ⚠️ จำเป็นเพราะไม่รู้ว่า RPC update_event_settings ทำ merge หรือ replace ทั้งก้อน
+//    ถ้ามัน replace แล้วเราส่งไปแค่คีย์เดียว ค่าอื่นจะหายหมด (เคยทำให้รูปเทมเพลตหายตอนรีเฟรช)
+//    อ่าน-รวม-เขียน แบบนี้ปลอดภัยทั้งสองกรณี
+export async function patchEventSettings(eventId, patch) {
+  const cur = await fetchEventSettings(eventId)
+  const next = { ...(cur || {}), ...patch }
+  await updateEventSettings(eventId, next)
+  return next
+}
+
 // ค้นหาโรงเรียนสำหรับ autocomplete (คืนสูงสุด 10)
 export async function searchSchools(query) {
   if (!query || query.trim().length < 1) return []
