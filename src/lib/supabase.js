@@ -859,13 +859,35 @@ export async function updateSettings(settings) {
   if (error) throw error
 }
 
+// ⚠️ update_event_settings ใช้ jsonb_each_text → ค่าถูกแปลงเป็น text ก่อนเก็บ
+//    ค่าที่เป็น object/array จึงกลับมาเป็น "สตริง JSON" ไม่ใช่ object
+//    (string ธรรมดาอย่าง site_title / cert_template_url ไม่มีปัญหา)
+//    → แปลงกลับตรงนี้ทีเดียว หน้าเว็บจะได้ใช้เป็น object ได้ตามปกติ
+function reviveSettings(obj) {
+  const out = {}
+  for (const k in obj) {
+    const v = obj[k]
+    if (typeof v === "string") {
+      const s = v.trim()
+      if (s.startsWith("{") || s.startsWith("[")) {
+        try {
+          const parsed = JSON.parse(s)
+          if (parsed && typeof parsed === "object") { out[k] = parsed; continue }
+        } catch (_) { /* ไม่ใช่ JSON จริง — เก็บเป็นข้อความเดิม */ }
+      }
+    }
+    out[k] = v
+  }
+  return out
+}
+
 // ตั้งค่าแยกตามงาน (site_title, home_notice)
 export async function fetchEventSettings(eventId) {
   if (!eventId) return {}
   try {
     const { data, error } = await supabase.rpc("get_event_settings", { p_event_id: eventId })
     if (error) return {}   // ถ้า RPC ยังไม่ได้รัน SQL (404) → คืนค่าว่าง ไม่พังทั้งหน้า
-    return data || {}
+    return reviveSettings(data || {})
   } catch (_) { return {} }
 }
 export async function updateEventSettings(eventId, settings) {
