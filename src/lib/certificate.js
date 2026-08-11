@@ -42,20 +42,17 @@ export function winnerKeyOf(rowIndex) {
 }
 
 // ค่า default ตำแหน่ง (อิงจากเทมเพลตตัวอย่าง CAMT) — admin ลากปรับได้ในหน้าออกเกียรติบัตร
+// วาดแค่ 2 อย่าง: ชื่อผู้รับ + ชื่อคอร์ส — ส่วนชื่อรางวัลอยู่ในรูปเทมเพลตแต่ละแบบอยู่แล้ว
 export const DEFAULT_CERT_FIELDS = {
   name:   { x: 50, y: 47, size: 40, color: "#1e3a5f", weight: "normal", maxWidth: 80 },
-  award:  { x: 50, y: 60, size: 26, color: "#1e3a5f", weight: "bold",   maxWidth: 80 },
-  course: { x: 50, y: 68, size: 26, color: "#1e3a5f", weight: "bold",   maxWidth: 80 },
-  theme:  { x: 50, y: 76, size: 22, color: "#1e3a5f", weight: "normal", maxWidth: 80 },
+  course: { x: 50, y: 60, size: 26, color: "#1e3a5f", weight: "bold",   maxWidth: 80 },
 }
 
 // ลำดับ + ป้ายกำกับของฟิลด์ (ใช้ทั้งตัววาดและ UI ตัวแก้ตำแหน่ง)
-export const CERT_FIELD_KEYS = ["name", "award", "course", "theme"]
+export const CERT_FIELD_KEYS = ["name", "course"]
 export const CERT_FIELD_LABELS = {
   name:   "ชื่อผู้รับ",
-  award:  "ชื่อรางวัล",
   course: "ชื่อคอร์ส",
-  theme:  "ชื่อทีม/ธีม",
 }
 
 // เติมค่าที่ขาดจาก default — กัน cert_fields เก่าใน DB ที่ยังไม่มี theme/maxWidth
@@ -160,9 +157,7 @@ function renderCanvas(bgImg, recipient, fields, fontFamily) {
   }
 
   draw(recipient.full_name, fields.name)
-  draw(recipient.award, fields.award)
   draw(recipient.course_title, fields.course)
-  draw(recipient.theme_name, fields.theme)
 
   return canvas
 }
