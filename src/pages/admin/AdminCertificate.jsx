@@ -309,16 +309,23 @@ export default function AdminCertificate() {
   const [allRecipients, setAllRecipients] = useState(null)   // null = ยังไม่โหลด
   const [searchLoading, setSearchLoading] = useState(false)
   const [q, setQ] = useState("")
+  const [kindFilter, setKindFilter] = useState("all")        // all | student | advisor
   const [srcFilter, setSrcFilter] = useState("all")          // all | self | imported
+  const [catFilter, setCatFilter] = useState("")             // "" = ทุกหมวด · else type_id
+  const [courseFilter, setCourseFilter] = useState("")       // "" = ทุกวิชา · else course_id
   const [picked, setPicked] = useState(() => new Set())
 
-  async function loadAllRecipients() {
-    if (allRecipients || searchLoading) return
-    setSearchLoading(true)
-    try { setAllRecipients(await fetchCertificateRecipientsByEvent(event.id)) }
-    catch (e) { toast("โหลดรายชื่อทั้งงานไม่สำเร็จ: " + e.message, "error"); setAllRecipients([]) }
-    finally { setSearchLoading(false) }
-  }
+  // โหลดรายชื่อทั้งงานให้เลย ไม่ต้องรอกดปุ่ม
+  useEffect(() => {
+    if (!event?.id) return
+    let alive = true
+    setSearchLoading(true); setAllRecipients(null)
+    fetchCertificateRecipientsByEvent(event.id)
+      .then((d) => { if (alive) setAllRecipients(d) })
+      .catch((e) => { if (alive) { toast("โหลดรายชื่อทั้งงานไม่สำเร็จ: " + e.message, "error"); setAllRecipients([]) } })
+      .finally(() => { if (alive) setSearchLoading(false) })
+    return () => { alive = false }
+  }, [event?.id])
 
   // เทมเพลตของคนคนหนึ่ง — ครูที่ปรึกษาใช้แบบของตัวเอง ที่เหลือดูหมวดคอร์ส + ชื่อรางวัล
   function tplKeyFor(r) {
@@ -334,10 +341,12 @@ export default function AdminCertificate() {
     const list = allRecipients || []
     const kw = q.trim().toLowerCase()
     return list.filter((r) => {
-      if (srcFilter === "self" && (r.is_imported || r.kind === "advisor")) return false
-      if (srcFilter === "imported" && (!r.is_imported || r.kind === "advisor")) return false
-      if (srcFilter === "advisor" && r.kind !== "advisor") return false
-      if (srcFilter === "student" && r.kind === "advisor") return false
+      if (kindFilter === "advisor" && r.kind !== "advisor") return false
+      if (kindFilter === "student" && r.kind === "advisor") return false
+      if (srcFilter === "self" && r.is_imported) return false
+      if (srcFilter === "imported" && !r.is_imported) return false
+      if (catFilter && r.type_id !== catFilter) return false
+      if (courseFilter && r.course_id !== courseFilter) return false
       if (!kw) return true
       return [r.full_name, r.course_title, r.theme_name, r.school, r.award]
         .some((v) => (v || "").toLowerCase().includes(kw))
@@ -428,33 +437,45 @@ export default function AdminCertificate() {
 
       {/* ══════════ ส่วนที่ 1: ค้นหา & โหลดข้ามคอร์ส ══════════ */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <p className="text-sm font-extrabold text-slate-700">ค้นหา &amp; โหลดเกียรติบัตร <span className="text-slate-400 font-bold">· ทั้งงาน</span></p>
-            <p className="text-[11px] text-slate-400 mt-0.5">ค้นด้วยชื่อคน · ชื่อรายการ · ชื่อทีม · โรงเรียน · ชื่อรางวัล — ข้ามคอร์สได้</p>
-          </div>
-          {allRecipients === null && (
-            <button onClick={loadAllRecipients} disabled={searchLoading}
-              className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-sm font-bold transition disabled:opacity-50">
-              {searchLoading ? "กำลังโหลด…" : "โหลดรายชื่อทั้งงาน"}
-            </button>
-          )}
+        <div>
+          <p className="text-sm font-extrabold text-slate-700">ค้นหา &amp; โหลดเกียรติบัตร <span className="text-slate-400 font-bold">· ทั้งงาน</span></p>
+          <p className="text-[11px] text-slate-400 mt-0.5">ค้นด้วยชื่อคน · ชื่อรายการ · ชื่อทีม · โรงเรียน · ชื่อรางวัล — ข้ามคอร์สได้</p>
+        </div>
+
+        {/* ช่องค้นหาขึ้นทันที ไม่ต้องกดโหลดก่อน */}
+        <input value={q} onChange={(e) => setQ(e.target.value)}
+          placeholder={searchLoading ? "กำลังโหลดรายชื่อ…" : "พิมพ์ชื่อคน / ชื่อรายการ / ชื่อทีม / โรงเรียน…"}
+          className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#F15A24] focus:ring-1 focus:ring-[#F15A24]" />
+
+        {/* หมวดหมู่ + วิชา — วิชาจะเหลือเฉพาะในหมวดที่เลือก */}
+        <div className="grid sm:grid-cols-2 gap-2">
+          <select value={catFilter} onChange={(e) => { setCatFilter(e.target.value); setCourseFilter("") }}
+            className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white outline-none focus:border-[#F15A24]">
+            <option value="">ทุกหมวดหมู่</option>
+            {types.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+          </select>
+          <select value={courseFilter} onChange={(e) => setCourseFilter(e.target.value)}
+            className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white outline-none focus:border-[#F15A24]">
+            <option value="">ทุกวิชา</option>
+            {courses.filter((c) => !catFilter || c.type_id === catFilter)
+              .map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+          </select>
+        </div>
+
+        <div className="flex flex-wrap gap-1.5">
+          {[["all", "ทุกคน"], ["student", "นักเรียน"], ["advisor", "ครูที่ปรึกษา"]].map(([k, label]) => (
+            <button key={k} onClick={() => setKindFilter(k)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${kindFilter === k ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>{label}</button>
+          ))}
+          <span className="w-px bg-slate-200 mx-1" />
+          {[["all", "ทุกที่มา"], ["self", "สมัครเอง"], ["imported", "นำเข้า"]].map(([k, label]) => (
+            <button key={k} onClick={() => setSrcFilter(k)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${srcFilter === k ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>{label}</button>
+          ))}
         </div>
 
         {allRecipients !== null && (
           <>
-            <div className="flex flex-wrap gap-2">
-              <div className="relative flex-1 min-w-[200px]">
-                <input value={q} onChange={(e) => setQ(e.target.value)}
-                  placeholder="พิมพ์ชื่อคน / ชื่อรายการ / ชื่อทีม…"
-                  className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#F15A24] focus:ring-1 focus:ring-[#F15A24]" />
-              </div>
-              {[["all", "ทั้งหมด"], ["student", "นักเรียน"], ["advisor", "ครูที่ปรึกษา"], ["self", "สมัครเอง"], ["imported", "นำเข้า"]].map(([k, label]) => (
-                <button key={k} onClick={() => setSrcFilter(k)}
-                  className={`px-3 py-2.5 rounded-xl text-xs font-bold transition ${srcFilter === k ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>{label}</button>
-              ))}
-            </div>
-
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs text-slate-500">เจอ <b className="text-slate-700">{searchHits.length}</b> คน{picked.size > 0 && <> · เลือกไว้ <b className="text-[#F15A24]">{pickedList.length}</b></>}</span>
               <button onClick={() => setPicked(new Set(searchHits.map((r) => r.participant_id)))}
@@ -520,7 +541,7 @@ export default function AdminCertificate() {
               รวมสมาชิกในทีมทุกคน และครูที่ปรึกษา · เทมเพลตของแต่ละคนคิดจากหมวดคอร์ส + ชื่อรางวัลที่บันทึกไว้ (ป้ายขวามือ) ·
               คนที่ยังไม่ได้บันทึกผลรางวัลจะขึ้นเป็น "{CERT_TEMPLATE_LABELS.participant}" ·
               <b className="text-slate-500">ครูที่ปรึกษาได้ใบเมื่อมีลูกทีมมาเช็คอินอย่างน้อย 1 คน</b> (ครูไม่มีรหัสเช็คอินของตัวเอง) ·
-              รายชื่อนี้โหลดครั้งเดียวตอนกดปุ่ม — บันทึกรางวัลเพิ่มแล้วรีเฟรชหน้าเพื่อดูค่าล่าสุด
+              รายชื่อโหลดครั้งเดียวตอนเปิดหน้า — บันทึกรางวัลเพิ่มแล้วรีเฟรชหน้าเพื่อดูค่าล่าสุด
             </p>
           </>
         )}
