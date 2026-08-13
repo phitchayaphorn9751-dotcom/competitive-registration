@@ -335,7 +335,9 @@ export default function MyRegistrationPage() {
                             สมัครใหม่
                           </button>
                         )}
-                        {d === "confirmed" && (reg.participant_code || reg.my_qr_token || reg.qr_token) && (
+                        {/* บาร์โค้ดใช้ตอนเช็คอิน — พอมีเกียรติบัตรแล้วแปลว่างานจบ ซ่อนจากการ์ดให้หน้าโล่ง
+                            (ยังกดดูได้ในหน้ารายละเอียด เผื่องานหลายวันที่ยังต้องเช็คอินต่อ) */}
+                        {d === "confirmed" && !certsByReg[reg.id] && (reg.participant_code || reg.my_qr_token || reg.qr_token) && (
                           <button onClick={() => setBarcodeReg(reg)}
                             className="flex-1 min-w-[130px] px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 active:scale-[0.98] text-white font-semibold text-xs shadow-md shadow-slate-900/10 transition flex items-center justify-center gap-2 group/btn">
                             <Ico.barcode className="w-4 h-4 group-hover/btn:scale-110 transition-transform" style={{ color: "#fb923c" }} />
