@@ -792,29 +792,19 @@ function RegCertificatesModal({ reg, certs, tpl, onClose }) {
           {err && <p className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl p-3 text-center">{err}</p>}
           {groups.map((g) => (
             <section key={g.key}>
-              <div className="flex items-center justify-between gap-2 mb-2.5">
-                <h4 className="text-sm font-extrabold text-slate-700">
-                  {g.label} <span className="text-slate-400 font-bold">({g.items.length} ใบ)</span>
-                </h4>
-                <button onClick={() => download(g.items.map((i) => i.sheet), `${reg.course_title}_${g.label}`)}
-                  disabled={busy}
-                  className="shrink-0 inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-[#F15A24] disabled:opacity-50 transition">
-                  <Ico.download className="w-3.5 h-3.5" /> โหลดกลุ่มนี้
-                </button>
-              </div>
+              <h4 className="text-sm font-extrabold text-slate-700 mb-2.5">
+                {g.label} <span className="text-slate-400 font-bold">({g.items.length} ใบ)</span>
+              </h4>
               <div className="space-y-3">
                 {g.items.map(({ sheet, idx }) => (
                   <div key={idx} className="bg-white rounded-xl border border-slate-200 p-2.5">
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <span className="text-xs font-bold text-slate-700 truncate">{sheet.full_name}</span>
-                      <button onClick={() => download([sheet], sheet.full_name)} disabled={busy}
-                        className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 hover:text-[#F15A24] disabled:opacity-50 transition">
-                        <Ico.download className="w-3.5 h-3.5" /> เซฟ
-                      </button>
-                    </div>
                     {imgs[idx]
-                      ? <img src={imgs[idx]} alt={sheet.full_name} className="w-full rounded-lg border border-slate-100" />
+                      ? <img src={imgs[idx]} alt="เกียรติบัตร" className="w-full rounded-lg border border-slate-100" />
                       : <div className="w-full aspect-[1.414/1] bg-slate-100 rounded-lg animate-pulse" />}
+                    <button onClick={() => download([sheet], sheet.full_name)} disabled={busy || !imgs[idx]}
+                      className="mt-2.5 w-full inline-flex items-center justify-center gap-1.5 border border-slate-200 hover:border-[#F15A24] hover:text-[#F15A24] text-slate-600 py-2 rounded-lg text-xs font-bold transition disabled:opacity-50">
+                      <Ico.download className="w-3.5 h-3.5" /> ดาวน์โหลดใบนี้
+                    </button>
                   </div>
                 ))}
               </div>
