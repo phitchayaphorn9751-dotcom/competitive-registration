@@ -43,9 +43,12 @@ export function winnerKeyOf(rowIndex) {
 
 // ค่า default ตำแหน่ง (อิงจากเทมเพลตตัวอย่าง CAMT) — admin ลากปรับได้ในหน้าออกเกียรติบัตร
 // วาดแค่ 2 อย่าง: ชื่อผู้รับ + ชื่อคอร์ส — ส่วนชื่อรางวัลอยู่ในรูปเทมเพลตแต่ละแบบอยู่แล้ว
+// align: center = x คือจุดกึ่งกลางข้อความ · left = x คือขอบซ้าย · right = x คือขอบขวา
+// ชื่อคน = กึ่งกลาง · ชื่อคอร์ส = ชิดซ้าย เพราะแต่ละคอร์สยาวไม่เท่ากัน
+// ถ้าใช้กึ่งกลาง หัวข้อความจะขยับตามความยาวชื่อ ทำให้แต่ละใบไม่ตรงกัน
 export const DEFAULT_CERT_FIELDS = {
-  name:   { x: 50, y: 47, size: 40, color: "#1e3a5f", weight: "normal", maxWidth: 80 },
-  course: { x: 50, y: 60, size: 26, color: "#1e3a5f", weight: "bold",   maxWidth: 80 },
+  name:   { x: 50, y: 47, size: 40, color: "#1e3a5f", weight: "normal", maxWidth: 80, align: "center" },
+  course: { x: 30, y: 60, size: 26, color: "#1e3a5f", weight: "bold",   maxWidth: 65, align: "left" },
 }
 
 // ลำดับ + ป้ายกำกับของฟิลด์ (ใช้ทั้งตัววาดและ UI ตัวแก้ตำแหน่ง)
@@ -150,9 +153,12 @@ function renderCanvas(bgImg, recipient, fields, fontFamily) {
 
   const draw = (text, cfg) => {
     if (!text || !cfg) return
+    const align = cfg.align || "center"
     const px = (cfg.x / 100) * canvas.width
     const py = (cfg.y / 100) * canvas.height
-    const maxPx = ((cfg.maxWidth ?? 80) / 100) * canvas.width
+    // ชิดซ้าย/ขวา — กรอบกว้างสุดคือระยะจาก x ไปถึงขอบใบด้านนั้น หรือ maxWidth แล้วแต่อันไหนน้อยกว่า
+    const roomPx = align === "left" ? canvas.width - px : align === "right" ? px : canvas.width
+    const maxPx = Math.min(((cfg.maxWidth ?? 80) / 100) * canvas.width, roomPx)
     const weight = cfg.weight === "bold" ? "bold " : ""
     const baseSize = (cfg.size || 28) * scale
 
@@ -170,7 +176,7 @@ function renderCanvas(bgImg, recipient, fields, fontFamily) {
     const startY = py - ((lines.length - 1) * lineH) / 2
 
     ctx.fillStyle = cfg.color || "#1e3a5f"
-    ctx.textAlign = "center"
+    ctx.textAlign = align
     ctx.textBaseline = "middle"
     lines.forEach((line, i) => ctx.fillText(line, px, startY + i * lineH))
   }
@@ -179,6 +185,105 @@ function renderCanvas(bgImg, recipient, fields, fontFamily) {
   draw(recipient.course_title, fields.course)
 
   return canvas
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// จัดตำแหน่งอัตโนมัติ — สแกนพิกเซลของรูปเทมเพลตเพื่อเดาว่าควรวางข้อความตรงไหน
+// หลักการ: แถวไหนไม่มี "หมึก" (สีต่างจากพื้นหลัง) = ที่ว่าง · แถวที่มีหมึกติดกัน = 1 บรรทัด
+// ไม่ได้อ่านว่าข้อความเขียนว่าอะไร (ไม่มี OCR) — ดูแค่ว่ามีอะไรอยู่ตรงไหน
+// เป็นค่าเริ่มต้นให้ปรับต่อ ไม่ใช่คำตอบสุดท้าย
+// ═══════════════════════════════════════════════════════════════════
+export function autoLayoutFields(bgImg) {
+  const W = 600
+  const H = Math.max(1, Math.round(bgImg.naturalHeight * (W / bgImg.naturalWidth)))
+  const c = document.createElement("canvas")
+  c.width = W; c.height = H
+  const ctx = c.getContext("2d", { willReadFrequently: true })
+  ctx.drawImage(bgImg, 0, 0, W, H)
+  const px = ctx.getImageData(0, 0, W, H).data
+
+  const at = (x, y) => { const i = (y * W + x) * 4; return [px[i], px[i + 1], px[i + 2]] }
+  // สีพื้น = ค่ากลางของ 4 มุม (เทมเพลตส่วนใหญ่มุมเป็นพื้นเปล่า)
+  const corners = [at(2, 2), at(W - 3, 2), at(2, H - 3), at(W - 3, H - 3)]
+  const bg = [0, 1, 2].map((ch) => Math.round(corners.reduce((s, p) => s + p[ch], 0) / 4))
+  const isInk = (x, y) => {
+    const [r, g, b] = at(x, y)
+    return Math.abs(r - bg[0]) + Math.abs(g - bg[1]) + Math.abs(b - bg[2]) > 90
+  }
+
+  // สแกนทีละแถว — นับหมึก + จำขอบซ้าย/ขวาของหมึกในแถวนั้น
+  const rows = []
+  for (let y = 0; y < H; y++) {
+    let n = 0, min = W, max = 0
+    for (let x = 0; x < W; x++) {
+      if (!isInk(x, y)) continue
+      n++; if (x < min) min = x; if (x > max) max = x
+    }
+    rows.push({ n, min, max, ink: n > W * 0.012 })   // กันจุด noise เล็กๆ
+  }
+
+  // จัดกลุ่มแถวติดกันเป็น "บรรทัดข้อความ" และ "ช่องว่าง"
+  const bands = []
+  let cur = null
+  for (let y = 0; y < H; y++) {
+    const t = rows[y].ink ? "line" : "gap"
+    if (!cur || cur.type !== t) { cur = { type: t, y0: y, y1: y }; bands.push(cur) }
+    else cur.y1 = y
+  }
+  bands.forEach((b) => {
+    b.h = b.y1 - b.y0 + 1
+    b.mid = (b.y0 + b.y1) / 2
+    if (b.type === "line") {
+      const rs = rows.slice(b.y0, b.y1 + 1).filter((r) => r.ink)
+      b.min = Math.min(...rs.map((r) => r.min))
+      b.max = Math.max(...rs.map((r) => r.max))
+    }
+  })
+
+  const inMid = (b) => b.mid > H * 0.2 && b.mid < H * 0.9   // ตัดหัวกระดาษกับลายเซ็นท้ายใบออก
+  const pctY = (v) => Math.round((v / H) * 1000) / 10
+  const pctX = (v) => Math.round((v / W) * 1000) / 10
+  const sizeOf = (h) => Math.max(14, Math.min(90, Math.round(h * (1000 / W) * 0.55)))
+
+  const out = { ...DEFAULT_CERT_FIELDS }
+
+  // ── ชื่อผู้รับ: ช่องว่างที่สูงที่สุดกลางใบ ──
+  const gaps = bands.filter((b) => b.type === "gap" && inMid(b) && b.h > H * 0.03)
+    .sort((a, b) => b.h - a.h)
+  if (gaps.length) {
+    const g = gaps[0]
+    out.name = { ...out.name, x: 50, y: pctY(g.mid), size: sizeOf(g.h), align: "center", maxWidth: 80 }
+  }
+
+  // ── ชื่อคอร์ส: หาบรรทัดที่มีข้อความแล้วเหลือที่ว่างด้านขวา → วางต่อท้าย ──
+  // (เช่น เทมเพลตพิมพ์ว่า "การแข่งขัน" ไว้ แล้วเว้นที่ให้เติมชื่อรายการ)
+  const tail = bands
+    .filter((b) => b.type === "line" && inMid(b) && b.mid > (gaps[0]?.mid ?? 0))
+    .find((b) => b.max < W * 0.72 && b.min > W * 0.05)
+  if (tail) {
+    out.course = {
+      ...out.course,
+      x: pctX(tail.max + W * 0.015),          // เว้นวรรคเล็กน้อยจากตัวสุดท้าย
+      y: pctY(tail.mid),
+      size: sizeOf(tail.h * 1.35),            // ความสูงบรรทัด ≈ 1.35 เท่าของตัวอักษร
+      align: "left",
+      maxWidth: 90,
+    }
+  } else {
+    // ไม่เจอบรรทัดให้ต่อท้าย → ใช้ช่องว่างรองลงมา แต่ยังชิดซ้ายไว้
+    // (ชื่อคอร์สยาวไม่เท่ากัน ถ้ากึ่งกลางหัวข้อความจะขยับทุกใบ)
+    const g2 = gaps.filter((g) => g.mid > (gaps[0]?.mid ?? 0))[0] || gaps[1]
+    if (g2) out.course = { ...out.course, x: 20, y: pctY(g2.mid), size: sizeOf(g2.h), align: "left", maxWidth: 70 }
+  }
+
+  return out
+}
+
+// โหลดรูปจาก URL แล้ววิเคราะห์ตำแหน่งให้ (ใช้จากหน้าแอดมิน)
+export async function autoLayoutFromUrl(templateUrl) {
+  if (!templateUrl) throw new Error("ยังไม่มีรูปเทมเพลตให้วิเคราะห์")
+  const img = await loadImage(templateUrl)
+  return autoLayoutFields(img)
 }
 
 // สร้าง PDF จากผู้รับหลายคน (1 คน = 1 หน้า) → คืน jsPDF doc

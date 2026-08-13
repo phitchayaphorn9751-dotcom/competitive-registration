@@ -11,7 +11,7 @@ import {
   generateCertificatePDF, previewCertificate,
   DEFAULT_CERT_FIELDS, CERT_FIELD_KEYS, CERT_FIELD_LABELS,
   CERT_TEMPLATE_KEYS, CERT_TEMPLATE_LABELS, normalizeCertTemplates, winnerKeyOf,
-  CERT_FONT, safeFileName,
+  CERT_FONT, safeFileName, autoLayoutFromUrl, stripTitle,
 } from "../../lib/certificate.js"
 
 const FONT = CERT_FONT
@@ -161,6 +161,17 @@ export default function AdminCertificate() {
   }
   function resetFields() {
     setTemplates((t) => ({ ...t, [layoutKey]: { ...t[layoutKey], fields: DEFAULT_CERT_FIELDS } }))
+  }
+  // วิเคราะห์รูปเทมเพลตแล้วเดาตำแหน่งให้ (ยังต้องตรวจ/ปรับเองอีกที)
+  const [autoBusy, setAutoBusy] = useState(false)
+  async function autoLayout() {
+    setAutoBusy(true)
+    try {
+      const guess = await autoLayoutFromUrl(templates[layoutKey].url)
+      setTemplates((t) => ({ ...t, [layoutKey]: { ...t[layoutKey], fields: guess } }))
+      toast("จัดตำแหน่งให้แล้ว — ตรวจดูอีกทีก่อนบันทึก", "success")
+    } catch (e) { toast("วิเคราะห์รูปไม่สำเร็จ: " + e.message, "error") }
+    finally { setAutoBusy(false) }
   }
 
   // เทมเพลตของแถวรางวัลลำดับที่ i — ใช้ที่ตั้งไว้ต่อชื่อรางวัล ถ้าไม่มีก็ไล่ตามลำดับแถว
@@ -392,7 +403,8 @@ export default function AdminCertificate() {
 
             {templates[layoutKey].url ? (
               <>
-                <LayoutCanvas templateUrl={templates[layoutKey].url} fields={fields} onMove={setField} />
+                <LayoutCanvas templateUrl={templates[layoutKey].url} fields={fields} onMove={setField}
+                  sample={{ name: stripTitle(SAMPLE.full_name), course: course?.title || SAMPLE.course_title }} />
                 <div className="grid sm:grid-cols-2 gap-3">
                   {CERT_FIELD_KEYS.map((k) => (
                     <FieldControls key={k} fieldKey={k} cfg={fields[k]} onChange={(patch) => setField(k, patch)} />
@@ -400,13 +412,18 @@ export default function AdminCertificate() {
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <SaveBtn onClick={saveFields} busy={savingCfg}>บันทึกตำแหน่งข้อความ (ทุกแบบ)</SaveBtn>
+                  <button onClick={autoLayout} disabled={autoBusy}
+                    className="flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition disabled:opacity-50">
+                    <Ico.eye className="w-4 h-4" style={{ color: "#fb923c" }} />
+                    {autoBusy ? "กำลังวิเคราะห์…" : "จัดตำแหน่งอัตโนมัติ"}
+                  </button>
                   <button onClick={() => doPreview({ ...SAMPLE }, SAMPLE.award, layoutKey)}
                     className="flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl text-sm font-bold transition">
                     <Ico.eye className="w-4 h-4" /> ดูใบตัวอย่างจริง
                   </button>
                   <button onClick={resetFields}
                     className="flex items-center justify-center gap-2 text-slate-500 hover:bg-slate-100 px-4 py-2.5 rounded-xl text-sm font-bold transition">
-                    คืนค่าเริ่มต้น (แบบนี้)
+                    คืนค่าเริ่มต้น
                   </button>
                 </div>
               </>
@@ -415,9 +432,16 @@ export default function AdminCertificate() {
             )}
 
             <p className="text-[11px] text-slate-400">
-              วาดแค่ชื่อผู้รับกับชื่อคอร์ส — ชื่อรางวัลอยู่ในรูปเทมเพลตแต่ละแบบอยู่แล้ว ·
-              ข้อความยาวเกินความกว้างที่ตั้งไว้ ระบบจะย่อฟอนต์ก่อน แล้วค่อยตัดขึ้นบรรทัดใหม่ ·
-              ปุ่มบันทึกเก็บตำแหน่งของทุกแบบพร้อมกัน
+              <b className="text-slate-500">จัดตำแหน่งอัตโนมัติ</b> — ระบบสแกนรูปหาที่ว่างและบรรทัดที่มีข้อความอยู่
+              แล้ววางชื่อกลางช่องว่างที่กว้างที่สุด ส่วนชื่อคอร์สจะต่อท้ายข้อความที่พิมพ์ไว้ในเทมเพลต (ถ้าเจอ)
+              เป็นการเดาจากภาพ ไม่ได้อ่านข้อความ — <b className="text-slate-500">ต้องตรวจและปรับเองอีกที</b> ·
+              ข้อความยาวเกินกรอบ ระบบจะย่อฟอนต์ก่อนแล้วค่อยตัดบรรทัด · ปุ่มบันทึกเก็บตำแหน่งของทุกแบบพร้อมกัน
+            </p>
+            <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+              <b>ชื่อคอร์สยาวไม่เท่ากันทุกคอร์ส</b> — ถ้าอยากให้หัวข้อความเริ่มตรงจุดเดียวกันเสมอ
+              ตั้ง <b>จัดชิด = ชิดซ้าย</b> แล้วลากให้ขอบซ้ายของข้อความอยู่ตรงที่ต้องการ
+              (ถ้าใช้กึ่งกลาง จุดเริ่มจะขยับตามความยาวชื่อ) · เลือกคอร์สด้านล่างก่อน
+              ข้อความตัวอย่างจะเปลี่ยนเป็นชื่อคอร์สจริงให้เทียบได้เลย
             </p>
           </div>
         </Section>
@@ -749,10 +773,24 @@ function SaveBtn({ onClick, busy, full, children }) {
   )
 }
 
-// ── รูปเทมเพลต + ป้ายลากวางกำหนดตำแหน่งข้อความ ───────────────────────
-function LayoutCanvas({ templateUrl, fields, onMove }) {
+// ── รูปเทมเพลต + ข้อความตัวอย่างที่ลากวางได้ ─────────────────────────
+// แสดงข้อความจริงตามขนาด/สี/น้ำหนัก/การจัดชิด ไม่ใช่แค่ป้ายชื่อฟิลด์
+// จะได้เห็นว่า "หัวข้อความ" เริ่มตรงไหน — สำคัญตอนตั้งชิดซ้ายให้ทุกคอร์สเริ่มจุดเดียวกัน
+function LayoutCanvas({ templateUrl, fields, sample, onMove }) {
   const boxRef = useRef(null)
   const [dragKey, setDragKey] = useState(null)
+  const [boxW, setBoxW] = useState(0)
+
+  // ต้องรู้ความกว้างจริงของกล่อง เพื่อสเกลขนาดฟอนต์ให้ตรงกับใบจริง (size อิงฐานกว้าง 1000px)
+  useEffect(() => {
+    const el = boxRef.current
+    if (!el) return
+    const sync = () => setBoxW(el.clientWidth)
+    sync()
+    const ro = new ResizeObserver(sync)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   function pointToPercent(e) {
     const box = boxRef.current?.getBoundingClientRect()
@@ -784,24 +822,46 @@ function LayoutCanvas({ templateUrl, fields, onMove }) {
       <img src={templateUrl} alt="template" className="block w-full pointer-events-none" draggable={false} />
       {CERT_FIELD_KEYS.map((k) => {
         const cfg = fields[k]
+        const align = cfg.align || "center"
+        // size อิงฐานรูปกว้าง 1000px → สเกลตามความกว้างจริงของกล่อง preview
+        const fontPx = boxW ? (cfg.size || 28) * (boxW / 1000) : 0
         return (
           <div key={k} onPointerDown={(e) => onPointerDown(e, k)}
             title={`ลากเพื่อย้าย ${CERT_FIELD_LABELS[k]}`}
-            style={{ left: `${cfg.x}%`, top: `${cfg.y}%`, borderColor: cfg.color }}
-            className={`absolute -translate-x-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing
-              px-2 py-1 rounded-md bg-white/90 border-2 shadow-sm text-[11px] font-bold whitespace-nowrap
-              ${dragKey === k ? "ring-2 ring-[#F15A24] z-20" : "z-10"}`}>
-            <span style={{ color: cfg.color }}>{CERT_FIELD_LABELS[k]}</span>
+            style={{
+              left: `${cfg.x}%`, top: `${cfg.y}%`,
+              // จุดยึดตามการจัดชิด — ชิดซ้ายข้อความเริ่มที่ x, ชิดขวาจบที่ x
+              transform: `translate(${align === "left" ? "0" : align === "right" ? "-100%" : "-50%"}, -50%)`,
+              color: cfg.color,
+              fontFamily: FONT,
+              fontSize: fontPx ? `${fontPx}px` : undefined,
+              fontWeight: cfg.weight === "bold" ? 700 : 400,
+              lineHeight: 1.15,
+              visibility: fontPx ? "visible" : "hidden",   // กันกระพริบตอนยังไม่รู้ความกว้าง
+            }}
+            className={`absolute cursor-grab active:cursor-grabbing whitespace-nowrap
+              outline-dashed outline-1 outline-offset-2
+              ${dragKey === k ? "outline-[#F15A24] z-20" : "outline-slate-400/50 hover:outline-[#F15A24] z-10"}`}>
+            {sample?.[k] || CERT_FIELD_LABELS[k]}
           </div>
         )
       })}
-      {dragKey && (
-        <div className="absolute pointer-events-none border-x-2 border-dashed border-[#F15A24]/60"
-          style={{
-            left: `${clamp(fields[dragKey].x - (fields[dragKey].maxWidth ?? 80) / 2)}%`,
-            width: `${fields[dragKey].maxWidth ?? 80}%`, top: 0, bottom: 0,
-          }} />
-      )}
+
+      {/* เส้นบอกจุดยึด + กรอบความกว้างสูงสุด — ขึ้นตอนลาก */}
+      {dragKey && (() => {
+        const f = fields[dragKey]
+        const al = f.align || "center"
+        const mw = f.maxWidth ?? 80
+        const left = al === "left" ? f.x : al === "right" ? f.x - mw : f.x - mw / 2
+        return (
+          <>
+            <div className="absolute pointer-events-none border-x border-dashed border-[#F15A24]/50"
+              style={{ left: `${clamp(left)}%`, width: `${mw}%`, top: 0, bottom: 0 }} />
+            <div className="absolute pointer-events-none bg-[#F15A24]" style={{ left: `${f.x}%`, top: 0, bottom: 0, width: 1 }} />
+            <div className="absolute pointer-events-none bg-[#F15A24]" style={{ top: `${f.y}%`, left: 0, right: 0, height: 1 }} />
+          </>
+        )
+      })()}
     </div>
   )
 }
@@ -828,7 +888,7 @@ function FieldControls({ fieldKey, cfg, onChange }) {
         {num("size", "ขนาด", 8, 200)}
         {num("maxWidth", "กว้าง %", 10, 100)}
       </div>
-      <div className="grid grid-cols-2 gap-2 mt-2">
+      <div className="grid grid-cols-3 gap-2 mt-2">
         <label className="block">
           <span className="text-[10px] font-bold text-slate-400 block mb-0.5">สี</span>
           <input type="color" value={cfg.color} onChange={(e) => onChange({ color: e.target.value })}
@@ -840,6 +900,16 @@ function FieldControls({ fieldKey, cfg, onChange }) {
             className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-[#F15A24] bg-white">
             <option value="normal">ปกติ</option>
             <option value="bold">หนา</option>
+          </select>
+        </label>
+        <label className="block">
+          {/* จุด X หมายถึงอะไร ขึ้นกับการจัดชิด — ชิดซ้ายใช้ต่อท้ายข้อความที่มีในเทมเพลต */}
+          <span className="text-[10px] font-bold text-slate-400 block mb-0.5">จัดชิด</span>
+          <select value={cfg.align || "center"} onChange={(e) => onChange({ align: e.target.value })}
+            className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs outline-none focus:border-[#F15A24] bg-white">
+            <option value="center">กึ่งกลาง</option>
+            <option value="left">ชิดซ้าย</option>
+            <option value="right">ชิดขวา</option>
           </select>
         </label>
       </div>
