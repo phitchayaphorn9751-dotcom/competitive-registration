@@ -337,6 +337,9 @@ export default function AdminCertificate() {
     return awardTpl[a] || "participant"
   }
 
+  // มีการค้น/กรองอะไรอยู่ไหม — ถ้าไม่มี จะไม่แสดงรายชื่อทั้งงาน
+  const hasFilter = !!(q.trim() || catFilter || courseFilter || kindFilter !== "all" || srcFilter !== "all")
+
   const searchHits = (() => {
     const list = allRecipients || []
     const kw = q.trim().toLowerCase()
@@ -474,7 +477,16 @@ export default function AdminCertificate() {
           ))}
         </div>
 
-        {allRecipients !== null && (
+        {/* ยังไม่ได้ค้น/กรองอะไร → ไม่ต้องขึ้นรายชื่อทั้งงาน แค่บอกจำนวนพอ */}
+        {allRecipients !== null && !hasFilter && (
+          <p className="text-sm text-slate-400 text-center py-6 bg-slate-50 rounded-xl">
+            {allRecipients.length === 0
+              ? "ยังไม่มีใครเช็คอินในงานนี้ — ส่วนนี้จะมีข้อมูลหลังเริ่มเช็คอินแล้ว"
+              : <>พิมพ์ค้นหา หรือเลือกหมวด/วิชา เพื่อแสดงรายชื่อ <span className="text-slate-300">·</span> ทั้งงานมี {allRecipients.length.toLocaleString()} ใบ</>}
+          </p>
+        )}
+
+        {allRecipients !== null && hasFilter && (
           <>
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs text-slate-500">เจอ <b className="text-slate-700">{searchHits.length}</b> คน{picked.size > 0 && <> · เลือกไว้ <b className="text-[#F15A24]">{pickedList.length}</b></>}</span>
@@ -498,11 +510,7 @@ export default function AdminCertificate() {
             </div>
 
             {searchHits.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-6 bg-slate-50 rounded-xl">
-                {allRecipients.length === 0
-                  ? "ยังไม่มีใครเช็คอินในงานนี้ — ส่วนนี้จะมีข้อมูลหลังเริ่มเช็คอินแล้ว"
-                  : "ไม่พบรายชื่อที่ตรงกับคำค้น"}
-              </p>
+              <p className="text-sm text-slate-400 text-center py-6 bg-slate-50 rounded-xl">ไม่พบรายชื่อที่ตรงกับเงื่อนไข</p>
             ) : (
               <div className="border border-slate-200 rounded-xl overflow-hidden max-h-96 overflow-y-auto">
                 {searchHits.slice(0, 300).map((r) => (
