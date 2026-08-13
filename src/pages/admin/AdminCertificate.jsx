@@ -4,7 +4,7 @@ import {
   fetchCoursesAdmin, fetchCourseTypes, fetchCertificateRecipients, fetchCertificateAdvisors,
   fetchCertificateRecipientsByEvent,
   fetchEventSettings, uploadCertificateTemplate, patchEventSettings,
-  saveCertAwards, publishCertificates,
+  saveCertAwards, publishCertificates, unpublishCertificates,
 } from "../../lib/supabase.js"
 import { useDialog } from "../../lib/dialog.jsx"
 import { Ico } from "../../lib/icons.jsx"
@@ -238,6 +238,7 @@ export default function AdminCertificate() {
   const pFind = (pid) => recipients.find((r) => r.participant_id === pid)
 
   // แนบ templateKey ให้ทุกคน — ตัวสร้าง PDF ใช้เลือกรูป/ตำแหน่งข้อความของใบนั้น
+  // ผู้ได้รางวัลได้ 2 ใบ: ใบรางวัล + ใบเข้าร่วม (ตามที่ตกลงไว้)
   function buildFinal() {
     // โหมดอบรม — ทุกคนได้ข้อความเดียวกันของหมวด ไม่มีรางวัล ใช้เทมเพลต "อบรม"
     if (isAttendance) return recipients.map((p) => ({ ...p, award: cfg.participantLabel, templateKey: "training" }))
@@ -247,19 +248,39 @@ export default function AdminCertificate() {
       const templateKey = rowTplOf(row, i)
       for (const pid of row.members) {
         const p = pFind(pid)
-        if (p) out.push({ ...p, award: label, templateKey })
+        if (!p) continue
+        out.push({ ...p, award: label, templateKey })
+        // แถมใบเข้าร่วมให้ผู้ได้รางวัลด้วย (เว้นแถวที่ตั้งเป็นใบเข้าร่วมอยู่แล้ว จะได้ไม่ซ้ำ)
+        if (templateKey !== "participant") {
+          out.push({ ...p, award: cfg.participantLabel, templateKey: "participant" })
+        }
       }
     })
     for (const p of unassigned) out.push({ ...p, award: cfg.participantLabel, templateKey: "participant" })
     return out
   }
 
+  // รางวัล "หลัก" ของแต่ละคน — 1 แถวต่อ 1 participant
+  // ⚠️ ห้ามใช้ buildFinal() ตรงๆ เพราะผู้ได้รางวัลมี 2 แถว (ใบรางวัล + ใบเข้าร่วม)
+  //    ถ้าเขียนลง DB ทั้ง 2 แถว ใบเข้าร่วมจะไปทับรางวัลที่ได้
+  function primaryAwards() {
+    if (isAttendance) return recipients.map((p) => ({ participant_id: p.participant_id, award: cfg.participantLabel }))
+    const byId = new Map()
+    rows.forEach((row) => {
+      const label = row.label.trim() || "รางวัล"
+      for (const pid of row.members) if (!byId.has(pid)) byId.set(pid, label)
+    })
+    return recipients.map((p) => ({
+      participant_id: p.participant_id,
+      award: byId.get(p.participant_id) || cfg.participantLabel,
+    }))
+  }
+
   async function doSave() {
     if (recipients.length === 0) return toast("ยังไม่มีรายชื่อ", "error")
-    const final = buildFinal()
     setGenning(true)
     try {
-      await saveCertAwards(final.map((r) => ({ participant_id: r.participant_id, award: r.award })))
+      await saveCertAwards(primaryAwards())
       toast("บันทึกผลรางวัลแล้ว", "success")
     } catch (e) { toast("บันทึกไม่สำเร็จ: " + e.message, "error") }
     finally { setGenning(false) }
@@ -267,25 +288,69 @@ export default function AdminCertificate() {
 
   async function doPublish() {
     if (recipients.length === 0) return toast("ยังไม่มีรายชื่อ", "error")
-    const final = buildFinal()
+    const awards = primaryAwards()
     const ok = await confirm?.({
-      title: "ส่งเกียรติบัตร?",
-      message: `ผู้สมัคร ${final.length} คน จะเห็นเกียรติบัตรของตัวเองในหน้า "รายการสมัครของฉัน" และโหลด PDF เองได้`,
+      title: "ส่งเกียรติบัตรคอร์สนี้?",
+      message: `ผู้สมัคร ${awards.length} คน จะเห็นเกียรติบัตรของตัวเองในหน้า "รายการสมัครของฉัน" และโหลด PDF เองได้`,
       confirmText: "ส่งเลย",
     }) ?? true
     if (!ok) return
     setGenning(true)
     try {
-      await saveCertAwards(final.map((r) => ({ participant_id: r.participant_id, award: r.award })))
+      await saveCertAwards(awards)
       // ผูกชื่อรางวัล → เทมเพลต ก่อนส่ง — ฝั่งผู้สมัครใช้ map นี้เลือกรูปให้ตรงใบ
       const nextTpl = { ...awardTpl }
-      final.forEach((r) => { if (r.award) nextTpl[r.award] = r.templateKey })
+      rows.forEach((row, i) => { const l = row.label.trim(); if (l) nextTpl[l] = rowTplOf(row, i) })
       setAwardTpl(nextTpl)
       await patchEventSettings(event.id, { cert_award_tpl: nextTpl })
-      await publishCertificates(final.map((r) => r.participant_id))
+      await publishCertificates(awards.map((r) => r.participant_id))
       setRecipients((rs) => rs.map((r) => ({ ...r, cert_published: true })))
-      toast(`ส่งเกียรติบัตรแล้ว ${final.length} คน`, "success")
+      toast(`ส่งเกียรติบัตรแล้ว ${awards.length} คน`, "success")
     } catch (e) { toast("ส่งไม่สำเร็จ: " + e.message, "error") }
+    finally { setGenning(false) }
+  }
+
+  // ยกเลิกการส่งของคอร์สนี้ — ผลรางวัลที่บันทึกไว้ยังอยู่ แค่ซ่อนจากฝั่งผู้สมัคร
+  async function doUnpublish() {
+    if (recipients.length === 0) return toast("ยังไม่มีรายชื่อ", "error")
+    const ok = await confirm?.({
+      title: "ยกเลิกการส่งเกียรติบัตร?",
+      message: `ผู้สมัคร ${recipients.length} คน จะไม่เห็นเกียรติบัตรในหน้า "รายการสมัครของฉัน" อีก\nผลรางวัลที่บันทึกไว้ยังอยู่ครบ ส่งใหม่ได้ตลอด`,
+      confirmText: "ยกเลิกการส่ง", tone: "danger",
+    }) ?? true
+    if (!ok) return
+    setGenning(true)
+    try {
+      await unpublishCertificates(recipients.map((r) => r.participant_id))
+      setRecipients((rs) => rs.map((r) => ({ ...r, cert_published: false })))
+      toast("ยกเลิกการส่งแล้ว", "success")
+    } catch (e) { toast("ยกเลิกไม่สำเร็จ: " + e.message, "error") }
+    finally { setGenning(false) }
+  }
+
+  // ส่ง/ยกเลิก ทุกคอร์สในงานพร้อมกัน — ใช้รายชื่อทั้งงานที่โหลดไว้แล้วในส่วนค้นหา
+  // ⚠️ ใช้ผลรางวัลที่บันทึกไว้ใน DB เท่านั้น ไม่ได้จัดรางวัลใหม่ให้
+  async function doPublishAll(publish) {
+    const ids = (allRecipients || []).filter((r) => r.kind !== "advisor").map((r) => r.participant_id)
+    if (ids.length === 0) return toast("ยังไม่มีรายชื่อทั้งงาน", "error")
+    const uniq = [...new Set(ids)]
+    const ok = await confirm?.({
+      title: publish ? "ส่งเกียรติบัตรทุกคอร์ส?" : "ยกเลิกการส่งทุกคอร์ส?",
+      message: publish
+        ? `ผู้สมัคร ${uniq.length} คน จากทุกคอร์สในงานนี้ จะเห็นเกียรติบัตรของตัวเองทันที\nใช้ผลรางวัลที่บันทึกไว้แล้วเท่านั้น — คอร์สที่ยังไม่ได้กด "บันทึกผลรางวัล" ทุกคนจะได้ใบเข้าร่วม`
+        : `ผู้สมัคร ${uniq.length} คน จากทุกคอร์สจะไม่เห็นเกียรติบัตรอีก\nผลรางวัลที่บันทึกไว้ยังอยู่ครบ`,
+      confirmText: publish ? "ส่งทั้งงาน" : "ยกเลิกทั้งงาน",
+      tone: publish ? undefined : "danger",
+    }) ?? true
+    if (!ok) return
+    setGenning(true)
+    try {
+      if (publish) await publishCertificates(uniq)
+      else await unpublishCertificates(uniq)
+      setAllRecipients((list) => (list || []).map((r) => r.kind === "advisor" ? r : { ...r, cert_published: publish }))
+      setRecipients((rs) => rs.map((r) => ({ ...r, cert_published: publish })))
+      toast(publish ? `ส่งเกียรติบัตรทั้งงานแล้ว ${uniq.length} คน` : `ยกเลิกทั้งงานแล้ว ${uniq.length} คน`, "success")
+    } catch (e) { toast("ไม่สำเร็จ: " + e.message, "error") }
     finally { setGenning(false) }
   }
 
@@ -912,7 +977,26 @@ export default function AdminCertificate() {
               </button>
               <button onClick={doPublish} disabled={genning}
                 className="flex-1 flex items-center justify-center gap-2 bg-[#F15A24] hover:bg-[#c44215] text-white px-4 py-3 rounded-xl text-sm font-bold transition disabled:opacity-50">
-                <Ico.cap className="w-4 h-4" /> ส่งเกียรติบัตร
+                <Ico.cap className="w-4 h-4" /> ส่งเกียรติบัตร (คอร์สนี้)
+              </button>
+            </div>
+
+            {/* ส่ง/ยกเลิก ระดับงาน + ยกเลิกคอร์สนี้ */}
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              {publishedCount > 0 && (
+                <button onClick={doUnpublish} disabled={genning}
+                  className="inline-flex items-center gap-1.5 text-rose-500 hover:bg-rose-50 px-3 py-1.5 rounded-lg font-bold transition disabled:opacity-50">
+                  <Ico.alert className="w-3.5 h-3.5" /> ยกเลิกการส่ง (คอร์สนี้)
+                </button>
+              )}
+              <div className="flex-1" />
+              <button onClick={() => doPublishAll(true)} disabled={genning || !allRecipients?.length}
+                className="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg font-bold transition disabled:opacity-50">
+                <Ico.cap className="w-3.5 h-3.5" /> ส่งทุกคอร์สพร้อมกัน
+              </button>
+              <button onClick={() => doPublishAll(false)} disabled={genning || !allRecipients?.length}
+                className="inline-flex items-center gap-1.5 text-rose-500 hover:bg-rose-50 px-3 py-1.5 rounded-lg font-bold transition disabled:opacity-50">
+                ยกเลิกทุกคอร์ส
               </button>
             </div>
 

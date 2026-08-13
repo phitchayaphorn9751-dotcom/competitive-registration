@@ -1232,15 +1232,26 @@ export async function saveCertAwards(assignments) {
 
 // แจกเกียรติบัตร (mark cert_published = true) ให้ผู้รับที่ระบุ
 export async function publishCertificates(participantIds) {
-  if (!Array.isArray(participantIds) || !participantIds.length) return 0
+  const ids = [...new Set(participantIds || [])]   // ผู้ได้รางวัลมีหลายใบ → id ซ้ำได้
+  if (!ids.length) return 0
   const { data, error } = await supabase
-    .from("participants").update({ cert_published: true }).in("id", participantIds).select("id")
+    .from("participants").update({ cert_published: true }).in("id", ids).select("id")
   if (error) throw error
   const n = data?.length || 0
-  if (n < participantIds.length) {
-    throw new Error(`แจกได้ ${n}/${participantIds.length} คน — สิทธิ์ไม่พอ (ตรวจ RLS ของตาราง participants)`)
+  if (n < ids.length) {
+    throw new Error(`แจกได้ ${n}/${ids.length} คน — สิทธิ์ไม่พอ (ตรวจ RLS ของตาราง participants)`)
   }
   return n
+}
+
+// ยกเลิกการส่ง (ซ่อนเกียรติบัตรจากฝั่งผู้สมัคร) — ผลรางวัลที่บันทึกไว้ยังอยู่
+export async function unpublishCertificates(participantIds) {
+  const ids = [...new Set(participantIds || [])]
+  if (!ids.length) return 0
+  const { data, error } = await supabase
+    .from("participants").update({ cert_published: false }).in("id", ids).select("id")
+  if (error) throw error
+  return data?.length || 0
 }
 
 // เกียรติบัตรของผู้ใช้ที่ล็อกอิน — เฉพาะใบที่แอดมินกด "ส่งเกียรติบัตร" แล้ว
