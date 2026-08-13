@@ -88,6 +88,25 @@ function loadImage(url) {
   })
 }
 
+// ตัดคำนำหน้าชื่อออกก่อนพิมพ์ลงใบ — ในใบเกียรติบัตรใช้แค่ชื่อ-สกุล
+// (ชุดคำนำหน้าเดียวกับหน้านำเข้าผู้สมัคร · เรียงยาว→สั้น กัน "นาง" ไปตัดหน้า "นางสาว")
+const TITLE_PREFIXES = [
+  "เด็กชาย", "เด็กหญิง", "นางสาว", "นาง", "นาย",
+  "ด.ช.", "ด.ญ.", "ด.ช", "ด.ญ", "น.ส.", "น.ส",
+  "Master", "Mrs.", "Miss", "Mr.", "Ms.", "Mrs", "Mr", "Ms",
+]
+export function stripTitle(fullName) {
+  const s = String(fullName || "").trim()
+  if (!s) return ""
+  for (const pre of TITLE_PREFIXES) {
+    if (s.startsWith(pre)) {
+      const rest = s.slice(pre.length).trim()
+      if (rest) return rest        // เหลือแต่คำนำหน้าล้วน → คืนของเดิม ไม่ตัดจนว่าง
+    }
+  }
+  return s
+}
+
 // รอให้ฟอนต์เว็บพร้อมก่อนวาด — ไม่งั้นใบแรกอาจได้ฟอนต์ fallback
 async function waitFonts() {
   try { await document.fonts?.ready } catch { /* เบราว์เซอร์เก่า — ข้ามไป */ }
@@ -156,7 +175,7 @@ function renderCanvas(bgImg, recipient, fields, fontFamily) {
     lines.forEach((line, i) => ctx.fillText(line, px, startY + i * lineH))
   }
 
-  draw(recipient.full_name, fields.name)
+  draw(stripTitle(recipient.full_name), fields.name)
   draw(recipient.course_title, fields.course)
 
   return canvas
