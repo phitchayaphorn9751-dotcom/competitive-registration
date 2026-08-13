@@ -27,18 +27,20 @@ async function loadJsPDF() {
   return mod.jsPDF
 }
 
-// ── เทมเพลต 5 แบบ ──────────────────────────────────────────────────
-export const CERT_TEMPLATE_KEYS = ["training", "participant", "winner1", "winner2", "winner3"]
+// ── เทมเพลต 6 แบบ ──────────────────────────────────────────────────
+export const CERT_TEMPLATE_KEYS = ["training", "participant", "winner1", "winner2", "winner3", "advisor"]
 export const CERT_TEMPLATE_LABELS = {
   training:    "อบรม",
   participant: "แข่งขัน — ผู้เข้าร่วม",
   winner1:     "แข่งขัน — ชนะที่ 1",
   winner2:     "แข่งขัน — ชนะที่ 2",
   winner3:     "แข่งขัน — ชนะที่ 3",
+  advisor:     "ครูที่ปรึกษา",
 }
 // เทมเพลตเริ่มต้นของแถวรางวัลลำดับที่ N (แถวที่ 4 ขึ้นไปใช้ของชนะที่ 3)
+const WINNER_TEMPLATE_KEYS = ["winner1", "winner2", "winner3"]
 export function winnerKeyOf(rowIndex) {
-  return CERT_TEMPLATE_KEYS[Math.min(rowIndex, 2) + 2]
+  return WINNER_TEMPLATE_KEYS[Math.min(rowIndex, WINNER_TEMPLATE_KEYS.length - 1)]
 }
 
 // ค่า default ตำแหน่ง (อิงจากเทมเพลตตัวอย่าง CAMT) — admin ลากปรับได้ในหน้าออกเกียรติบัตร

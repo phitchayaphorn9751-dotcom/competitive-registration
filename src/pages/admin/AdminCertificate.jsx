@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react"
 import { useOutletContext } from "react-router-dom"
 import {
-  fetchCoursesAdmin, fetchCourseTypes, fetchCertificateRecipients,
+  fetchCoursesAdmin, fetchCourseTypes, fetchCertificateRecipients, fetchCertificateAdvisors,
+  fetchCertificateRecipientsByEvent,
   fetchEventSettings, uploadCertificateTemplate, patchEventSettings,
   saveCertAwards, publishCertificates,
 } from "../../lib/supabase.js"
@@ -74,6 +75,7 @@ export default function AdminCertificate() {
   const [types, setTypes] = useState([])
   const [courseId, setCourseId] = useState("")
   const [recipients, setRecipients] = useState([])
+  const [advisors, setAdvisors] = useState([])       // ครูที่ปรึกษาของคอร์สที่เลือก
   const [loading, setLoading] = useState(false)
   const [genning, setGenning] = useState(false)
   const [progress, setProgress] = useState(null)
@@ -84,7 +86,7 @@ export default function AdminCertificate() {
   const [openPanel, setOpenPanel] = useState("")   // "template" | "layout" | "awards" | "types" | ""
 
   // ── ค่าตั้งทั้งงาน (เก็บใน event_settings) ──
-  const [templates, setTemplates] = useState(() => normalizeCertTemplates(null))  // 5 แบบ { key: {url, fields} }
+  const [templates, setTemplates] = useState(() => normalizeCertTemplates(null))  // 6 แบบ { key: {url, fields} }
   const [layoutKey, setLayoutKey] = useState("participant")  // เทมเพลตที่กำลังแก้ตำแหน่งอยู่
   const [baseAwards, setBaseAwards] = useState([])        // รายการรางวัลกลาง — พิมพ์ครั้งเดียว
   const [awardTpl, setAwardTpl] = useState({})            // { [ชื่อรางวัล]: templateKey } — override ต่อชื่อรางวัล
@@ -99,7 +101,7 @@ export default function AdminCertificate() {
     fetchCoursesAdmin(event.id).then((d) => setCourses(d || [])).catch(() => {})
     fetchCourseTypes(event.id).then((d) => setTypes(d || [])).catch(() => {})
     fetchEventSettings(event.id).then((es) => {
-      // รองรับข้อมูลเก่าที่มีรูป/ตำแหน่งเดียว → ใช้เป็นค่าตั้งต้นของทั้ง 5 แบบ
+      // รองรับข้อมูลเก่าที่มีรูป/ตำแหน่งเดียว → ใช้เป็นค่าตั้งต้นของทุกแบบ
       setTemplates(normalizeCertTemplates(es.cert_templates, es.cert_template_url, es.cert_fields))
       setAwardTpl(es.cert_award_tpl && typeof es.cert_award_tpl === "object" ? es.cert_award_tpl : {})
       setBaseAwards(Array.isArray(es.cert_awards) ? es.cert_awards.filter(Boolean) : [])
@@ -115,7 +117,7 @@ export default function AdminCertificate() {
   const isAttendance = cfg.mode === MODE_ATTENDANCE
   const hasOverride = courseId ? Object.prototype.hasOwnProperty.call(courseAwards, courseId) : false
 
-  // ═══════════════════ รูปพื้นหลัง (5 แบบ) ═══════════════════
+  // ═══════════════════ รูปพื้นหลัง (6 แบบ) ═══════════════════
   async function handleTemplateFile(e, key) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -185,8 +187,9 @@ export default function AdminCertificate() {
 
   // ═══════════════════ เลือกคอร์ส ═══════════════════
   async function loadRecipients(cid) {
-    setCourseId(cid); setRecipients([]); setPreviewUrl(""); setGroupMode("")
+    setCourseId(cid); setRecipients([]); setAdvisors([]); setPreviewUrl(""); setGroupMode("")
     if (!cid) { setRows([]); return }
+    fetchCertificateAdvisors(cid).then(setAdvisors).catch(() => setAdvisors([]))
     // แถวเริ่มต้น = ของคอร์สนี้ถ้าเคยแก้ไว้ ไม่งั้นใช้ค่ากลาง
     const labels = Object.prototype.hasOwnProperty.call(courseAwards, cid) ? courseAwards[cid] : baseAwards
     const start = (labels || []).filter(Boolean).map((l) => newRow(l))
@@ -286,6 +289,87 @@ export default function AdminCertificate() {
     finally { setGenning(false) }
   }
 
+  // ครูที่ปรึกษา — เทมเพลตของตัวเอง ไม่มีรางวัล ไม่ต้องเช็คอิน
+  // ออกเป็น PDF ให้แอดมินอย่างเดียว ไม่มีฝั่งผู้สมัคร (ครูไม่มีบัญชีในระบบ)
+  function buildAdvisors() {
+    return advisors.map((a) => ({
+      full_name: a.full_name,
+      course_title: a.course_title,
+      award: "ครูที่ปรึกษา",
+      templateKey: "advisor",
+    }))
+  }
+  async function doGenerateAdvisors() {
+    const list = buildAdvisors()
+    if (list.length === 0) return toast("คอร์สนี้ไม่มีครูที่ปรึกษา", "error")
+    await doGenerate(list, "ครูที่ปรึกษา")
+  }
+
+  // ═══════════════════ ค้นหา & โหลดข้ามคอร์ส ═══════════════════
+  const [allRecipients, setAllRecipients] = useState(null)   // null = ยังไม่โหลด
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [q, setQ] = useState("")
+  const [srcFilter, setSrcFilter] = useState("all")          // all | self | imported
+  const [picked, setPicked] = useState(() => new Set())
+
+  async function loadAllRecipients() {
+    if (allRecipients || searchLoading) return
+    setSearchLoading(true)
+    try { setAllRecipients(await fetchCertificateRecipientsByEvent(event.id)) }
+    catch (e) { toast("โหลดรายชื่อทั้งงานไม่สำเร็จ: " + e.message, "error"); setAllRecipients([]) }
+    finally { setSearchLoading(false) }
+  }
+
+  // เทมเพลตของคนคนหนึ่ง — ครูที่ปรึกษาใช้แบบของตัวเอง ที่เหลือดูหมวดคอร์ส + ชื่อรางวัล
+  function tplKeyFor(r) {
+    if (r.kind === "advisor") return "advisor"
+    const c = typeCfgOf(certTypes, r.type_id)
+    if (c.mode === MODE_ATTENDANCE) return "training"
+    const a = (r.award || "").trim()
+    if (!a || a === c.participantLabel) return "participant"
+    return awardTpl[a] || "participant"
+  }
+
+  const searchHits = (() => {
+    const list = allRecipients || []
+    const kw = q.trim().toLowerCase()
+    return list.filter((r) => {
+      if (srcFilter === "self" && (r.is_imported || r.kind === "advisor")) return false
+      if (srcFilter === "imported" && (!r.is_imported || r.kind === "advisor")) return false
+      if (srcFilter === "advisor" && r.kind !== "advisor") return false
+      if (srcFilter === "student" && r.kind === "advisor") return false
+      if (!kw) return true
+      return [r.full_name, r.course_title, r.theme_name, r.school, r.award]
+        .some((v) => (v || "").toLowerCase().includes(kw))
+    })
+  })()
+
+  function togglePick(id) {
+    setPicked((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }
+  const pickedList = searchHits.filter((r) => picked.has(r.participant_id))
+
+  async function doGenerateSearch(list, label) {
+    if (!list.length) return toast("ไม่มีรายชื่อให้ออกใบ", "error")
+    await doGenerateFree(list.map((r) => ({ ...r, templateKey: tplKeyFor(r) })), label)
+  }
+
+  // สร้าง PDF จากรายชื่ออิสระ (ไม่ผูกกับคอร์สที่เลือกอยู่) — ตั้งชื่อไฟล์เอง
+  async function doGenerateFree(final, fileLabel) {
+    const missing = [...new Set(final.map((r) => r.templateKey))].filter((k) => !templates[k]?.url)
+    if (missing.length) return toast(`ยังไม่ได้อัปโหลดรูป: ${missing.map((k) => CERT_TEMPLATE_LABELS[k]).join(", ")}`, "error")
+    setGenning(true); setProgress({ done: 0, total: final.length })
+    try {
+      const doc = await generateCertificatePDF({
+        templates, recipients: final, fontFamily: FONT,
+        onProgress: (done, total) => setProgress({ done, total }),
+      })
+      doc.save(`เกียรติบัตร_${safeFileName(fileLabel, 40)}.pdf`)
+      toast(`สร้างเกียรติบัตรแล้ว ${final.length} ใบ`, "success")
+    } catch (e) { toast("สร้าง PDF ไม่สำเร็จ: " + e.message, "error") }
+    finally { setGenning(false); setProgress(null) }
+  }
+
   async function doPreview(r, label, key = "participant") {
     const t = templates[key] || templates.participant
     if (!t?.url) return toast(`ยังไม่ได้อัปโหลดรูปของเทมเพลต "${CERT_TEMPLATE_LABELS[key]}"`, "error")
@@ -349,14 +433,14 @@ export default function AdminCertificate() {
           <p className="text-[11px] text-slate-400 mt-0.5">ตั้งครั้งเดียว ทุกรายการแข่งขันใช้ค่านี้ — แก้เฉพาะบางคอร์สได้ในส่วนด้านล่าง</p>
         </div>
 
-        {/* 1.1 รูปพื้นหลัง — 5 แบบ */}
+        {/* 1.1 รูปพื้นหลัง — 6 แบบ */}
         <Section
-          title="รูปพื้นหลังเกียรติบัตร (5 แบบ)"
-          desc={`ตั้งแล้ว ${tplReady}/5 แบบ${tplReady === 0 ? " — ต้องมีอย่างน้อย 1 ถึงออก PDF ได้" : ""}`}
-          tone={tplReady === 5 ? "ok" : tplReady > 0 ? "" : "warn"} {...panel("template")}>
+          title={`รูปพื้นหลังเกียรติบัตร (${CERT_TEMPLATE_KEYS.length} แบบ)`}
+          desc={`ตั้งแล้ว ${tplReady}/${CERT_TEMPLATE_KEYS.length} แบบ${tplReady === 0 ? " — ต้องมีอย่างน้อย 1 ถึงออก PDF ได้" : ""}`}
+          tone={tplReady === CERT_TEMPLATE_KEYS.length ? "ok" : tplReady > 0 ? "" : "warn"} {...panel("template")}>
           <p className="text-xs text-slate-400 mb-3">
             ขนาดหน้า PDF ยึดสัดส่วนรูปแต่ละแบบ (ไม่ยืด) · เก็บไฟล์ต้นฉบับไม่บีบอัด — พิมพ์ A4 แนะนำกว้าง 3508px (300 DPI) ·
-            อัปเฉพาะแบบที่ใช้จริงก็ได้ ไม่ต้องครบ 5
+            อัปเฉพาะแบบที่ใช้จริงก็ได้ ไม่ต้องครบทุกแบบ
           </p>
           <div className="grid sm:grid-cols-2 gap-3">
             {CERT_TEMPLATE_KEYS.map((k) => (
@@ -649,6 +733,41 @@ export default function AdminCertificate() {
           </div>
         )}
 
+        {/* ── ครูที่ปรึกษา — ใบเข้าร่วม ไม่มีรางวัล ไม่ต้องเช็คอิน ── */}
+        {courseId && advisors.length > 0 && (
+          <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <p className="text-xs font-bold text-slate-600">
+                ครูที่ปรึกษา <span className="text-slate-400 font-normal">({advisors.length} คน)</span>
+              </p>
+              <button onClick={doGenerateAdvisors} disabled={genning || !templates.advisor?.url}
+                title={templates.advisor?.url ? "" : "ยังไม่ได้อัปโหลดรูปเทมเพลตครูที่ปรึกษา"}
+                className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition disabled:opacity-50">
+                <Ico.download className="w-3.5 h-3.5" /> โหลด PDF ครูที่ปรึกษา
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {advisors.map((a) => (
+                <span key={a.advisor_id} className="inline-flex items-center gap-1 bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs text-slate-600">
+                  {a.full_name}
+                  {a.reg_count > 1 && <b className="text-slate-400 font-normal">·{a.reg_count} ทีม</b>}
+                  <button onClick={() => doPreview({ full_name: a.full_name, course_title: a.course_title }, "ครูที่ปรึกษา", "advisor")}
+                    className="text-[#F15A24]" title="ดูตัวอย่าง"><Ico.eye className="w-3 h-3" /></button>
+                </span>
+              ))}
+            </div>
+            {!templates.advisor?.url && (
+              <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mt-2.5">
+                ยังไม่ได้อัปโหลดรูปเทมเพลต "{CERT_TEMPLATE_LABELS.advisor}" — ไปอัปในส่วนตั้งค่าด้านบนก่อน
+              </p>
+            )}
+            <p className="text-[11px] text-slate-400 mt-2.5">
+              ใช้เทมเพลต "{CERT_TEMPLATE_LABELS.advisor}" ทุกคน · ไม่ต้องเช็คอิน · ครูคนเดียวคุมหลายทีมได้ใบเดียว ·
+              เป็นไฟล์ให้แอดมินส่งต่อเอง ไม่ขึ้นในหน้าผู้สมัคร (ครูไม่มีบัญชีในระบบ)
+            </p>
+          </div>
+        )}
+
         {/* ── ปุ่มออก/ส่ง + โหลดแยกกลุ่ม ── */}
         {courseId && recipients.length > 0 && (
           <>
@@ -700,6 +819,104 @@ export default function AdminCertificate() {
                 </div>
               )}
             </div>
+          </>
+        )}
+      </div>
+
+      {/* ══════════ ส่วนที่ 3: ค้นหา & โหลดข้ามคอร์ส ══════════ */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-sm font-extrabold text-slate-700">ค้นหา &amp; โหลดเกียรติบัตร <span className="text-slate-400 font-bold">· ทั้งงาน</span></p>
+            <p className="text-[11px] text-slate-400 mt-0.5">ค้นด้วยชื่อคน · ชื่อรายการ · ชื่อทีม · โรงเรียน · ชื่อรางวัล — ข้ามคอร์สได้</p>
+          </div>
+          {allRecipients === null && (
+            <button onClick={loadAllRecipients} disabled={searchLoading}
+              className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-sm font-bold transition disabled:opacity-50">
+              {searchLoading ? "กำลังโหลด…" : "โหลดรายชื่อทั้งงาน"}
+            </button>
+          )}
+        </div>
+
+        {allRecipients !== null && (
+          <>
+            <div className="flex flex-wrap gap-2">
+              <div className="relative flex-1 min-w-[200px]">
+                <input value={q} onChange={(e) => setQ(e.target.value)}
+                  placeholder="พิมพ์ชื่อคน / ชื่อรายการ / ชื่อทีม…"
+                  className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-[#F15A24] focus:ring-1 focus:ring-[#F15A24]" />
+              </div>
+              {[["all", "ทั้งหมด"], ["student", "นักเรียน"], ["advisor", "ครูที่ปรึกษา"], ["self", "สมัครเอง"], ["imported", "นำเข้า"]].map(([k, label]) => (
+                <button key={k} onClick={() => setSrcFilter(k)}
+                  className={`px-3 py-2.5 rounded-xl text-xs font-bold transition ${srcFilter === k ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>{label}</button>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-slate-500">เจอ <b className="text-slate-700">{searchHits.length}</b> คน{picked.size > 0 && <> · เลือกไว้ <b className="text-[#F15A24]">{pickedList.length}</b></>}</span>
+              <button onClick={() => setPicked(new Set(searchHits.map((r) => r.participant_id)))}
+                className="text-xs font-bold text-slate-500 hover:bg-slate-100 px-2.5 py-1 rounded-lg transition">เลือกทั้งหมดที่เจอ</button>
+              {picked.size > 0 && (
+                <button onClick={() => setPicked(new Set())}
+                  className="text-xs font-bold text-slate-500 hover:bg-slate-100 px-2.5 py-1 rounded-lg transition">ล้างที่เลือก</button>
+              )}
+              <div className="flex-1" />
+              <button onClick={() => doGenerateSearch(pickedList, `เลือก_${pickedList.length}ใบ`)}
+                disabled={genning || pickedList.length === 0}
+                className="inline-flex items-center gap-1.5 bg-[#F15A24] hover:bg-[#c44215] text-white px-4 py-2 rounded-xl text-xs font-bold transition disabled:opacity-50">
+                <Ico.download className="w-3.5 h-3.5" /> โหลดที่เลือก ({pickedList.length})
+              </button>
+              <button onClick={() => doGenerateSearch(searchHits, q.trim() || "ทั้งงาน")}
+                disabled={genning || searchHits.length === 0}
+                className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-bold transition disabled:opacity-50">
+                <Ico.download className="w-3.5 h-3.5" /> โหลดทั้งหมดที่เจอ ({searchHits.length})
+              </button>
+            </div>
+
+            {searchHits.length === 0 ? (
+              <p className="text-sm text-slate-400 text-center py-6 bg-slate-50 rounded-xl">
+                {allRecipients.length === 0 ? "ยังไม่มีใครเช็คอินในงานนี้" : "ไม่พบรายชื่อที่ตรงกับคำค้น"}
+              </p>
+            ) : (
+              <div className="border border-slate-200 rounded-xl overflow-hidden max-h-96 overflow-y-auto">
+                {searchHits.slice(0, 300).map((r) => (
+                  <label key={r.participant_id}
+                    className="flex items-center gap-2.5 px-3 py-2 border-b border-slate-50 last:border-0 hover:bg-orange-50/40 cursor-pointer">
+                    <input type="checkbox" checked={picked.has(r.participant_id)} onChange={() => togglePick(r.participant_id)}
+                      className="w-4 h-4 accent-[#F15A24] shrink-0" />
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-sm font-semibold text-slate-800 truncate">{r.full_name}</span>
+                      <span className="block text-[11px] text-slate-400 truncate">
+                        {r.course_title}{r.theme_name && ` · ${r.theme_name}`}{r.school && ` · ${r.school}`}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500">
+                      {CERT_TEMPLATE_LABELS[tplKeyFor(r)]}
+                    </span>
+                    {r.kind === "advisor"
+                      ? <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-50 text-sky-600 border border-sky-100">ครู{r.team_count > 1 ? ` ·${r.team_count} ทีม` : ""}</span>
+                      : r.is_imported && <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-md bg-violet-50 text-violet-600 border border-violet-100">นำเข้า</span>}
+                    <button onClick={(e) => { e.preventDefault(); doGenerateSearch([r], r.full_name) }}
+                      disabled={genning} title="โหลดใบนี้ใบเดียว"
+                      className="shrink-0 text-slate-400 hover:text-[#F15A24] p-1 rounded-lg transition disabled:opacity-40">
+                      <Ico.download className="w-4 h-4" />
+                    </button>
+                  </label>
+                ))}
+                {searchHits.length > 300 && (
+                  <p className="px-3 py-2 text-[11px] text-slate-400 bg-slate-50">
+                    แสดง 300 แถวแรกจาก {searchHits.length} · ปุ่ม "โหลดทั้งหมดที่เจอ" ยังรวมครบทุกคน
+                  </p>
+                )}
+              </div>
+            )}
+
+            <p className="text-[11px] text-slate-400">
+              รวมสมาชิกในทีมทุกคน และครูที่ปรึกษา · เทมเพลตของแต่ละคนคิดจากหมวดคอร์ส + ชื่อรางวัลที่บันทึกไว้ (ป้ายขวามือ) ·
+              คนที่ยังไม่ได้บันทึกผลรางวัลจะขึ้นเป็น "{CERT_TEMPLATE_LABELS.participant}" ·
+              <b className="text-slate-500">ครูที่ปรึกษาได้ใบเมื่อมีลูกทีมมาเช็คอินอย่างน้อย 1 คน</b> (ครูไม่มีรหัสเช็คอินของตัวเอง) ·
+              รายชื่อนี้โหลดครั้งเดียวตอนกดปุ่ม — บันทึกรางวัลเพิ่มแล้วรีเฟรชหน้าเพื่อดูค่าล่าสุด
+            </p>
           </>
         )}
       </div>
