@@ -69,6 +69,7 @@ export default function MyRegistrationPage() {
   const [barcodeReg, setBarcodeReg] = useState(null)
   const [lineQrReg, setLineQrReg] = useState(null)
   const [detailReg, setDetailReg] = useState(null)
+  const [certReg, setCertReg] = useState(null)   // ใบสมัครที่กำลังดูเกียรติบัตร
   // เกียรติบัตรที่ผู้จัด "ส่ง" แล้ว → { [participant_id]: {...} } (ยังไม่ส่ง = ไม่มีคีย์ = ไม่โชว์อะไรเลย)
   const [certs, setCerts] = useState({})
   const [certTpl, setCertTpl] = useState({})   // { [event_id]: { templates, awardTpl } }
@@ -345,9 +346,9 @@ export default function MyRegistrationPage() {
                             {t("myreg.showBarcode")}
                           </button>
                         )}
-                        {/* เกียรติบัตรพร้อมแล้ว → เปิดรายละเอียดไปดูรายคน */}
+                        {/* เกียรติบัตรพร้อมแล้ว → เปิดหน้าเกียรติบัตรเลย ไม่ผ่านรายละเอียดคอร์ส */}
                         {certsByReg[reg.id] > 0 && (
-                          <button onClick={() => setDetailReg(reg)}
+                          <button onClick={() => setCertReg(reg)}
                             className="flex-1 min-w-[130px] px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#F15A24] to-amber-500 hover:from-[#c44215] hover:to-amber-600 active:scale-[0.98] text-white font-semibold text-xs shadow-md shadow-orange-500/20 transition flex items-center justify-center gap-2 group/btn">
                             <Ico.cap className="w-4 h-4 group-hover/btn:scale-110 transition-transform" />
                             เกียรติบัตร
@@ -373,6 +374,13 @@ export default function MyRegistrationPage() {
       {barcodeReg && <CheckinModal reg={barcodeReg} t={t} onClose={() => setBarcodeReg(null)} />}
       {lineQrReg && <LineQrModal reg={lineQrReg} onClose={() => setLineQrReg(null)} />}
       {detailReg && <RegDetailModal reg={detailReg} t={t} navigate={navigate} certs={certs} certTpl={certTpl} onClose={() => setDetailReg(null)} />}
+      {certReg && (
+        <RegCertificatesModal
+          reg={certReg}
+          certs={Object.values(certs).filter((c) => c.registration_id === certReg.id)}
+          tpl={certTpl[Object.values(certs).find((c) => c.registration_id === certReg.id)?.event_id]}
+          onClose={() => setCertReg(null)} />
+      )}
     </div>
   )
 }
@@ -700,6 +708,132 @@ function certSheets(c, tplBundle) {
   if (has(key)) out.push({ ...c, templateKey: key })
   if (key.startsWith("winner") && has("participant")) out.push({ ...c, templateKey: "participant" })
   return out
+}
+
+// ลำดับการโชว์กลุ่มเกียรติบัตร — รางวัลก่อน แล้วใบเข้าร่วม ปิดท้ายด้วยครูที่ปรึกษา
+const CERT_GROUP_ORDER = ["winner1", "winner2", "winner3", "participant", "training", "advisor"]
+const CERT_GROUP_FALLBACK = {
+  participant: "เกียรติบัตรเข้าร่วม",
+  training:    "เกียรติบัตรอบรม",
+  advisor:     "เกียรติบัตรครูที่ปรึกษา",
+}
+
+// ═══ เกียรติบัตรทั้งใบสมัคร — เปิดจากปุ่มบนการ์ดตรงๆ ไม่ผ่านรายละเอียดคอร์ส ═══
+// จัดกลุ่มตามชนิดใบ: ใบรางวัลของทุกคน → ใบเข้าร่วมของทุกคน → ใบครูที่ปรึกษา
+function RegCertificatesModal({ reg, certs, tpl, onClose }) {
+  const [imgs, setImgs] = useState({})     // index → dataURL
+  const [err, setErr] = useState("")
+  const [busy, setBusy] = useState(false)
+
+  const sheets = certs.flatMap((c) => certSheets(c, tpl))
+
+  // จัดกลุ่มตามชนิดใบ + ชื่อรางวัล (คนละรางวัลแยกกลุ่มกัน)
+  const groups = (() => {
+    const m = new Map()
+    sheets.forEach((s, i) => {
+      const key = `${s.templateKey}|${s.templateKey.startsWith("winner") ? (s.award || "").trim() : ""}`
+      if (!m.has(key)) {
+        m.set(key, {
+          key,
+          tplKey: s.templateKey,
+          label: s.templateKey.startsWith("winner")
+            ? ((s.award || "").trim() || "เกียรติบัตรรางวัล")
+            : CERT_GROUP_FALLBACK[s.templateKey] || "เกียรติบัตร",
+          items: [],
+        })
+      }
+      m.get(key).items.push({ sheet: s, idx: i })
+    })
+    return [...m.values()].sort((a, b) => CERT_GROUP_ORDER.indexOf(a.tplKey) - CERT_GROUP_ORDER.indexOf(b.tplKey))
+  })()
+
+  useEffect(() => {
+    let alive = true
+    if (sheets.length === 0) { setErr("ผู้จัดยังไม่ได้ตั้งรูปพื้นหลังเกียรติบัตร"); return }
+    // เรนเดอร์ทีละใบแล้วโชว์ทันที ไม่ต้องรอครบ (ทีมใหญ่ๆ จะได้ไม่ค้างจอเปล่า)
+    ;(async () => {
+      for (let i = 0; i < sheets.length; i++) {
+        if (!alive) return
+        const t = tpl.templates[sheets[i].templateKey]
+        try {
+          const u = await previewCertificate({ templateUrl: t.url, recipient: sheets[i], fields: t.fields })
+          if (alive) setImgs((m) => ({ ...m, [i]: u }))
+        } catch (e) { if (alive) setErr(e.message) }
+      }
+    })()
+    return () => { alive = false }
+  }, [reg.id, tpl])
+
+  async function download(list, name) {
+    setBusy(true)
+    try {
+      const doc = await generateCertificatePDF({ templates: tpl.templates, recipients: list })
+      doc.save(`เกียรติบัตร_${safeFileName(name, 40)}.pdf`)
+    } catch (e) { setErr("ดาวน์โหลดไม่สำเร็จ: " + e.message) }
+    finally { setBusy(false) }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-[60] p-0 sm:p-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="bg-white w-full sm:rounded-[28px] shadow-2xl sm:max-w-2xl overflow-hidden rounded-t-[28px] max-h-[94dvh] flex flex-col">
+        <div className="bg-gradient-to-r from-[#F15A24] to-amber-500 p-5 text-white text-center relative shrink-0">
+          <button onClick={onClose} aria-label="ปิด" className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition text-lg leading-none">×</button>
+          <div className="mx-auto w-11 h-11 bg-white/15 rounded-full flex items-center justify-center mb-2">
+            <Ico.cap className="w-5 h-5 text-white" />
+          </div>
+          <h3 className="font-bold text-lg">เกียรติบัตร</h3>
+          <p className="text-amber-100 text-xs mt-0.5 truncate">
+            {reg.course_title}{reg.theme_name && ` · ${reg.theme_name}`} · {sheets.length} ใบ
+          </p>
+        </div>
+
+        <div className="p-5 bg-slate-50 overflow-y-auto space-y-6">
+          {err && <p className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl p-3 text-center">{err}</p>}
+          {groups.map((g) => (
+            <section key={g.key}>
+              <div className="flex items-center justify-between gap-2 mb-2.5">
+                <h4 className="text-sm font-extrabold text-slate-700">
+                  {g.label} <span className="text-slate-400 font-bold">({g.items.length} ใบ)</span>
+                </h4>
+                <button onClick={() => download(g.items.map((i) => i.sheet), `${reg.course_title}_${g.label}`)}
+                  disabled={busy}
+                  className="shrink-0 inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-[#F15A24] disabled:opacity-50 transition">
+                  <Ico.download className="w-3.5 h-3.5" /> โหลดกลุ่มนี้
+                </button>
+              </div>
+              <div className="space-y-3">
+                {g.items.map(({ sheet, idx }) => (
+                  <div key={idx} className="bg-white rounded-xl border border-slate-200 p-2.5">
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className="text-xs font-bold text-slate-700 truncate">{sheet.full_name}</span>
+                      <button onClick={() => download([sheet], sheet.full_name)} disabled={busy}
+                        className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 hover:text-[#F15A24] disabled:opacity-50 transition">
+                        <Ico.download className="w-3.5 h-3.5" /> เซฟ
+                      </button>
+                    </div>
+                    {imgs[idx]
+                      ? <img src={imgs[idx]} alt={sheet.full_name} className="w-full rounded-lg border border-slate-100" />
+                      : <div className="w-full aspect-[1.414/1] bg-slate-100 rounded-lg animate-pulse" />}
+                  </div>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+
+        <div className="px-6 py-5 bg-slate-50 border-t border-slate-100 flex gap-2 shrink-0">
+          <button onClick={() => download(sheets, reg.theme_name || reg.course_title)}
+            disabled={busy || sheets.length === 0}
+            className="flex-1 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white py-3 rounded-xl font-semibold text-sm transition flex items-center justify-center gap-2">
+            <Ico.download className="w-4 h-4" style={{ color: "#fb923c" }} />
+            {busy ? "กำลังสร้าง…" : `ดาวน์โหลดทั้งหมด (${sheets.length} ใบ)`}
+          </button>
+          <button onClick={onClose} className="flex-1 bg-white border border-slate-200 text-slate-600 py-3 rounded-xl font-semibold text-sm hover:bg-slate-100 transition">ปิด</button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // เกียรติบัตรของสมาชิก 1 คน — โครงเดียวกับ MemberBarcodeModal (ดูตัวอย่าง + โหลดเอง)
