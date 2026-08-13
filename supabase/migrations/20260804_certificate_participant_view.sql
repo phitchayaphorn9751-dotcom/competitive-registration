@@ -59,7 +59,17 @@ as $$
   join courses c       on c.id = r.course_id
   where p.cert_published is true
     and r.status in ('confirmed', 'approved')
-    and lower(r.submitter_email) = lower(auth.email())
+    and (
+      -- คนยื่นใบสมัคร
+      lower(r.submitter_email) = lower(auth.email())
+      -- หรือเป็นสมาชิกในทีมใบนั้น (เพื่อนที่สมัครเข้าระบบด้วยอีเมลที่กรอกไว้)
+      -- → ทุกคนในทีมเห็นใบของทุกคนในทีมเดียวกัน รวมครูที่ปรึกษา
+      or exists (
+        select 1 from participants me
+        where me.registration_id = r.id
+          and lower(coalesce(me.email, '')) = lower(auth.email())
+      )
+    )
     and exists (select 1 from checkins ck where ck.participant_id = p.id)
 
   union all
@@ -80,7 +90,17 @@ as $$
   join registrations r on r.id = a.registration_id
   join courses c       on c.id = r.course_id
   where r.status in ('confirmed', 'approved')
-    and lower(r.submitter_email) = lower(auth.email())
+    and (
+      -- คนยื่นใบสมัคร
+      lower(r.submitter_email) = lower(auth.email())
+      -- หรือเป็นสมาชิกในทีมใบนั้น (เพื่อนที่สมัครเข้าระบบด้วยอีเมลที่กรอกไว้)
+      -- → ทุกคนในทีมเห็นใบของทุกคนในทีมเดียวกัน รวมครูที่ปรึกษา
+      or exists (
+        select 1 from participants me
+        where me.registration_id = r.id
+          and lower(coalesce(me.email, '')) = lower(auth.email())
+      )
+    )
     and coalesce(nullif(trim(a.full_name), ''), '') <> ''
     and exists (
       select 1 from participants p2

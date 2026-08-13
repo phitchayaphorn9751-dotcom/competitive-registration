@@ -206,14 +206,15 @@ export default function MyRegistrationPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 mt-5 sm:mt-6">
         {error && <div className="bg-rose-50 border border-rose-100 text-rose-700 rounded-2xl p-4 mb-6 text-sm">{error}</div>}
 
-        {/* แบนเนอร์ประกาศ — แจ้งเรื่อง QR + Barcode (แสดงเมื่อมีรายการ) */}
+        {/* แบนเนอร์ประกาศ — บอกว่าหลังจบงานจะโหลดเกียรติบัตรได้ที่นี่ (แสดงเมื่อมีรายการ) */}
         {regs.length > 0 && (
           <div className="bg-orange-50 border border-orange-100 rounded-2xl px-4 py-3.5 mb-5 flex items-start gap-3">
             <span className="w-9 h-9 bg-gradient-to-br from-[#F15A24] to-amber-500 rounded-xl flex items-center justify-center shrink-0 shadow-sm">
               <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
             </span>
             <p className="text-sm text-slate-700 leading-relaxed pt-0.5">
-              เมื่อดำเนินการสำเร็จ <span className="font-bold text-[#F15A24]">คุณจะได้รับ QR Code เข้ากลุ่มไลน์ และ Barcode ประจำการสมัครสำหรับเช็คอิน</span>
+              เมื่อส่งใบสมัครสำเร็จ <span className="font-bold text-[#F15A24]">คุณจะได้รับ QR Code เข้ากลุ่มไลน์ และ Barcode สำหรับเช็คอิน</span>
+              {" "}และหลังจบงาน <span className="font-bold text-[#F15A24]">ดาวน์โหลดเกียรติบัตรของแต่ละรายการที่สมัครได้ที่หน้านี้</span>
             </p>
           </div>
         )}
@@ -402,11 +403,11 @@ function RegDetailModal({ reg, t, navigate, certs = {}, certTpl = {}, onClose })
     const key = c.kind === "advisor" ? "advisor" : (tplBundle.awardTpl?.[(c.award || "").trim()] || "participant")
     return tplBundle.templates?.[key]?.url ? key : null
   }
+  const allSheets = regCerts.flatMap((c) => certSheets(c, tplBundle))
   async function downloadAllCerts() {
     setCertBusy(true)
     try {
-      const list = regCerts.map((c) => ({ ...c, templateKey: certTplOf(c) || "participant" }))
-      const doc = await generateCertificatePDF({ templates: tplBundle.templates, recipients: list })
+      const doc = await generateCertificatePDF({ templates: tplBundle.templates, recipients: allSheets })
       doc.save(`เกียรติบัตร_${safeFileName(reg.theme_name || reg.course_title, 30)}.pdf`)
     } catch (_) { /* ปุ่มรายคนยังใช้ได้ ไม่ต้องรบกวนด้วย error */ }
     finally { setCertBusy(false) }
@@ -688,31 +689,45 @@ function RegDetailModal({ reg, t, navigate, certs = {}, certTpl = {}, onClose })
   )
 }
 
+// แตกเกียรติบัตร 1 รายการ → ใบที่ต้องพิมพ์จริง
+// ผู้ได้รางวัลที่ 1-3 ได้ 2 ใบ: ใบรางวัล + ใบเข้าร่วม · ครู/อบรม/ผู้เข้าร่วม ได้ใบเดียว
+// ข้ามใบที่ผู้จัดยังไม่ได้อัปโหลดรูปเทมเพลต
+function certSheets(c, tplBundle) {
+  if (!c || !tplBundle) return []
+  const has = (k) => !!tplBundle.templates?.[k]?.url
+  const key = c.kind === "advisor" ? "advisor" : (tplBundle.awardTpl?.[(c.award || "").trim()] || "participant")
+  const out = []
+  if (has(key)) out.push({ ...c, templateKey: key })
+  if (key.startsWith("winner") && has("participant")) out.push({ ...c, templateKey: "participant" })
+  return out
+}
+
 // เกียรติบัตรของสมาชิก 1 คน — โครงเดียวกับ MemberBarcodeModal (ดูตัวอย่าง + โหลดเอง)
 function MemberCertificateModal({ cert, tpl, onClose }) {
-  const [imgUrl, setImgUrl] = useState("")
+  const [imgUrls, setImgUrls] = useState([])
   const [err, setErr] = useState("")
   const [busy, setBusy] = useState(false)
 
-  // เทมเพลตของใบนี้ — ครูที่ปรึกษาใช้แบบของตัวเอง ที่เหลือดูจากชื่อรางวัลที่ผู้จัดผูกไว้
-  const tplKey = cert.kind === "advisor" ? "advisor"
-    : (tpl?.awardTpl?.[(cert.award || "").trim()] || "participant")
-  const one = { ...cert, templateKey: tplKey }
-  const active = tpl?.templates?.[tplKey] || tpl?.templates?.participant
+  // ผู้ได้รางวัลจะได้ 2 ใบ (ใบรางวัล + ใบเข้าร่วม) — โชว์ทั้งหมด
+  const sheets = certSheets(cert, tpl)
 
   useEffect(() => {
     let alive = true
-    if (!active?.url) { setErr("ผู้จัดยังไม่ได้ตั้งรูปพื้นหลังเกียรติบัตร"); return }
-    previewCertificate({ templateUrl: active.url, recipient: cert, fields: active.fields })
-      .then((u) => { if (alive) setImgUrl(u) })
+    if (sheets.length === 0) { setErr("ผู้จัดยังไม่ได้ตั้งรูปพื้นหลังเกียรติบัตร"); return }
+    Promise.all(sheets.map((s) => {
+      const t = tpl.templates[s.templateKey]
+      return previewCertificate({ templateUrl: t.url, recipient: s, fields: t.fields })
+    }))
+      .then((us) => { if (alive) setImgUrls(us) })
       .catch((e) => { if (alive) setErr(e.message) })
     return () => { alive = false }
-  }, [cert, active])
+  }, [cert, tpl])
 
-  async function downloadPdf() {
+  async function downloadPdf(only = null) {
     setBusy(true)
     try {
-      const doc = await generateCertificatePDF({ templates: tpl.templates, recipients: [one] })
+      const list = only ? [only] : sheets
+      const doc = await generateCertificatePDF({ templates: tpl.templates, recipients: list })
       doc.save(`เกียรติบัตร_${safeFileName(cert.full_name, 30)}.pdf`)
     } catch (e) { setErr("ดาวน์โหลดไม่สำเร็จ: " + e.message) }
     finally { setBusy(false) }
@@ -742,17 +757,35 @@ function MemberCertificateModal({ cert, tpl, onClose }) {
           )}
           {err ? (
             <p className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl p-3 text-center">{err}</p>
-          ) : imgUrl ? (
-            <img src={imgUrl} alt="เกียรติบัตร" className="w-full rounded-xl shadow border border-slate-200" />
+          ) : imgUrls.length ? (
+            <div className="space-y-4">
+              {imgUrls.map((u, i) => (
+                <div key={i}>
+                  {sheets.length > 1 && (
+                    <p className="text-[11px] font-bold text-slate-500 mb-1.5">
+                      ใบที่ {i + 1}/{sheets.length} · {sheets[i].templateKey === "participant" ? "ใบเข้าร่วม" : "ใบรางวัล"}
+                    </p>
+                  )}
+                  <img src={u} alt={`เกียรติบัตรใบที่ ${i + 1}`} className="w-full rounded-xl shadow border border-slate-200" />
+                  {sheets.length > 1 && (
+                    <button onClick={() => downloadPdf(sheets[i])} disabled={busy}
+                      className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-[#F15A24] disabled:opacity-50 transition">
+                      <Ico.download className="w-3.5 h-3.5" /> เซฟเฉพาะใบนี้
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
           ) : (
             <p className="text-sm text-slate-400 text-center py-10">กำลังสร้างเกียรติบัตร…</p>
           )}
         </div>
 
         <div className="px-6 py-5 bg-slate-50 border-t border-slate-100 flex gap-2 shrink-0">
-          <button onClick={downloadPdf} disabled={busy || !imgUrl}
+          <button onClick={() => downloadPdf()} disabled={busy || imgUrls.length === 0}
             className="flex-1 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white py-3 rounded-xl font-semibold text-sm transition flex items-center justify-center gap-2">
-            <Ico.download className="w-4 h-4" style={{ color: "#fb923c" }} /> {busy ? "กำลังสร้าง…" : "ดาวน์โหลด PDF"}
+            <Ico.download className="w-4 h-4" style={{ color: "#fb923c" }} />
+            {busy ? "กำลังสร้าง…" : sheets.length > 1 ? `ดาวน์โหลดทั้ง ${sheets.length} ใบ` : "ดาวน์โหลด PDF"}
           </button>
           <button onClick={onClose} className="flex-1 bg-white border border-slate-200 text-slate-600 py-3 rounded-xl font-semibold text-sm hover:bg-slate-100 transition">ปิด</button>
         </div>
