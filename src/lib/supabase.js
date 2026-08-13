@@ -1068,6 +1068,98 @@ export async function fetchCertificateRecipients(courseId) {
   return recipients
 }
 
+// ผู้มีสิทธิ์รับเกียรติบัตร "ทั้งงาน" (ทุกคอร์ส) — สำหรับหน้าค้นหา/โหลดข้ามคอร์ส
+// เกณฑ์เดียวกับ fetchCertificateRecipients: ใบสมัครยืนยันแล้ว + เช็คอินแล้ว
+// คืน type_id มาด้วย เพื่อให้ฝั่งหน้าเว็บรู้ว่าคอร์สนั้นเป็นหมวดอบรมหรือแข่งขัน
+export async function fetchCertificateRecipientsByEvent(eventId) {
+  if (!eventId) return []
+  const { data, error } = await supabase
+    .from("registrations")
+    .select("id, status, theme_name, is_imported, course_id, courses!inner(title, event_id, type_id), advisors(id, full_name), participants(id, full_name, school, award, cert_published, checkins(id, scanned_at))")
+    .eq("courses.event_id", eventId)
+    .in("status", CERT_ELIGIBLE_STATUSES)
+    .order("created_at", { ascending: true })
+  if (error) throw error
+
+  const out = []
+  const advSeen = new Map()   // กันครูคนเดิมในคอร์สเดิมซ้ำ (คุมหลายทีม = ใบเดียว)
+  for (const reg of data || []) {
+    const base = {
+      registration_id: reg.id,
+      theme_name: reg.theme_name || "",
+      is_imported: !!reg.is_imported,
+      course_id: reg.course_id,
+      course_title: reg.courses?.title || "",
+      type_id: reg.courses?.type_id || null,
+    }
+    const checkedIn = (reg.participants || []).filter((p) => (p.checkins || []).length > 0)
+    for (const p of checkedIn) {
+      out.push({
+        ...base,
+        kind: "participant",
+        participant_id: p.id,
+        full_name: p.full_name || "",
+        school: p.school || "",
+        award: p.award || "",
+        cert_published: !!p.cert_published,
+      })
+    }
+    // ครูที่ปรึกษาได้ใบเมื่อ "มีลูกทีมมาเช็คอินอย่างน้อย 1 คน" = ถือว่าครูมาด้วย
+    if (checkedIn.length === 0) continue
+    for (const a of reg.advisors || []) {
+      const name = (a.full_name || "").trim()
+      if (!name) continue
+      const key = `${reg.course_id}|${name.toLowerCase().replace(/\s+/g, " ")}`
+      if (advSeen.has(key)) { advSeen.get(key).team_count++; continue }
+      const row = {
+        ...base,
+        kind: "advisor",
+        participant_id: `adv:${a.id}`,   // prefix กันชนกับ id ของผู้เข้าร่วม
+        full_name: name,
+        school: "",
+        award: "ครูที่ปรึกษา",
+        cert_published: false,
+        team_count: 1,
+      }
+      advSeen.set(key, row)
+      out.push(row)
+    }
+  }
+  return out
+}
+
+// ครูที่ปรึกษาของคอร์ส (สำหรับออกเกียรติบัตร) — ใช้เกณฑ์สถานะเดียวกับผู้เข้าร่วม
+// ครูไม่มี participant record จึงเช็คอินเองไม่ได้ → ยึดจากลูกทีม:
+// ถ้ามีสมาชิกในทีมมาเช็คอินอย่างน้อย 1 คน = ถือว่าครูมาด้วย ออกใบให้ได้
+// ครูคนเดียวคุมหลายทีมในคอร์สเดิม = ได้ใบเดียว
+export async function fetchCertificateAdvisors(courseId) {
+  const { data, error } = await supabase
+    .from("registrations")
+    .select("id, status, courses!inner(title), advisors(id, full_name), participants(id, checkins(id))")
+    .eq("course_id", courseId)
+    .in("status", CERT_ELIGIBLE_STATUSES)
+    .order("created_at", { ascending: true })
+  if (error) throw error
+  const seen = new Map()
+  for (const reg of data || []) {
+    const hasCheckin = (reg.participants || []).some((p) => (p.checkins || []).length > 0)
+    if (!hasCheckin) continue
+    for (const a of reg.advisors || []) {
+      const name = (a.full_name || "").trim()
+      if (!name) continue
+      const key = name.toLowerCase().replace(/\s+/g, " ")
+      if (seen.has(key)) { seen.get(key).reg_count++; continue }
+      seen.set(key, {
+        advisor_id: a.id,
+        full_name: name,
+        course_title: reg.courses?.title || "",
+        reg_count: 1,
+      })
+    }
+  }
+  return [...seen.values()]
+}
+
 // อัปโหลดรูปพื้นหลังเกียรติบัตร → คืน public URL
 // templateKey = training | participant | winner1..3 (แยกไฟล์ต่อเทมเพลต)
 // ⚠️ ไม่บีบรูป (ต่างจาก asset อื่น) — เกียรติบัตรต้องเอาไปพิมพ์ ความละเอียดต้องคงเดิม

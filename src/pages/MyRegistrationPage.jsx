@@ -389,6 +389,26 @@ function RegDetailModal({ reg, t, navigate, certs = {}, certTpl = {}, onClose })
   const [showBarcode, setShowBarcode] = useState(false)
   const [barcodeMember, setBarcodeMember] = useState(null)
   const [certMember, setCertMember] = useState(null)
+  const [certBusy, setCertBusy] = useState(false)
+
+  // เกียรติบัตรทั้งหมดของใบสมัครนี้ (สมาชิกทุกคน + ครูที่ปรึกษา)
+  const regCerts = Object.values(certs).filter((c) => c.registration_id === reg.id)
+  const advisorCerts = regCerts.filter((c) => c.kind === "advisor")
+  const tplBundle = certTpl[regCerts[0]?.event_id]
+  const certTplOf = (c) => {
+    if (!c || !tplBundle) return null
+    const key = c.kind === "advisor" ? "advisor" : (tplBundle.awardTpl?.[(c.award || "").trim()] || "participant")
+    return tplBundle.templates?.[key]?.url ? key : null
+  }
+  async function downloadAllCerts() {
+    setCertBusy(true)
+    try {
+      const list = regCerts.map((c) => ({ ...c, templateKey: certTplOf(c) || "participant" }))
+      const doc = await generateCertificatePDF({ templates: tplBundle.templates, recipients: list })
+      doc.save(`เกียรติบัตร_${safeFileName(reg.theme_name || reg.course_title, 30)}.pdf`)
+    } catch (_) { /* ปุ่มรายคนยังใช้ได้ ไม่ต้องรบกวนด้วย error */ }
+    finally { setCertBusy(false) }
+  }
 
   useEffect(() => {
     fetchCourse(reg.course_id).then(setCourse).catch(() => {})
@@ -523,6 +543,35 @@ function RegDetailModal({ reg, t, navigate, certs = {}, certTpl = {}, onClose })
                     <span className="text-slate-400 font-normal">({members.length} คน)</span>
                   </p>
                 )}
+
+                {/* เกียรติบัตรทั้งใบสมัคร — ทุกคนในทีม + ครูที่ปรึกษา รวมเป็น PDF เดียว
+                    (แต่ละคนยังกดเซฟแยกได้จากปุ่มของตัวเองด้านล่าง) */}
+                {regCerts.length > 0 && (
+                  <div className="bg-white rounded-xl border border-orange-200 p-3 mb-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                        <Ico.cap className="w-4 h-4 text-[#F15A24]" />
+                        เกียรติบัตร {regCerts.length} ใบ
+                        {advisorCerts.length > 0 && <span className="font-normal text-slate-400">(รวมครูที่ปรึกษา)</span>}
+                      </span>
+                      <button onClick={downloadAllCerts} disabled={certBusy || !certTplOf(regCerts[0])}
+                        className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-gradient-to-r from-[#F15A24] to-amber-500 hover:from-[#c44215] hover:to-amber-600 active:scale-95 px-3 py-1.5 rounded-lg shadow-md shadow-orange-500/20 transition disabled:opacity-50">
+                        <Ico.download className="w-3.5 h-3.5" /> {certBusy ? "กำลังสร้าง…" : "โหลดทั้งหมด"}
+                      </button>
+                    </div>
+                    {advisorCerts.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2.5 pt-2.5 border-t border-orange-100">
+                        <span className="text-[11px] text-slate-400 self-center">ครูที่ปรึกษา:</span>
+                        {advisorCerts.map((c) => (
+                          <button key={c.participant_id} onClick={() => setCertMember({ id: c.participant_id, full_name: c.full_name })}
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#F15A24] bg-orange-50 border border-orange-200 hover:bg-orange-100 px-2 py-1 rounded-lg transition">
+                            <Ico.cap className="w-3 h-3" /> {c.full_name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="space-y-2.5">
                   {members.map((m, i) => (
                     <div key={m.id} className="bg-white rounded-xl border border-slate-100 shadow-sm p-3">
@@ -643,8 +692,9 @@ function MemberCertificateModal({ cert, tpl, onClose }) {
   const [err, setErr] = useState("")
   const [busy, setBusy] = useState(false)
 
-  // เทมเพลตของใบนี้ — ดูจากที่ผู้จัดผูกไว้กับชื่อรางวัล ไม่มีก็ใช้แบบผู้เข้าร่วม
-  const tplKey = tpl?.awardTpl?.[(cert.award || "").trim()] || "participant"
+  // เทมเพลตของใบนี้ — ครูที่ปรึกษาใช้แบบของตัวเอง ที่เหลือดูจากชื่อรางวัลที่ผู้จัดผูกไว้
+  const tplKey = cert.kind === "advisor" ? "advisor"
+    : (tpl?.awardTpl?.[(cert.award || "").trim()] || "participant")
   const one = { ...cert, templateKey: tplKey }
   const active = tpl?.templates?.[tplKey] || tpl?.templates?.participant
 

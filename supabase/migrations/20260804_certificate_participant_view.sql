@@ -29,28 +29,31 @@ drop function if exists public.my_certificates();
 
 create function public.my_certificates()
 returns table (
-  participant_id   uuid,
+  participant_id   text,
   registration_id  uuid,
   full_name        text,
   award            text,
   course_id        uuid,
   course_title     text,
   event_id         uuid,
-  theme_name       text
+  theme_name       text,
+  kind             text
 )
 language sql
 security definer
 set search_path = public
 as $$
+  -- ผู้เข้าร่วม (รวมสมาชิกในทีมทุกคน) — ต้องเช็คอินเองและถูก publish แล้ว
   select
-    p.id                as participant_id,
+    p.id::text          as participant_id,
     r.id                as registration_id,
     p.full_name         as full_name,
     coalesce(p.award, '') as award,
     c.id                as course_id,
     c.title             as course_title,
     c.event_id          as event_id,
-    coalesce(r.theme_name, '') as theme_name
+    coalesce(r.theme_name, '') as theme_name,
+    'participant'::text as kind
   from participants p
   join registrations r on r.id = p.registration_id
   join courses c       on c.id = r.course_id
@@ -58,7 +61,33 @@ as $$
     and r.status in ('confirmed', 'approved')
     and lower(r.submitter_email) = lower(auth.email())
     and exists (select 1 from checkins ck where ck.participant_id = p.id)
-  order by r.created_at desc, p.id;
+
+  union all
+
+  -- ครูที่ปรึกษา — ไม่มีรหัสเช็คอินของตัวเอง จึงยึดจากลูกทีม:
+  -- ต้องมีสมาชิกในใบสมัครเดียวกันที่เช็คอินแล้วและถูก publish แล้วอย่างน้อย 1 คน
+  select
+    ('adv:' || a.id::text) as participant_id,
+    r.id                   as registration_id,
+    a.full_name            as full_name,
+    'ครูที่ปรึกษา'::text     as award,
+    c.id                   as course_id,
+    c.title                as course_title,
+    c.event_id             as event_id,
+    coalesce(r.theme_name, '') as theme_name,
+    'advisor'::text        as kind
+  from advisors a
+  join registrations r on r.id = a.registration_id
+  join courses c       on c.id = r.course_id
+  where r.status in ('confirmed', 'approved')
+    and lower(r.submitter_email) = lower(auth.email())
+    and coalesce(nullif(trim(a.full_name), ''), '') <> ''
+    and exists (
+      select 1 from participants p2
+      where p2.registration_id = r.id
+        and p2.cert_published is true
+        and exists (select 1 from checkins ck2 where ck2.participant_id = p2.id)
+    );
 $$;
 
 -- ให้เฉพาะผู้ใช้ที่ล็อกอินเรียกได้ (ฟังก์ชันกรองด้วย auth.email() ในตัวอยู่แล้ว)
