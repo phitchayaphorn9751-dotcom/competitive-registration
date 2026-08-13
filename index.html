@@ -42,18 +42,18 @@
 
     <!-- ═══════════════════════════════════════════════════════════
          LINE Seed Sans TH — ใช้บนเกียรติบัตร (self-host, ไม่มีใน Google Fonts)
-         วางไฟล์ที่ public/fonts/ ตามชื่อด้านล่าง (โหลดจาก seed.line.me)
-         ถ้ายังไม่มีไฟล์ → fallback เป็น Sarabun อัตโนมัติ ไม่พัง
+         ไฟล์อยู่ใน public/fonts/ → ต้องมาพร้อม repo ไม่งั้น production ไม่มีฟอนต์
+         (ติดตั้งลงเครื่องอย่างเดียวใช้ได้แค่เครื่องนั้น)
          ═══════════════════════════════════════════════════════════ -->
     <style>
       @font-face {
         font-family: 'LINE Seed Sans TH';
-        src: url('/fonts/LINESeedSansTH_W_Rg.woff2') format('woff2');
+        src: url('/fonts/LINESeedSansTH_Rg.ttf') format('truetype');
         font-weight: 400; font-style: normal; font-display: swap;
       }
       @font-face {
         font-family: 'LINE Seed Sans TH';
-        src: url('/fonts/LINESeedSansTH_W_Bd.woff2') format('woff2');
+        src: url('/fonts/LINESeedSansTH_Bd.ttf') format('truetype');
         font-weight: 700; font-style: normal; font-display: swap;
       }
     </style>
