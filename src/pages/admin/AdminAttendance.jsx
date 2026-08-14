@@ -95,7 +95,10 @@ export default function AdminAttendance() {
       const m = {}
       let seq = 0
       ;(regs || []).forEach((r) => (r.participants || []).forEach((p) => {
-        m[p.id] = { code: p.participant_code || "", sid: r.session_id || "", label: lbl(r.session_id), seq: ++seq }
+        m[p.id] = {
+          code: p.participant_code || "", sid: r.session_id || "", label: lbl(r.session_id),
+          seq: ++seq, theme: (r.theme_name || "").trim(),
+        }
       }))
       setPInfo(m)
     }).catch(() => setPInfo({}))
@@ -103,7 +106,7 @@ export default function AdminAttendance() {
 
   const withInfo = useCallback((r) => {
     const i = pInfo[r.participant_id] || {}
-    return { ...r, code: i.code || "", sessionId: i.sid || "", sessionName: i.label || "", seq: i.seq || 9999 }
+    return { ...r, code: i.code || "", sessionId: i.sid || "", sessionName: i.label || "", seq: i.seq || 9999, theme: i.theme || "" }
   }, [pInfo])
   const passSession = useCallback((r) => sessionFilter === "All" || (pInfo[r.participant_id]?.sid || "") === sessionFilter, [sessionFilter, pInfo])
 
@@ -151,13 +154,28 @@ export default function AdminAttendance() {
   const dailyBase = useMemo(() => roster.filter(passSession).map(withInfo), [roster, passSession, withInfo])
   const dailyStats = useMemo(() => {
     const present = dailyBase.filter((r) => r.present).length
-    return { total: dailyBase.length, present, absent: dailyBase.length - present }
+    // นับทีม — ทีมที่ "มา" คือทีมที่มีสมาชิกมาอย่างน้อย 1 คน
+    const allTeams = new Set(dailyBase.filter((r) => r.theme).map((r) => r.theme))
+    const cameTeams = new Set(dailyBase.filter((r) => r.theme && r.present).map((r) => r.theme))
+    return {
+      total: dailyBase.length, present, absent: dailyBase.length - present,
+      teamTotal: allTeams.size, teamPresent: cameTeams.size,
+    }
   }, [dailyBase])
+  // รายการนี้รับแบบทีมไหม — ดูจากคอร์ส ถ้าไม่ชัดก็ดูว่ามีชื่อทีมจริงไหม
+  const isTeamCourse = (courses.find((c) => c.id === courseId)?.count_mode === "team") || dailyStats.teamTotal > 0
 
   const dailyFiltered = dailyBase.filter((r) => {
     const matchSearch = !search || (r.full_name || "").toLowerCase().includes(search.toLowerCase())
     const matchType = filterType === "All" || (filterType === "Present" ? r.present : !r.present)
     return matchSearch && matchType
+  }).sort((a, b) => {
+    // รายการแบบทีม — เรียงให้คนทีมเดียวกันติดกัน (คนเดี่ยวไปท้ายสุด) แล้วค่อยเรียงตามลำดับสมัคร
+    if (isTeamCourse) {
+      const ta = a.theme || "￿", tb = b.theme || "￿"
+      if (ta !== tb) return ta.localeCompare(tb, "th")
+    }
+    return a.seq - b.seq
   })
   const overallBase = useMemo(() => overallList.map(withInfo).filter(passSession), [overallList, withInfo, passSession])
   const overallFiltered = overallBase.filter((s) => !search || (s.full_name || "").toLowerCase().includes(search.toLowerCase()))
@@ -174,9 +192,10 @@ export default function AdminAttendance() {
 
     const lines = [esc(titleRow)]
     if (viewMode === "daily") {
-      lines.push(["ลำดับ", "รหัส", "ชื่อ-สกุล", "โรงเรียน", "เบอร์", "สถานะลงทะเบียน (1/0)"].map(esc).join(","))
-      dailyFiltered.slice().sort((a, b) => a.seq - b.seq).forEach((r, i) => {
-        lines.push([i + 1, r.code || "", r.full_name || "", r.school || "", r.phone || "", r.present ? 1 : 0].map(esc).join(","))
+      const teamCol = isTeamCourse ? ["ทีม"] : []
+      lines.push(["ลำดับ", ...teamCol, "รหัส", "ชื่อ-สกุล", "โรงเรียน", "เบอร์", "สถานะลงทะเบียน (1/0)"].map(esc).join(","))
+      dailyFiltered.forEach((r, i) => {
+        lines.push([i + 1, ...(isTeamCourse ? [r.theme || ""] : []), r.code || "", r.full_name || "", r.school || "", r.phone || "", r.present ? 1 : 0].map(esc).join(","))
       })
     } else {
       lines.push(["ลำดับ", "รหัส", "ชื่อ-สกุล", "โรงเรียน", "เบอร์", "มาเรียน", "ทั้งหมด", "เปอร์เซ็นต์"].map(esc).join(","))
@@ -288,13 +307,20 @@ export default function AdminAttendance() {
       {courseId && !loading && viewMode === "daily" && dateKey && (
         <>
           {/* stats */}
-          <div className="grid grid-cols-3 gap-3 mb-4">
-            {[{ l: "ทั้งหมด", v: dailyStats.total, c: "sky", i: "users" }, { l: "มาเรียน", v: dailyStats.present, c: "emerald", i: "check" }, { l: "ขาด", v: dailyStats.absent, c: "rose", i: "x" }].map((s) => {
+          <div className={`grid gap-3 mb-4 ${isTeamCourse ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"}`}>
+            {[
+              { l: "ทั้งหมด", v: dailyStats.total, c: "sky", i: "users" },
+              { l: "มาเรียน", v: dailyStats.present, c: "emerald", i: "check" },
+              { l: "ขาด", v: dailyStats.absent, c: "rose", i: "x" },
+              // รายการแบบทีม — บอกด้วยว่ามากี่ทีมจากทั้งหมดกี่ทีม (ทีมที่มีสมาชิกมา ≥1 คน = มา)
+              ...(isTeamCourse ? [{ l: `ทีมที่มา (จาก ${dailyStats.teamTotal})`, v: dailyStats.teamPresent, c: "orange", i: "users" }] : []),
+            ].map((s) => {
               const I = Ico[s.i]
               const cmap = {
                 sky: { bg: "bg-sky-50 border-sky-100", num: "text-sky-700", lbl: "text-sky-500", ic: "text-sky-500" },
                 emerald: { bg: "bg-emerald-50 border-emerald-100", num: "text-emerald-700", lbl: "text-emerald-500", ic: "text-emerald-500" },
                 rose: { bg: "bg-rose-50 border-rose-100", num: "text-rose-700", lbl: "text-rose-500", ic: "text-rose-500" },
+                orange: { bg: "bg-orange-50 border-orange-100", num: "text-[#F15A24]", lbl: "text-orange-500", ic: "text-orange-500" },
               }[s.c]
               return (
                 <div key={s.l} className={`rounded-2xl p-3 sm:p-4 text-center border ${cmap.bg}`}>
@@ -331,15 +357,24 @@ export default function AdminAttendance() {
           <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             <table className="w-full text-left min-w-[680px]">
               <thead><tr className="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase">
-                <th className="px-4 py-3 w-10 text-center">#</th><th className="px-4 py-3">ชื่อ–สกุล</th>
+                <th className="px-4 py-3 w-10 text-center">#</th>
+                {isTeamCourse && <th className="px-4 py-3 w-40">ทีม</th>}
+                <th className="px-4 py-3">ชื่อ–สกุล</th>
                 <th className="px-4 py-3 text-center w-20">เวลา</th><th className="px-4 py-3 text-center w-36">เช็คชื่อ</th>
                 <th className="px-4 py-3 w-36">ผลการเรียน</th><th className="px-4 py-3">หมายเหตุ</th>
               </tr></thead>
               <tbody className="divide-y divide-slate-100">
-                {dailyFiltered.length === 0 ? <tr><td colSpan={6} className="py-12 text-center text-slate-400 text-sm">ไม่พบข้อมูล</td></tr>
+                {dailyFiltered.length === 0 ? <tr><td colSpan={isTeamCourse ? 7 : 6} className="py-12 text-center text-slate-400 text-sm">ไม่พบข้อมูล</td></tr>
                   : dailyFiltered.map((r, idx) => (
                     <tr key={r.participant_id} className={`transition ${busyId === r.participant_id ? "opacity-50" : r.present ? "bg-emerald-50/40 hover:bg-emerald-50/60" : "hover:bg-slate-50"}`}>
                       <td className="px-4 py-3 text-center text-slate-400 text-xs">{idx + 1}</td>
+                      {isTeamCourse && (
+                        <td className="px-4 py-3">
+                          {r.theme
+                            ? <span className="text-xs font-bold text-[#F15A24] bg-orange-50 border border-orange-100 px-2 py-1 rounded-lg inline-block max-w-full truncate">{r.theme}</span>
+                            : <span className="text-slate-300 text-xs">เดี่ยว</span>}
+                        </td>
+                      )}
                       <td className="px-4 py-3"><div className="font-bold text-slate-800 text-sm flex items-center gap-1.5">{r.full_name}{hasSessions && r.sessionName && <span className="text-[9px] font-bold text-[#F15A24] bg-orange-50 border border-orange-100 px-1.5 py-px rounded shrink-0">{r.sessionName}</span>}</div><div className="text-xs text-slate-400">{r.school || ""}{r.phone ? " · " + r.phone : ""}</div></td>
                       <td className="px-4 py-3 text-center">{r.present ? <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">{r.scanned_at ? new Date(r.scanned_at).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }) : <Ico.check className="w-3.5 h-3.5 inline-block" />}</span> : <span className="text-slate-300 text-xs">—</span>}</td>
                       <td className="px-4 py-3"><div className="flex justify-center gap-1.5">
@@ -367,6 +402,9 @@ export default function AdminAttendance() {
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="flex-1 min-w-0">
                       {r.present && r.scanned_at && <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">{new Date(r.scanned_at).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}</span>}
+                      {isTeamCourse && r.theme && (
+                        <div className="text-[10px] font-bold text-[#F15A24] bg-orange-50 border border-orange-100 px-1.5 py-0.5 rounded inline-block mt-1 max-w-full truncate">{r.theme}</div>
+                      )}
                       <div className="font-bold text-slate-800 text-sm mt-1 truncate">{r.full_name}</div>
                       <div className="text-xs text-slate-400">{r.school || ""}{r.phone ? " · " + r.phone : ""}</div>
                     </div>
