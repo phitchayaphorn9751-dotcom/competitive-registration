@@ -378,7 +378,6 @@ export default function AdminCertificate() {
   const [srcFilter, setSrcFilter] = useState("all")          // all | self | imported
   const [catFilter, setCatFilter] = useState("")             // "" = ทุกหมวด · else type_id
   const [courseFilter, setCourseFilter] = useState("")       // "" = ทุกวิชา · else course_id
-  const [picked, setPicked] = useState(() => new Set())
 
   // โหลดรายชื่อทั้งงานให้เลย ไม่ต้องรอกดปุ่ม
   useEffect(() => {
@@ -420,11 +419,6 @@ export default function AdminCertificate() {
         .some((v) => (v || "").toLowerCase().includes(kw))
     })
   })()
-
-  function togglePick(id) {
-    setPicked((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
-  }
-  const pickedList = searchHits.filter((r) => picked.has(r.participant_id))
 
   async function doGenerateSearch(list, label) {
     if (!list.length) return toast("ไม่มีรายชื่อให้ออกใบ", "error")
@@ -554,19 +548,8 @@ export default function AdminCertificate() {
         {allRecipients !== null && hasFilter && (
           <>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-slate-500">เจอ <b className="text-slate-700">{searchHits.length}</b> คน{picked.size > 0 && <> · เลือกไว้ <b className="text-[#F15A24]">{pickedList.length}</b></>}</span>
-              <button onClick={() => setPicked(new Set(searchHits.map((r) => r.participant_id)))}
-                className="text-xs font-bold text-slate-500 hover:bg-slate-100 px-2.5 py-1 rounded-lg transition">เลือกทั้งหมดที่เจอ</button>
-              {picked.size > 0 && (
-                <button onClick={() => setPicked(new Set())}
-                  className="text-xs font-bold text-slate-500 hover:bg-slate-100 px-2.5 py-1 rounded-lg transition">ล้างที่เลือก</button>
-              )}
+              <span className="text-xs text-slate-500">เจอ <b className="text-slate-700">{searchHits.length}</b> คน</span>
               <div className="flex-1" />
-              <button onClick={() => doGenerateSearch(pickedList, `เลือก_${pickedList.length}ใบ`)}
-                disabled={genning || pickedList.length === 0}
-                className="inline-flex items-center gap-1.5 bg-[#F15A24] hover:bg-[#c44215] text-white px-4 py-2 rounded-xl text-xs font-bold transition disabled:opacity-50">
-                <Ico.download className="w-3.5 h-3.5" /> โหลดที่เลือก ({pickedList.length})
-              </button>
               <button onClick={() => doGenerateSearch(searchHits, q.trim() || "ทั้งงาน")}
                 disabled={genning || searchHits.length === 0}
                 className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-xs font-bold transition disabled:opacity-50">
@@ -579,10 +562,8 @@ export default function AdminCertificate() {
             ) : (
               <div className="border border-slate-200 rounded-xl overflow-hidden max-h-96 overflow-y-auto">
                 {searchHits.slice(0, 300).map((r) => (
-                  <label key={r.participant_id}
-                    className="flex items-center gap-2.5 px-3 py-2 border-b border-slate-50 last:border-0 hover:bg-orange-50/40 cursor-pointer">
-                    <input type="checkbox" checked={picked.has(r.participant_id)} onChange={() => togglePick(r.participant_id)}
-                      className="w-4 h-4 accent-[#F15A24] shrink-0" />
+                  <div key={r.participant_id}
+                    className="flex items-center gap-2.5 px-3 py-2 border-b border-slate-50 last:border-0 hover:bg-orange-50/40">
                     <span className="flex-1 min-w-0">
                       <span className="block text-sm font-semibold text-slate-800 truncate">{r.full_name}</span>
                       <span className="block text-[11px] text-slate-400 truncate">
@@ -595,12 +576,12 @@ export default function AdminCertificate() {
                     {r.kind === "advisor"
                       ? <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-50 text-sky-600 border border-sky-100">ครู{r.team_count > 1 ? ` ·${r.team_count} ทีม` : ""}</span>
                       : r.is_imported && <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-md bg-violet-50 text-violet-600 border border-violet-100">นำเข้า</span>}
-                    <button onClick={(e) => { e.preventDefault(); doGenerateSearch([r], r.full_name) }}
+                    <button onClick={() => doGenerateSearch([r], r.full_name)}
                       disabled={genning} title="โหลดใบนี้ใบเดียว"
                       className="shrink-0 text-slate-400 hover:text-[#F15A24] p-1 rounded-lg transition disabled:opacity-40">
                       <Ico.download className="w-4 h-4" />
                     </button>
-                  </label>
+                  </div>
                 ))}
                 {searchHits.length > 300 && (
                   <p className="px-3 py-2 text-[11px] text-slate-400 bg-slate-50">
